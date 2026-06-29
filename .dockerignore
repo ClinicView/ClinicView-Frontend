@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+*.log
+.env.local
+.env.*.local
+AGENTS.md
+CONTEXT.md
+src/**/CONTEXT.md
+src/**/README.md
