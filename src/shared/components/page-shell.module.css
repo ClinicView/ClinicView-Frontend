@@ -1,0 +1,331 @@
+.shell {
+  --sidebar-width: 264px;
+  --sidebar-collapsed-width: 76px;
+
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--gray-800);
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 120;
+  width: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-clinical);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transition: width var(--transition-base), transform var(--transition-base);
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 74px;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-clinical);
+}
+
+.brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--gray-900);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.brandMark {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  border: 2px solid #ffffff;
+  box-shadow: inset 0 -3px 0 var(--color-teal);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.brandText {
+  overflow: hidden;
+  color: var(--gray-900);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.collapseBtn,
+.mobileMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.collapseBtn {
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+}
+
+.collapseBtn:hover,
+.mobileMenuBtn:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary-hover);
+}
+
+.navList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem;
+}
+
+.navLink,
+.logoutBtn {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0 0.75rem;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.navLink:hover,
+.logoutBtn:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary-hover);
+  text-decoration: none;
+}
+
+.navLinkActive {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary-hover);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.navLink svg,
+.logoutBtn svg {
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.navLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarFooter {
+  padding: 0.875rem;
+  border-top: 1px solid var(--border-clinical);
+}
+
+.logoutBtn {
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.logoutBtn:hover {
+  background: var(--color-danger-light);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+.mainArea {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--sidebar-width);
+  transition: padding-left var(--transition-base);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-clinical);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0 1.75rem;
+  box-shadow: var(--shadow-xs);
+}
+
+.topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 82%, var(--color-teal) 82%);
+}
+
+.topbarIdentity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.userNameRole {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--gray-800);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileMenuBtn {
+  width: 38px;
+  height: 38px;
+  display: none;
+  margin-right: auto;
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 2rem 2rem 3rem;
+}
+
+.shellCollapsed .sidebar {
+  width: var(--sidebar-collapsed-width);
+}
+
+.shellCollapsed .mainArea {
+  padding-left: var(--sidebar-collapsed-width);
+}
+
+.shellCollapsed .brandText,
+.shellCollapsed .navLabel {
+  display: none;
+}
+
+.shellCollapsed .brandBlock {
+  justify-content: center;
+  padding: 1rem 0.75rem;
+}
+
+.shellCollapsed .collapseBtn {
+  display: none;
+}
+
+.shellCollapsed .navLink,
+.shellCollapsed .logoutBtn {
+  justify-content: center;
+  padding: 0;
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    transform: translateX(-105%);
+  }
+
+  .shellMobileOpen .sidebar {
+    transform: translateX(0);
+  }
+
+  .mainArea {
+    padding-left: 0;
+  }
+
+  .topbar {
+    justify-content: space-between;
+    padding: 0 1rem;
+  }
+
+  .mobileMenuBtn {
+    display: inline-flex;
+  }
+
+  .collapseBtn {
+    display: none;
+  }
+
+  .content {
+    padding: 1.25rem 1rem 2rem;
+  }
+
+  .mobileBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    display: block;
+    border: 0;
+    background: rgba(12, 35, 66, 0.32);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .shellMobileOpen .mobileBackdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .shellCollapsed .mainArea {
+    padding-left: 0;
+  }
+
+  .shellCollapsed .sidebar {
+    width: var(--sidebar-width);
+  }
+
+  .shellCollapsed .brandText,
+  .shellCollapsed .navLabel {
+    display: inline;
+  }
+
+  .shellCollapsed .navLink,
+  .shellCollapsed .logoutBtn {
+    justify-content: flex-start;
+    padding: 0 0.75rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .userNameRole {
+    max-width: 180px;
+  }
+}

@@ -1,0 +1,134 @@
+/* ─── Design tokens ──────────────────────────────────────────── */
+:root {
+  /* Primary — medical blue */
+  --color-primary:        #24579f;
+  --color-primary-dark:   #183f78;
+  --color-primary-hover:  #102f5f;
+  --color-primary-light:  #edf4ff;
+  --color-primary-border: #bdd1ee;
+
+  /* Teal — clinical accent */
+  --color-teal:        #b88928;
+  --color-teal-light:  #fff9e8;
+  --color-teal-border: #e7c978;
+
+  /* Semantic */
+  --color-success:        #059669;
+  --color-success-light:  #d1fae5;
+  --color-success-border: #6ee7b7;
+  --color-warning:        #b88928;
+  --color-warning-light:  #fff8df;
+  --color-warning-border: #e7c978;
+  --color-danger:         #dc2626;
+  --color-danger-dark:    #b91c1c;
+  --color-danger-light:   #fef2f2;
+  --color-danger-border:  #fecaca;
+  --color-info:           #24579f;
+  --color-info-light:     #edf4ff;
+  --color-info-border:    #bdd1ee;
+
+  /* Grays — slate scale */
+  --gray-50:  #f7faff;
+  --gray-100: #edf2f8;
+  --gray-200: #dbe4ef;
+  --gray-300: #c1ccda;
+  --gray-400: #8291a5;
+  --gray-500: #5d6d83;
+  --gray-600: #43546d;
+  --gray-700: #263c5d;
+  --gray-800: #172f52;
+  --gray-900: #0c2342;
+
+  /* Surfaces */
+  --bg-page:    #f3f7fc;
+  --bg-surface: #ffffff;
+  --border-clinical: #d9e2ee;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.12);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Layout */
+  --header-height: 64px;
+  --content-max-width: 1280px;
+
+  /* Transitions */
+  --transition-fast: 0.12s ease;
+  --transition-base: 0.18s ease;
+}
+
+/* ─── Reset ───────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Base ────────────────────────────────────────────────────── */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-page);
+  color: var(--gray-800);
+  line-height: 1.5;
+}
+
+/* ─── Focus visible ──────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ─── Links base ─────────────────────────────────────────────── */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ─── View-level utilities ───────────────────────────────────── */
+.viewHeading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 0.35rem;
+}
+
+.viewSubheading {
+  font-size: 0.9375rem;
+  color: var(--gray-600);
+  max-width: 720px;
+  margin-bottom: 1.25rem;
+}
+
+.viewBack {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  margin-bottom: 1rem;
+  text-decoration: none;
+}
+
+.viewBack:hover {
+  color: var(--gray-700);
+  text-decoration: none;
+}

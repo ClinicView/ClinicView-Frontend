@@ -1,0 +1,37 @@
+.fullPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: var(--gray-500);
+}
+
+.ring {
+  border-radius: 50%;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--color-primary);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.ring.sm { width: 20px; height: 20px; border-width: 2px; }
+.ring.md { width: 32px; height: 32px; border-width: 3px; }
+.ring.lg { width: 48px; height: 48px; border-width: 4px; }
+
+.label {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,278 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  max-width: 900px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.nameBlock {}
+
+.name {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 0.375rem;
+}
+
+.docLine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.docBadge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inactiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+  margin-left: 0.5rem;
+}
+
+/* ─── Data grid ──────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 2rem;
+  margin-bottom: 1.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fieldValue {
+  font-size: 0.9375rem;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.empty {
+  color: var(--gray-300);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ─── Divider ────────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--gray-100);
+  margin: 1.5rem 0;
+}
+
+.flowActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 1rem;
+}
+
+.primaryFlow,
+.secondaryFlow {
+  width: 100%;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.primaryFlow {
+  background: linear-gradient(135deg, var(--color-primary-light), var(--bg-surface));
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.primaryFlow:hover,
+.secondaryFlow:hover {
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.flowIcon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  border: 1px solid var(--border-clinical);
+  color: var(--color-primary);
+}
+
+.flowEyebrow {
+  width: fit-content;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--color-teal-border);
+  color: var(--color-primary-hover);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flowTitle {
+  color: var(--gray-900);
+  font-size: 0.9875rem;
+  font-weight: 750;
+}
+
+.flowText {
+  color: var(--gray-600);
+  font-size: 0.8375rem;
+  line-height: 1.45;
+}
+
+.helpCard {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: var(--gray-50);
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-size: 0.8375rem;
+  line-height: 1.45;
+}
+
+.helpCard svg {
+  color: var(--color-teal);
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+/* ─── Actions ────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--gray-200);
+  background: var(--bg-surface);
+  color: var(--gray-700);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--gray-50);
+  text-decoration: none;
+}
+
+.btnPrimary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.btnPrimary:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btnDanger {
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.btnDanger:hover {
+  background: var(--color-danger-light);
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+/* ─── Confirm block ──────────────────────────────────────────── */
+.confirmBlock {
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.confirmText {
+  font-size: 0.875rem;
+  color: #991b1b;
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 580px) {
+  .grid { grid-template-columns: 1fr; }
+  .flowActions { grid-template-columns: 1fr; }
+  .card { padding: 1.25rem; }
+}

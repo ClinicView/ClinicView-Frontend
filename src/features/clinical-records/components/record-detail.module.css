@@ -1,0 +1,197 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  max-width: 760px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.headerLeft {}
+
+.typeTag {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  background: var(--color-teal-light);
+  color: var(--color-teal);
+  border: 1px solid var(--color-teal-border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Status badge — kept local as in document-detail */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ACTIVE    { background: var(--color-success-light); color: #065f46; border: 1px solid var(--color-success-border); }
+.CORRECTED { background: var(--color-warning-light); color: #92400e; border: 1px solid var(--color-warning-border); }
+.VOIDED    { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
+
+/* ─── Data grid ──────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.fieldLabel {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fieldValue { font-size: 0.875rem; color: var(--gray-700); font-weight: 500; }
+.fieldEmpty { color: var(--gray-300); font-weight: 400; }
+
+/* ─── Sections ───────────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--gray-100); margin: 1.25rem 0; }
+
+.section { margin-bottom: 1.25rem; }
+
+.sectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.625rem;
+}
+
+.textBlock {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--gray-700);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.voidBox {
+  background: var(--color-danger-light);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: #991b1b;
+}
+
+.correctionLink {
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.75rem;
+}
+
+.correctionLink:hover { text-decoration: underline; }
+
+/* ─── Actions ────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--gray-100);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--gray-200);
+  background: var(--bg-surface);
+  color: var(--gray-700);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) { background: var(--gray-100); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnPrimary  { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.btnPrimary:hover:not(:disabled) { background: var(--color-primary-dark); }
+.btnDanger   { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+.btnDanger:hover:not(:disabled) { background: var(--color-danger-dark); }
+
+.actionsCompact {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ─── Void form ──────────────────────────────────────────────── */
+.voidForm {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+}
+
+.voidTextarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: var(--gray-800);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.voidTextarea:focus { border-color: var(--color-primary); }
+
+.actionError {
+  font-size: 0.8125rem;
+  color: var(--color-danger);
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 580px) {
+  .grid { grid-template-columns: 1fr; }
+  .card { padding: 1.25rem; }
+}
