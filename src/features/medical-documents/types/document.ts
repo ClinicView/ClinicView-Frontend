@@ -20,6 +20,23 @@ export interface CorrectedEntity {
   normalizedValue?: string | null;
 }
 
+/**
+ * Métricas de calidad OCR/NER calculadas por el servicio IA v2.
+ * cer/wer/charAccuracy en [0,1]. estimated=true cuando no hubo texto de
+ * referencia y los valores derivan de la confianza del modelo.
+ */
+export interface OcrMetrics {
+  cer: number | null;
+  wer: number | null;
+  charAccuracy: number | null;
+  nerPrecision: number | null;
+  nerRecall: number | null;
+  nerF1: number | null;
+  estimated: boolean;
+}
+
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface MedicalDocument {
   id: string;
   patientId: string;
@@ -40,6 +57,10 @@ export interface MedicalDocument {
   reviewedAt: string | null;
   reviewedBy: string | null;
   updatedAt: string;
+  /** Opcionales — los expone el backend cuando el servicio IA v2 los devuelve. */
+  metrics?: OcrMetrics | null;
+  ocrConfidence?: number | null;
+  confidenceLevel?: ConfidenceLevel | null;
 }
 
 export interface DocumentsPage {
