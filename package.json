@@ -12,6 +12,7 @@
     "gen-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/shared/types/api.generated.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "next": "^16.2.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -1,9 +1,149 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
-import { PatientDetail, usePatient } from '@/features/patients';
+import { usePatient, deactivatePatient } from '@/features/patients';
+import type { ClinicalRecord } from '@/features/clinical-records';
+import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
+import { parseClinicalSections } from '@/features/medical-documents';
+import {
+  documentToExportItem,
+  exportPatientPdf,
+  recordToExportItem,
+  type ExportItem,
+} from '@/features/medical-documents/lib/pdf-export';
+import { can } from '@/shared/permissions/can';
 import { PageShell } from '@/shared/components/page-shell';
-import { Spinner, Alert } from '@/shared/ui';
+import { Alert, Icon, Spinner } from '@/shared/ui';
+import { usePatientOverview } from './use-patient-overview';
+import styles from './patient-profile.module.css';
+
+/* ─── Helpers ────────────────────────────────────────────────── */
+
+const SEX_LABEL: Record<string, string> = { M: 'Masculino', F: 'Femenino', OTHER: 'Otro' };
+const DOC_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Pendiente',
+  PROCESSING: 'Procesando',
+  PROCESSED: 'En corrección',
+  FAILED: 'Error OCR',
+  VALIDATED: 'Validado',
+  REJECTED: 'Rechazado',
+};
+const DOC_STATUS_TONE: Record<string, string> = {
+  PENDING: 'slate',
+  PROCESSING: 'amber',
+  PROCESSED: 'amber',
+  FAILED: 'red',
+  VALIDATED: 'green',
+  REJECTED: 'red',
+};
+const RECORD_TYPE_LABEL: Record<string, string> = {
+  CONSULTATION: 'Consulta externa',
+  LAB_RESULT: 'Resultado de laboratorio',
+  PRESCRIPTION: 'Receta',
+  THERAPY_NOTE: 'Nota de terapia',
+  EVOLUTION: 'Hoja de evolución',
+  PROCEDURE: 'Procedimiento',
+  OTHER: 'Documento clínico',
+};
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatDateLong(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function getInitials(firstName: string, lastName: string): string {
+  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
+}
+
+function computeAge(dateOfBirth: string): number {
+  const birth = new Date(dateOfBirth);
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
+  return age;
+}
+
+/** Entrada unificada del timeline (documento digitalizado o registro manual). */
+interface TimelineEntry {
+  id: string;
+  kind: 'document' | 'record';
+  date: string;
+  title: string;
+  statusLabel: string;
+  statusTone: string;
+  service: string;
+  href: string | null;
+  searchText: string;
+  document?: MedicalDocument;
+  record?: ClinicalRecord;
+}
+
+function buildTimeline(
+  patientId: string,
+  documents: MedicalDocument[],
+  records: ClinicalRecord[],
+): TimelineEntry[] {
+  const docEntries: TimelineEntry[] = documents.map((doc) => ({
+    id: `doc-${doc.id}`,
+    kind: 'document',
+    date: doc.createdAt,
+    title: doc.originalName,
+    statusLabel: DOC_STATUS_LABEL[doc.status] ?? doc.status,
+    statusTone: DOC_STATUS_TONE[doc.status] ?? 'slate',
+    service: 'Digitalización · Archivo clínico',
+    href: `/patients/${patientId}/documents/${doc.id}`,
+    searchText: [doc.originalName, doc.correctedText ?? '', doc.ocrText ?? '']
+      .join('\n')
+      .toLowerCase(),
+    document: doc,
+  }));
+
+  const recordEntries: TimelineEntry[] = records.map((record) => ({
+    id: `rec-${record.id}`,
+    kind: 'record',
+    date: record.attendedAt,
+    title: RECORD_TYPE_LABEL[record.recordType] ?? record.recordType,
+    statusLabel:
+      record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
+    statusTone: record.status === 'ACTIVE' ? 'green' : record.status === 'CORRECTED' ? 'teal' : 'red',
+    service: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
+    href: `/patients/${patientId}/records/${record.id}`,
+    searchText: [record.summary, record.notes ?? ''].join('\n').toLowerCase(),
+    record,
+  }));
+
+  return [...docEntries, ...recordEntries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+}
+
+function keyEntities(doc: MedicalDocument): NerEntity[] {
+  const entities = doc.nerEntities ?? [];
+  const priority = ['DIAGNOSIS', 'MEDICATION', 'PROCEDURE'];
+  return entities
+    .filter((entity) => priority.includes(entity.type))
+    .slice(0, 4);
+}
+
+type TabId = 'resumen' | 'historia' | 'documentos' | 'metricas';
+
+/* ─── Vista ──────────────────────────────────────────────────── */
 
 interface PatientViewProps {
   id: string;
@@ -11,15 +151,837 @@ interface PatientViewProps {
 
 export function PatientView({ id }: PatientViewProps) {
   const { user } = useSession();
+  const router = useRouter();
   const { patient, isLoading, error } = usePatient(id);
+  const overview = usePatientOverview(id);
+
+  const [activeTab, setActiveTab] = useState<TabId>('resumen');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const timeline = useMemo(
+    () => buildTimeline(id, overview.documents, overview.records),
+    [id, overview.documents, overview.records],
+  );
+
+  const filteredTimeline = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return timeline;
+    return timeline.filter((entry) => entry.searchText.includes(query));
+  }, [timeline, searchQuery]);
+
+  const metricsDocs = useMemo(
+    () =>
+      overview.documents
+        .filter((doc) => doc.metrics && (doc.metrics.cer != null || doc.metrics.wer != null))
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [overview.documents],
+  );
+
+  const entityFrequency = useMemo(() => {
+    const counts = new Map<string, { value: string; type: string; count: number }>();
+    for (const doc of overview.documents) {
+      const entities = (doc.correctedEntities ?? doc.nerEntities ?? []) as Array<{
+        type: string;
+        value: string;
+      }>;
+      for (const entity of entities) {
+        const key = `${entity.type}::${entity.value.toLowerCase()}`;
+        const existing = counts.get(key);
+        if (existing) existing.count += 1;
+        else counts.set(key, { value: entity.value, type: entity.type, count: 1 });
+      }
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 8);
+  }, [overview.documents]);
 
   if (!user) return null;
 
+  if (isLoading) {
+    return (
+      <PageShell>
+        <Spinner label="Cargando ficha del paciente…" />
+      </PageShell>
+    );
+  }
+
+  if (error || !patient) {
+    return (
+      <PageShell>
+        <Alert variant="error">{error ?? 'Paciente no encontrado.'}</Alert>
+      </PageShell>
+    );
+  }
+
+  const permissions = user.permissions;
+  const pendingDocs = overview.documents.filter(
+    (doc) => doc.status !== 'VALIDATED' && doc.status !== 'REJECTED',
+  ).length;
+  const lastEntry = timeline[0] ?? null;
+
+  async function handleDeactivate() {
+    setIsDeactivating(true);
+    try {
+      await deactivatePatient(id);
+      router.replace('/patients');
+    } catch {
+      setIsDeactivating(false);
+      setConfirmDeactivate(false);
+    }
+  }
+
+  async function runExport(items: ExportItem[], subtitle: string, fileName: string) {
+    if (!patient || items.length === 0) return;
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await exportPatientPdf({ patient, items, subtitle, fileName });
+    } catch {
+      setExportError('No se pudo generar el PDF. Inténtalo nuevamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  function exportSingle(doc: MedicalDocument) {
+    void runExport(
+      [documentToExportItem(doc)],
+      'Documento clínico digitalizado',
+      `clinicview_${patient?.documentNumber}_${doc.id.slice(0, 8)}`,
+    );
+  }
+
+  function exportSelected() {
+    const docs = overview.documents.filter((doc) => selectedDocs.has(doc.id));
+    const items = docs
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .map(documentToExportItem);
+    void runExport(
+      items,
+      `Documentos seleccionados (${items.length})`,
+      `clinicview_${patient?.documentNumber}_seleccion`,
+    );
+  }
+
+  function exportFullHistory() {
+    const items = [
+      ...overview.documents.map((doc) => ({ date: doc.createdAt, item: documentToExportItem(doc) })),
+      ...overview.records.map((record) => ({ date: record.attendedAt, item: recordToExportItem(record) })),
+    ]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((entry) => entry.item);
+    void runExport(
+      items,
+      'Historia clínica completa',
+      `clinicview_${patient?.documentNumber}_historia_completa`,
+    );
+  }
+
+  function toggleDocSelection(docId: string) {
+    setSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedDocs((prev) =>
+      prev.size === overview.documents.length
+        ? new Set()
+        : new Set(overview.documents.map((doc) => doc.id)),
+    );
+  }
+
+  const TABS: Array<{ id: TabId; label: string }> = [
+    { id: 'resumen', label: 'Resumen' },
+    { id: 'historia', label: 'Historia clínica' },
+    { id: 'documentos', label: 'Documentos' },
+    { id: 'metricas', label: 'Métricas' },
+  ];
+
   return (
     <PageShell>
-      {isLoading && <Spinner label="Cargando ficha del paciente…" />}
-      {error && <Alert variant="error">{error}</Alert>}
-      {patient && <PatientDetail patient={patient} permissions={user.permissions} />}
+      {/* ─── Header del paciente ─── */}
+      <section className={styles.headerCard}>
+        <div className={styles.headerTop}>
+          <span className={styles.avatar} aria-hidden="true">
+            {getInitials(patient.firstName, patient.lastName)}
+          </span>
+          <div className={styles.headerInfo}>
+            <h1 className={styles.patientName}>
+              {patient.lastName}, {patient.firstName}
+            </h1>
+            <div className={styles.badgeRow}>
+              <span className={styles.docBadge}>
+                {patient.documentType} <strong>{patient.documentNumber}</strong>
+              </span>
+              <span className={`${styles.stateBadge} ${patient.isActive ? styles.badge_green : styles.badge_red}`}>
+                <Icon name={patient.isActive ? 'check' : 'close'} size={13} />
+                {patient.isActive ? 'Paciente activo' : 'Paciente inactivo'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.demoGrid}>
+          <div className={styles.demoItem}>
+            <Icon name="calendar" size={17} />
+            <div>
+              <span className={styles.demoLabel}>Fecha de nacimiento</span>
+              <span className={styles.demoValue}>
+                {formatDateLong(patient.dateOfBirth)} ({computeAge(patient.dateOfBirth)} años)
+              </span>
+            </div>
+          </div>
+          <div className={styles.demoItem}>
+            <Icon name="patient" size={17} />
+            <div>
+              <span className={styles.demoLabel}>Sexo</span>
+              <span className={styles.demoValue}>{SEX_LABEL[patient.sex]}</span>
+            </div>
+          </div>
+          <div className={styles.demoItem}>
+            <Icon name="phone" size={17} />
+            <div>
+              <span className={styles.demoLabel}>Teléfono</span>
+              <span className={styles.demoValue}>{patient.phone ?? '—'}</span>
+            </div>
+          </div>
+          <div className={styles.demoItem}>
+            <Icon name="mail" size={17} />
+            <div>
+              <span className={styles.demoLabel}>Correo electrónico</span>
+              <span className={styles.demoValue}>{patient.email ?? '—'}</span>
+            </div>
+          </div>
+          <div className={styles.demoItem}>
+            <Icon name="location" size={17} />
+            <div>
+              <span className={styles.demoLabel}>Dirección</span>
+              <span className={styles.demoValue}>{patient.address ?? '—'}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Cards resumen ─── */}
+      <section className={styles.summaryGrid} aria-label="Resumen del paciente">
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.sIcon_blue}`}>
+            <Icon name="calendar" size={20} />
+          </span>
+          <div>
+            <span className={styles.summaryLabel}>Última atención</span>
+            <span className={styles.summaryValue}>
+              {lastEntry ? formatDate(lastEntry.date) : '—'}
+            </span>
+            <span className={styles.summaryHint}>{lastEntry?.title ?? 'Sin registros'}</span>
+          </div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.sIcon_green}`}>
+            <Icon name="folder" size={20} />
+          </span>
+          <div>
+            <span className={styles.summaryLabel}>Documentos clínicos</span>
+            <span className={styles.summaryValue}>
+              {overview.documents.length + overview.records.length}
+            </span>
+            <span className={styles.summaryHint}>Historias y documentos</span>
+          </div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.sIcon_indigo}`}>
+            <Icon name="scan" size={20} />
+          </span>
+          <div>
+            <span className={styles.summaryLabel}>Digitalizaciones</span>
+            <span className={styles.summaryValue}>{overview.documents.length}</span>
+            <span className={styles.summaryHint}>Archivos digitalizados</span>
+          </div>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={`${styles.summaryIcon} ${styles.sIcon_amber}`}>
+            <Icon name="clock" size={20} />
+          </span>
+          <div>
+            <span className={styles.summaryLabel}>Pendientes</span>
+            <span className={styles.summaryValue}>{pendingDocs}</span>
+            <span className={styles.summaryHint}>Por revisar / completar</span>
+          </div>
+        </article>
+      </section>
+
+      {/* ─── Tabs ─── */}
+      <div className={styles.tabs} role="tablist">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            type="button"
+            aria-selected={activeTab === tab.id}
+            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {overview.error && <Alert variant="error">{overview.error}</Alert>}
+      {exportError && <Alert variant="error">{exportError}</Alert>}
+
+      {/* ─── Tab: Resumen ─── */}
+      {activeTab === 'resumen' && (
+        <div className={styles.resumenGrid}>
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2 className={styles.panelTitle}>Documentación clínica reciente</h2>
+              <button className={styles.panelLink} type="button" onClick={() => setActiveTab('historia')}>
+                Ver todos <Icon name="chevron-right" size={13} />
+              </button>
+            </div>
+            {overview.isLoading ? (
+              <Spinner label="Cargando documentación…" />
+            ) : timeline.length === 0 ? (
+              <p className={styles.emptyHint}>Sin documentación clínica registrada todavía.</p>
+            ) : (
+              <table className={styles.recentTable}>
+                <thead>
+                  <tr>
+                    <th>Documento</th>
+                    <th>Fecha</th>
+                    <th>Servicio</th>
+                    <th>Estado</th>
+                    <th aria-label="Abrir" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeline.slice(0, 6).map((entry) => (
+                    <tr
+                      key={entry.id}
+                      onClick={() => entry.href && router.push(entry.href)}
+                      className={entry.href ? styles.rowClickable : ''}
+                    >
+                      <td>
+                        <span className={styles.recentTitle}>{entry.title}</span>
+                        <span className={styles.recentCode}>
+                          {entry.kind === 'document' ? 'DIG' : 'REG'}-{entry.id.slice(-8).toUpperCase()}
+                        </span>
+                      </td>
+                      <td className={styles.cellMuted}>{formatDate(entry.date)}</td>
+                      <td className={styles.cellMuted}>{entry.service}</td>
+                      <td>
+                        <span className={`${styles.stateBadge} ${styles[`badge_${entry.statusTone}`]}`}>
+                          {entry.statusLabel}
+                        </span>
+                      </td>
+                      <td>
+                        <Icon name="chevron-right" size={15} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <div className={styles.resumenSide}>
+            <section className={styles.panel}>
+              <h2 className={styles.panelTitle}>Acciones rápidas</h2>
+              <div className={styles.quickActions}>
+                {can(permissions, 'documents.read') && (
+                  <Link href={`/patients/${id}/documents`} className={styles.quickAction}>
+                    <span className={`${styles.quickActionIcon} ${styles.sIcon_blue}`}>
+                      <Icon name="scan" size={18} />
+                    </span>
+                    <span>
+                      <span className={styles.quickActionTitle}>Nueva digitalización</span>
+                      <span className={styles.quickActionHint}>Digitaliza documentos</span>
+                    </span>
+                    <Icon name="chevron-right" size={15} />
+                  </Link>
+                )}
+                {can(permissions, 'records.read') && (
+                  <Link href={`/patients/${id}/records/new`} className={styles.quickAction}>
+                    <span className={`${styles.quickActionIcon} ${styles.sIcon_green}`}>
+                      <Icon name="records" size={18} />
+                    </span>
+                    <span>
+                      <span className={styles.quickActionTitle}>Registrar atención</span>
+                      <span className={styles.quickActionHint}>Nueva atención clínica</span>
+                    </span>
+                    <Icon name="chevron-right" size={15} />
+                  </Link>
+                )}
+                {can(permissions, 'documents.upload') && (
+                  <Link href={`/patients/${id}/documents`} className={styles.quickAction}>
+                    <span className={`${styles.quickActionIcon} ${styles.sIcon_indigo}`}>
+                      <Icon name="upload" size={18} />
+                    </span>
+                    <span>
+                      <span className={styles.quickActionTitle}>Subir documento</span>
+                      <span className={styles.quickActionHint}>Sube archivos clínicos</span>
+                    </span>
+                    <Icon name="chevron-right" size={15} />
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  className={styles.quickAction}
+                  onClick={() => setActiveTab('historia')}
+                >
+                  <span className={`${styles.quickActionIcon} ${styles.sIcon_amber}`}>
+                    <Icon name="folder" size={18} />
+                  </span>
+                  <span>
+                    <span className={styles.quickActionTitle}>Ver historia clínica</span>
+                    <span className={styles.quickActionHint}>Timeline completo</span>
+                  </span>
+                  <Icon name="chevron-right" size={15} />
+                </button>
+              </div>
+            </section>
+
+            <section className={styles.panel}>
+              <h2 className={styles.panelTitle}>Última actividad</h2>
+              {timeline.length === 0 ? (
+                <p className={styles.emptyHint}>Sin actividad registrada.</p>
+              ) : (
+                <ul className={styles.miniTimeline}>
+                  {timeline.slice(0, 4).map((entry) => (
+                    <li key={`mini-${entry.id}`} className={styles.miniTimelineItem}>
+                      <span
+                        className={`${styles.miniDot} ${styles[`dot_${entry.statusTone}`]}`}
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className={styles.miniTitle}>{entry.title}</p>
+                        <p className={styles.miniMeta}>
+                          {entry.service} · {formatDate(entry.date)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Historia clínica ─── */}
+      {activeTab === 'historia' && (
+        <section className={styles.panel}>
+          <div className={styles.historiaToolbar}>
+            <div className={styles.searchWrap}>
+              <Icon name="search" size={16} />
+              <input
+                type="search"
+                className={styles.searchInput}
+                placeholder="Buscar por palabras clave en el texto de los documentos…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Buscar en la historia clínica"
+              />
+            </div>
+            <span className={styles.resultCount}>
+              {filteredTimeline.length} {filteredTimeline.length === 1 ? 'entrada' : 'entradas'}
+            </span>
+          </div>
+
+          {overview.isLoading ? (
+            <Spinner label="Cargando historia…" />
+          ) : filteredTimeline.length === 0 ? (
+            <p className={styles.emptyHint}>
+              {searchQuery
+                ? 'Ninguna entrada coincide con la búsqueda.'
+                : 'Sin entradas en la historia clínica.'}
+            </p>
+          ) : (
+            <ol className={styles.timeline}>
+              {filteredTimeline.map((entry) => {
+                const text =
+                  entry.document?.correctedText ?? entry.document?.ocrText ?? null;
+                const parsed = text ? parseClinicalSections(text) : null;
+                const entities = entry.document ? keyEntities(entry.document) : [];
+
+                return (
+                  <li key={entry.id} className={styles.timelineItem}>
+                    <span
+                      className={`${styles.timelineDot} ${styles[`dot_${entry.statusTone}`]}`}
+                      aria-hidden="true"
+                    />
+                    <details className={styles.timelineCard}>
+                      <summary className={styles.timelineSummary}>
+                        <div className={styles.timelineHead}>
+                          <span className={styles.timelineDate}>{formatDate(entry.date)}</span>
+                          <span className={styles.timelineTitle}>{entry.title}</span>
+                          <span className={styles.timelineService}>{entry.service}</span>
+                        </div>
+                        <div className={styles.timelineRight}>
+                          {entities.length > 0 && (
+                            <span className={styles.entityChips}>
+                              {entities.map((entity, index) => (
+                                <span key={index} className={styles.entityChip}>
+                                  {entity.value}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          <span className={`${styles.stateBadge} ${styles[`badge_${entry.statusTone}`]}`}>
+                            {entry.statusLabel}
+                          </span>
+                        </div>
+                      </summary>
+
+                      <div className={styles.timelineBody}>
+                        {entry.kind === 'record' && entry.record && (
+                          <>
+                            <p className={styles.sectionHeading}>RESUMEN</p>
+                            <p className={styles.sectionText}>{entry.record.summary}</p>
+                            {entry.record.notes && (
+                              <>
+                                <p className={styles.sectionHeading}>NOTAS</p>
+                                <p className={styles.sectionText}>{entry.record.notes}</p>
+                              </>
+                            )}
+                          </>
+                        )}
+
+                        {entry.kind === 'document' && parsed && parsed.isStructured && (
+                          <>
+                            {parsed.sections.map((section, index) => (
+                              <div key={index}>
+                                <p className={styles.sectionHeading}>{section.title}</p>
+                                <p className={styles.sectionText}>
+                                  {section.content.trim() || '—'}
+                                </p>
+                              </div>
+                            ))}
+                          </>
+                        )}
+
+                        {entry.kind === 'document' && parsed && !parsed.isStructured && (
+                          <p className={styles.sectionText}>{text}</p>
+                        )}
+
+                        {entry.kind === 'document' && !text && (
+                          <p className={styles.emptyHint}>
+                            Documento aún sin texto OCR — pendiente de procesamiento.
+                          </p>
+                        )}
+
+                        {entry.href && (
+                          <Link href={entry.href} className={styles.timelineLink}>
+                            Abrir {entry.kind === 'document' ? 'en corrección' : 'registro'}
+                            <Icon name="arrow-right" size={14} />
+                          </Link>
+                        )}
+                      </div>
+                    </details>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      )}
+
+      {/* ─── Tab: Documentos ─── */}
+      {activeTab === 'documentos' && (
+        <section className={styles.panel}>
+          <div className={styles.docsToolbar}>
+            <label className={styles.selectAll}>
+              <input
+                type="checkbox"
+                checked={selectedDocs.size === overview.documents.length && overview.documents.length > 0}
+                onChange={toggleSelectAll}
+                aria-label="Seleccionar todos los documentos"
+              />
+              Seleccionar todos
+            </label>
+            <div className={styles.docsToolbarActions}>
+              <button
+                className={styles.btn}
+                type="button"
+                onClick={exportSelected}
+                disabled={selectedDocs.size === 0 || isExporting}
+              >
+                <Icon name="export" size={15} />
+                Exportar seleccionados ({selectedDocs.size})
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                type="button"
+                onClick={exportFullHistory}
+                disabled={(overview.documents.length === 0 && overview.records.length === 0) || isExporting}
+              >
+                <Icon name="download" size={15} />
+                {isExporting ? 'Generando PDF…' : 'Exportar historia completa'}
+              </button>
+            </div>
+          </div>
+
+          {overview.isLoading ? (
+            <Spinner label="Cargando documentos…" />
+          ) : overview.documents.length === 0 ? (
+            <p className={styles.emptyHint}>
+              Sin documentos digitalizados.{' '}
+              {can(permissions, 'documents.upload') && (
+                <Link href={`/patients/${id}/documents`}>Subir el primero</Link>
+              )}
+            </p>
+          ) : (
+            <table className={styles.docsTable}>
+              <thead>
+                <tr>
+                  <th aria-label="Selección" />
+                  <th>Documento</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {overview.documents.map((doc) => (
+                  <tr key={doc.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedDocs.has(doc.id)}
+                        onChange={() => toggleDocSelection(doc.id)}
+                        aria-label={`Seleccionar ${doc.originalName}`}
+                      />
+                    </td>
+                    <td>
+                      <Link href={`/patients/${id}/documents/${doc.id}`} className={styles.docLink}>
+                        <Icon name="document" size={16} />
+                        {doc.originalName}
+                      </Link>
+                    </td>
+                    <td className={styles.cellMuted}>{formatDate(doc.createdAt)}</td>
+                    <td>
+                      <span className={`${styles.stateBadge} ${styles[`badge_${DOC_STATUS_TONE[doc.status]}`]}`}>
+                        {DOC_STATUS_LABEL[doc.status]}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className={styles.btnSmall}
+                        type="button"
+                        onClick={() => exportSingle(doc)}
+                        disabled={isExporting}
+                      >
+                        <Icon name="export" size={14} />
+                        Exportar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
+
+      {/* ─── Tab: Métricas ─── */}
+      {activeTab === 'metricas' && (
+        <div className={styles.metricsGrid}>
+          <section className={styles.panel}>
+            <h2 className={styles.panelTitle}>Evolución CER / WER por documento</h2>
+            {metricsDocs.length === 0 ? (
+              <p className={styles.emptyHint}>
+                Sin métricas disponibles todavía. Se registran cuando los documentos se
+                procesan con el motor IA v2 (TrOCR).
+              </p>
+            ) : (
+              <MetricsChart documents={metricsDocs} />
+            )}
+          </section>
+
+          <section className={styles.panel}>
+            <h2 className={styles.panelTitle}>Entidades más frecuentes</h2>
+            {entityFrequency.length === 0 ? (
+              <p className={styles.emptyHint}>Sin entidades clínicas detectadas todavía.</p>
+            ) : (
+              <ul className={styles.freqList}>
+                {entityFrequency.map((item, index) => {
+                  const max = entityFrequency[0].count;
+                  return (
+                    <li key={index} className={styles.freqItem}>
+                      <span className={styles.freqValue}>{item.value}</span>
+                      <span className={styles.freqBarTrack}>
+                        <span
+                          className={styles.freqBar}
+                          style={{ width: `${Math.max(8, (item.count / max) * 100)}%` }}
+                        />
+                      </span>
+                      <span className={styles.freqCount}>{item.count}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* ─── Acciones del paciente ─── */}
+      <div className={styles.footerActions}>
+        <button className={styles.btn} type="button" onClick={() => router.back()}>
+          ‹ Volver
+        </button>
+        {can(permissions, 'patients.update') && patient.isActive && (
+          <button
+            className={styles.btn}
+            type="button"
+            onClick={() => router.push(`/patients/${id}/edit`)}
+          >
+            <Icon name="edit" size={15} />
+            Editar paciente
+          </button>
+        )}
+        {can(permissions, 'patients.update') && patient.isActive && !confirmDeactivate && (
+          <button
+            className={`${styles.btn} ${styles.btnDanger}`}
+            type="button"
+            onClick={() => setConfirmDeactivate(true)}
+          >
+            Desactivar
+          </button>
+        )}
+        {confirmDeactivate && (
+          <>
+            <button
+              className={`${styles.btn} ${styles.btnDanger}`}
+              type="button"
+              onClick={() => void handleDeactivate()}
+              disabled={isDeactivating}
+            >
+              {isDeactivating ? 'Desactivando…' : 'Confirmar desactivación'}
+            </button>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={() => setConfirmDeactivate(false)}
+              disabled={isDeactivating}
+            >
+              Cancelar
+            </button>
+          </>
+        )}
+      </div>
     </PageShell>
+  );
+}
+
+/* ─── Gráfico SVG de CER/WER ─────────────────────────────────── */
+
+function MetricsChart({ documents }: { documents: MedicalDocument[] }) {
+  const width = 560;
+  const height = 220;
+  const padding = { top: 16, right: 16, bottom: 34, left: 40 };
+  const innerW = width - padding.left - padding.right;
+  const innerH = height - padding.top - padding.bottom;
+
+  const points = documents.map((doc, index) => ({
+    x: documents.length === 1 ? 0.5 : index / (documents.length - 1),
+    cer: doc.metrics?.cer ?? null,
+    wer: doc.metrics?.wer ?? null,
+    label: formatDate(doc.createdAt),
+  }));
+
+  const maxValue = Math.max(
+    0.1,
+    ...points.flatMap((point) => [point.cer ?? 0, point.wer ?? 0]),
+  );
+
+  function toX(x: number): number {
+    return padding.left + x * innerW;
+  }
+  function toY(value: number): number {
+    return padding.top + innerH - (value / maxValue) * innerH;
+  }
+
+  function linePath(key: 'cer' | 'wer'): string {
+    return points
+      .filter((point) => point[key] != null)
+      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${toX(point.x).toFixed(1)} ${toY(point[key] as number).toFixed(1)}`)
+      .join(' ');
+  }
+
+  const gridValues = [0, maxValue / 2, maxValue];
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Evolución de CER y WER por documento"
+        style={{ width: '100%', height: 'auto' }}
+      >
+        {gridValues.map((value, index) => (
+          <g key={index}>
+            <line
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={toY(value)}
+              y2={toY(value)}
+              stroke="var(--gray-200)"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={padding.left - 8}
+              y={toY(value) + 3}
+              textAnchor="end"
+              fontSize="10"
+              fill="var(--gray-400)"
+            >
+              {(value * 100).toFixed(0)}%
+            </text>
+          </g>
+        ))}
+
+        <path d={linePath('cer')} fill="none" stroke="var(--color-primary)" strokeWidth="2.5" />
+        <path d={linePath('wer')} fill="none" stroke="var(--color-warning)" strokeWidth="2.5" />
+
+        {points.map((point, index) => (
+          <g key={index}>
+            {point.cer != null && (
+              <circle cx={toX(point.x)} cy={toY(point.cer)} r="3.5" fill="var(--color-primary)" />
+            )}
+            {point.wer != null && (
+              <circle cx={toX(point.x)} cy={toY(point.wer)} r="3.5" fill="var(--color-warning)" />
+            )}
+            <text
+              x={toX(point.x)}
+              y={height - 12}
+              textAnchor="middle"
+              fontSize="9"
+              fill="var(--gray-400)"
+            >
+              {point.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className={styles.chartLegend}>
+        <span className={styles.legendItem}>
+          <span className={styles.legendSwatch} style={{ background: 'var(--color-primary)' }} />
+          CER (error de carácter)
+        </span>
+        <span className={styles.legendItem}>
+          <span className={styles.legendSwatch} style={{ background: 'var(--color-warning)' }} />
+          WER (error de palabra)
+        </span>
+      </div>
+    </div>
   );
 }

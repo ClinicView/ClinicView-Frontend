@@ -10,4 +10,4 @@ export type {
   CreateRecordData,
   CorrectRecordData,
 } from './types/record';
-export { createRecord, correctRecord } from './services/records.service';
+export { createRecord, correctRecord, listRecords } from './services/records.service';
