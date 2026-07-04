@@ -6,11 +6,11 @@ import { listPatients } from '../services/patients.service';
 
 const LIMIT = 20;
 
-export function usePatients() {
+export function usePatients(initialSearch = '') {
   const [data, setData] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +31,9 @@ export function usePatients() {
   }, []);
 
   useEffect(() => {
-    void load(1, '');
+    void load(1, initialSearch);
+    // Solo en el primer montaje: initialSearch viene de la URL (?q=).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   function onSearchChange(value: string) {

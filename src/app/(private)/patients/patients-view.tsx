@@ -1,13 +1,18 @@
 'use client';
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth';
 import { PatientList } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
 import { Icon } from '@/shared/ui';
 import styles from './patients-view.module.css';
 
-export function PatientsView() {
+function PatientsContent() {
   const { user } = useSession();
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('q') ?? '';
+
   if (!user) return null;
 
   return (
@@ -24,7 +29,15 @@ export function PatientsView() {
         </div>
       </section>
       <h1 className="viewHeading">Pacientes</h1>
-      <PatientList permissions={user.permissions} />
+      <PatientList permissions={user.permissions} initialSearch={initialSearch} />
     </PageShell>
+  );
+}
+
+export function PatientsView() {
+  return (
+    <Suspense fallback={null}>
+      <PatientsContent />
+    </Suspense>
   );
 }

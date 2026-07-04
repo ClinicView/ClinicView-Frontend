@@ -13,7 +13,33 @@ export type IconName =
   | 'profile'
   | 'logout'
   | 'menu'
-  | 'collapse';
+  | 'collapse'
+  | 'search'
+  | 'bell'
+  | 'calendar'
+  | 'clock'
+  | 'alert'
+  | 'download'
+  | 'export'
+  | 'chart'
+  | 'mail'
+  | 'lock'
+  | 'phone'
+  | 'location'
+  | 'arrow-right'
+  | 'close'
+  | 'chevron-down'
+  | 'chevron-right'
+  | 'shield'
+  | 'users'
+  | 'folder'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'rotate'
+  | 'external'
+  | 'sparkle'
+  | 'eye'
+  | 'eye-off';
 
 interface IconProps {
   name: IconName;
@@ -134,6 +160,162 @@ export function Icon({ name, className, size = 20 }: IconProps) {
         <>
           <path {...common} d="M8 5v14" />
           <path {...common} d="M16 8l-4 4 4 4" />
+        </>
+      )}
+      {name === 'search' && (
+        <>
+          <circle {...common} cx="11" cy="11" r="6.5" />
+          <path {...common} d="m16 16 4.5 4.5" />
+        </>
+      )}
+      {name === 'bell' && (
+        <>
+          <path {...common} d="M6 16v-5.5a6 6 0 0 1 12 0V16l1.5 2.5H4.5L6 16Z" />
+          <path {...common} d="M10 20a2 2 0 0 0 4 0" />
+        </>
+      )}
+      {name === 'calendar' && (
+        <>
+          <rect {...common} x="4" y="6" width="16" height="14" rx="1.5" />
+          <path {...common} d="M4 10h16M8 4v3.5M16 4v3.5" />
+        </>
+      )}
+      {name === 'clock' && (
+        <>
+          <circle {...common} cx="12" cy="12" r="8.5" />
+          <path {...common} d="M12 7.5V12l3 2" />
+        </>
+      )}
+      {name === 'alert' && (
+        <>
+          <circle {...common} cx="12" cy="12" r="8.5" />
+          <path {...common} d="M12 8v5M12 16.2h.01" />
+        </>
+      )}
+      {name === 'download' && (
+        <>
+          <path {...common} d="M12 4v11" />
+          <path {...common} d="m7.8 11.3 4.2 4.2 4.2-4.2" />
+          <path {...common} d="M5 16.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5" />
+        </>
+      )}
+      {name === 'export' && (
+        <>
+          <path {...common} d="M7 3.5h6.2L18 8.3V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20V4a.5.5 0 0 1 .5-.5H7Z" />
+          <path {...common} d="M13 3.8V8h4.2" />
+          <path {...common} d="M9.5 15.5 12 13l2.5 2.5M12 13v5" />
+        </>
+      )}
+      {name === 'chart' && (
+        <>
+          <path {...common} d="M4.5 4.5V19a.5.5 0 0 0 .5.5h14.5" />
+          <path {...common} d="M8 15.5v-4M12 15.5V8M16 15.5v-6.5" />
+        </>
+      )}
+      {name === 'mail' && (
+        <>
+          <rect {...common} x="4" y="6" width="16" height="13" rx="1.5" />
+          <path {...common} d="m5 8 7 5.5L19 8" />
+        </>
+      )}
+      {name === 'lock' && (
+        <>
+          <rect {...common} x="6" y="11" width="12" height="9" rx="1.5" />
+          <path {...common} d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+          <path {...common} d="M12 14.5v2" />
+        </>
+      )}
+      {name === 'phone' && (
+        <>
+          <path {...common} d="M7 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5L16 12.5l4 1.5v3a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 5 6.2 2 2 0 0 1 7 4Z" />
+        </>
+      )}
+      {name === 'location' && (
+        <>
+          <path {...common} d="M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z" />
+          <circle {...common} cx="12" cy="10.3" r="2.3" />
+        </>
+      )}
+      {name === 'arrow-right' && (
+        <>
+          <path {...common} d="M4.5 12h14" />
+          <path {...common} d="m13 6.5 5.5 5.5-5.5 5.5" />
+        </>
+      )}
+      {name === 'close' && (
+        <>
+          <path {...common} d="m6 6 12 12M18 6 6 18" />
+        </>
+      )}
+      {name === 'chevron-down' && (
+        <>
+          <path {...common} d="m6 9.5 6 6 6-6" />
+        </>
+      )}
+      {name === 'chevron-right' && (
+        <>
+          <path {...common} d="m9.5 6 6 6-6 6" />
+        </>
+      )}
+      {name === 'shield' && (
+        <>
+          <path {...common} d="M12 3.5 5 6v5.5c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6l-7-2.5Z" />
+          <path {...common} d="m9 11.8 2.2 2.2 3.8-4" />
+        </>
+      )}
+      {name === 'users' && (
+        <>
+          <circle {...common} cx="9.5" cy="8.5" r="2.8" />
+          <path {...common} d="M4 19a5.5 5.5 0 0 1 11 0" />
+          <path {...common} d="M15.5 6a2.8 2.8 0 0 1 0 5.4" />
+          <path {...common} d="M17 13.6A5.5 5.5 0 0 1 20.5 19" />
+        </>
+      )}
+      {name === 'folder' && (
+        <>
+          <path {...common} d="M4 7.5V18a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5H5a1 1 0 0 0-1 1V7.5Z" />
+        </>
+      )}
+      {name === 'zoom-in' && (
+        <>
+          <circle {...common} cx="11" cy="11" r="6.5" />
+          <path {...common} d="m16 16 4.5 4.5M8.5 11h5M11 8.5v5" />
+        </>
+      )}
+      {name === 'zoom-out' && (
+        <>
+          <circle {...common} cx="11" cy="11" r="6.5" />
+          <path {...common} d="m16 16 4.5 4.5M8.5 11h5" />
+        </>
+      )}
+      {name === 'rotate' && (
+        <>
+          <path {...common} d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+          <path {...common} d="M19.5 3.5v3.8h-3.8" />
+        </>
+      )}
+      {name === 'external' && (
+        <>
+          <path {...common} d="M14 4.5h5.5V10" />
+          <path {...common} d="M19.2 4.8 11 13" />
+          <path {...common} d="M19.5 14v5a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1h5" />
+        </>
+      )}
+      {name === 'sparkle' && (
+        <>
+          <path {...common} d="M12 4.5 13.8 10 19.5 12l-5.7 2-1.8 5.5L10.2 14 4.5 12l5.7-2L12 4.5Z" />
+        </>
+      )}
+      {name === 'eye' && (
+        <>
+          <path {...common} d="M3.5 12S6.5 6 12 6s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z" />
+          <circle {...common} cx="12" cy="12" r="2.5" />
+        </>
+      )}
+      {name === 'eye-off' && (
+        <>
+          <path {...common} d="M3.5 12S6.5 6 12 6c1.2 0 2.3.28 3.3.72M20.5 12s-3 6-8.5 6c-1.2 0-2.3-.28-3.3-.72" />
+          <path {...common} d="m5 5 14 14" />
         </>
       )}
     </svg>

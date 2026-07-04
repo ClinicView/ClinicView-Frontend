@@ -17,11 +17,12 @@ function formatDate(iso: string): string {
 
 interface PatientListProps {
   permissions: string[];
+  initialSearch?: string;
 }
 
-export function PatientList({ permissions }: PatientListProps) {
+export function PatientList({ permissions, initialSearch }: PatientListProps) {
   const { data, total, page, totalPages, search, isLoading, error, onSearchChange, onPageChange } =
-    usePatients();
+    usePatients(initialSearch ?? '');
   const router = useRouter();
 
   return (
