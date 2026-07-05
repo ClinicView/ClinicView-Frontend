@@ -6,11 +6,12 @@ import { listRecords } from '@/features/clinical-records';
 import type { MedicalDocument } from '@/features/medical-documents';
 import { listDocuments } from '@/features/medical-documents';
 
-const OVERVIEW_LIMIT = 100;
+// Máximo que acepta la validación del backend (FindDocumentsQueryDto).
+const OVERVIEW_LIMIT = 50;
 
 /**
  * Carga documentos digitalizados y registros clínicos del paciente para el
- * perfil (timeline, documentos, métricas). Trae hasta 100 de cada uno —
+ * perfil (timeline, documentos, métricas). Trae hasta 50 de cada uno —
  * suficiente para la vista; la exportación completa usa esta misma data.
  */
 export function usePatientOverview(patientId: string) {

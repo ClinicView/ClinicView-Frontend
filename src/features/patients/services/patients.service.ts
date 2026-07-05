@@ -29,3 +29,7 @@ export function updatePatient(id: string, data: UpdatePatientData): Promise<Pati
 export function deactivatePatient(id: string): Promise<Patient> {
   return apiPatch<Patient>(`/patients/${id}/deactivate`);
 }
+
+export function activatePatient(id: string): Promise<Patient> {
+  return apiPatch<Patient>(`/patients/${id}/activate`);
+}

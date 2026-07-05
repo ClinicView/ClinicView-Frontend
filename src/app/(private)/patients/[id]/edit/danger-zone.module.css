@@ -1,0 +1,81 @@
+.dangerZone {
+  margin-top: 1.5rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.dangerHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-danger-border);
+  background: var(--color-danger-light);
+  padding: 0.875rem 1.25rem;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.dangerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.25rem;
+}
+
+.dangerText {
+  color: var(--gray-600);
+  font-size: 0.8425rem;
+  line-height: 1.55;
+  max-width: 640px;
+}
+
+.dangerConfirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--gray-700);
+  font-size: 0.8425rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dangerConfirm input {
+  margin-top: 0.125rem;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-danger);
+}
+
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  align-self: flex-start;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger);
+  padding: 0.5625rem 1.125rem;
+  color: #fff;
+  font-size: 0.8425rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: var(--color-danger-dark);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dangerError {
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+}

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
-import { usePatient, deactivatePatient } from '@/features/patients';
+import { usePatient, activatePatient } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
@@ -160,8 +160,7 @@ export function PatientView({ id }: PatientViewProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
-  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
 
   const timeline = useMemo(
     () => buildTimeline(id, overview.documents, overview.records),
@@ -223,14 +222,13 @@ export function PatientView({ id }: PatientViewProps) {
   ).length;
   const lastEntry = timeline[0] ?? null;
 
-  async function handleDeactivate() {
-    setIsDeactivating(true);
+  async function handleActivate() {
+    setIsActivating(true);
     try {
-      await deactivatePatient(id);
-      router.replace('/patients');
+      await activatePatient(id);
+      window.location.reload();
     } catch {
-      setIsDeactivating(false);
-      setConfirmDeactivate(false);
+      setIsActivating(false);
     }
   }
 
@@ -369,6 +367,29 @@ export function PatientView({ id }: PatientViewProps) {
           </div>
         </div>
       </section>
+
+      {/* ─── Banner de paciente inactivo ─── */}
+      {!patient.isActive && (
+        <div className={styles.inactiveBanner} role="alert">
+          <div>
+            <p className={styles.inactiveBannerTitle}>Este paciente está desactivado.</p>
+            <p className={styles.inactiveBannerText}>
+              Su historia clínica se conserva por trazabilidad, pero no aparece en las
+              listas ni admite nuevas digitalizaciones.
+            </p>
+          </div>
+          {can(permissions, 'patients.update') && (
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              type="button"
+              onClick={() => void handleActivate()}
+              disabled={isActivating}
+            >
+              {isActivating ? 'Reactivando…' : 'Reactivar paciente'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ─── Cards resumen ─── */}
       <section className={styles.summaryGrid} aria-label="Resumen del paciente">
@@ -834,6 +855,8 @@ export function PatientView({ id }: PatientViewProps) {
       )}
 
       {/* ─── Acciones del paciente ─── */}
+      {/* La desactivación vive en Editar paciente → Zona de peligro,
+          para evitar clics accidentales desde el perfil. */}
       <div className={styles.footerActions}>
         <button className={styles.btn} type="button" onClick={() => router.back()}>
           ‹ Volver
@@ -847,35 +870,6 @@ export function PatientView({ id }: PatientViewProps) {
             <Icon name="edit" size={15} />
             Editar paciente
           </button>
-        )}
-        {can(permissions, 'patients.update') && patient.isActive && !confirmDeactivate && (
-          <button
-            className={`${styles.btn} ${styles.btnDanger}`}
-            type="button"
-            onClick={() => setConfirmDeactivate(true)}
-          >
-            Desactivar
-          </button>
-        )}
-        {confirmDeactivate && (
-          <>
-            <button
-              className={`${styles.btn} ${styles.btnDanger}`}
-              type="button"
-              onClick={() => void handleDeactivate()}
-              disabled={isDeactivating}
-            >
-              {isDeactivating ? 'Desactivando…' : 'Confirmar desactivación'}
-            </button>
-            <button
-              className={styles.btn}
-              type="button"
-              onClick={() => setConfirmDeactivate(false)}
-              disabled={isDeactivating}
-            >
-              Cancelar
-            </button>
-          </>
         )}
       </div>
     </PageShell>
