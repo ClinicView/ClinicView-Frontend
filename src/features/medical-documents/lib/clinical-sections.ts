@@ -26,44 +26,50 @@ function normalize(text: string): string {
     .trim();
 }
 
-/** Orden canónico de las secciones (STYLEGUIDE.md §5). */
+/**
+ * Orden canónico de las secciones (STYLEGUIDE.md §5).
+ * Los patrones toleran errores típicos del OCR sobre manuscrito:
+ * variantes anglicanizadas ("identification"), plurales y letras confundidas.
+ */
 const SECTION_DEFS: SectionDef[] = [
   {
     key: 'identificacion',
     title: 'DATOS DE IDENTIFICACIÓN',
-    pattern: /^(datos de identificacion|filiacion|identificacion del paciente|datos del paciente)\b/,
+    pattern: /^(datos de identificac?[it]on\w*|datos de identification\w*|filiacion|identificacion del paciente|datos del paciente)\b/,
   },
   {
     key: 'antecedentes',
     title: 'ANTECEDENTES',
-    pattern: /^antecedentes?\b/,
+    pattern: /^antecedente?s?\b/,
   },
   {
     key: 'anamnesis',
     title: 'ANAMNESIS / ENFERMEDAD ACTUAL',
-    pattern: /^(anamnesis|enfermedad actual|historia de la enfermedad|relato)\b/,
+    pattern: /^(anamnesis|anamnesis \/? ?enfermedad|enfermedad actual|historia de la enfermedad|relato)\b/,
   },
   {
     key: 'funciones',
     title: 'FUNCIONES BIOLÓGICAS',
-    pattern: /^funciones biologicas\b/,
+    pattern: /^func[it]one?s? biologicas?\b/,
   },
   {
     key: 'examen',
     title: 'EXAMEN FÍSICO',
-    pattern: /^(examen fisico|examen clinico|exploracion fisica)\b/,
+    pattern: /^(examen fisico|examen f[ií]sico|examen clinico|exploracion fisica|examen phisico)\b/,
   },
   {
     key: 'observaciones',
     title: 'OBSERVACIONES',
-    pattern: /^(observaciones|plan de trabajo|impresion diagnostica|plan y tratamiento)\b/,
+    pattern: /^(observac[it]one?s?|plan de trabajo|impresion diagnostica|plan y tratamiento|diagnosticos?( \/? ?impresion clinica)?)\b/,
   },
 ];
 
 export const SECTION_ORDER = SECTION_DEFS.map((def) => ({ key: def.key, title: def.title }));
 
 function matchHeader(line: string): SectionDef | null {
-  const normalized = normalize(line);
+  // El OCR suele anteponer ruido al encabezado ("2 Datos de identification .");
+  // se descartan dígitos, viñetas y signos iniciales antes de comparar.
+  const normalized = normalize(line).replace(/^[^a-z]+/, '');
   if (!normalized || normalized.length > 60) return null;
   for (const def of SECTION_DEFS) {
     if (def.pattern.test(normalized)) return def;
