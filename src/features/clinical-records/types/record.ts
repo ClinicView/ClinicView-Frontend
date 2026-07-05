@@ -11,6 +11,8 @@ export type RecordOrigin = 'MANUAL' | 'DIGITIZED';
 
 export type RecordStatus = 'ACTIVE' | 'CORRECTED' | 'VOIDED';
 
+export type RecordPriority = 'URGENT' | 'PRIORITY' | 'NORMAL' | 'ELECTIVE';
+
 export interface ClinicalRecord {
   id: string;
   patientId: string;
@@ -20,6 +22,11 @@ export interface ClinicalRecord {
   attendedAt: string;
   summary: string;
   notes: string | null;
+  doctorName: string | null;
+  service: string | null;
+  preliminaryDiagnosis: string | null;
+  plan: string | null;
+  priority: RecordPriority;
   parentRecordId: string | null;
   voidReason: string | null;
   correctionsCount: number;
@@ -41,6 +48,11 @@ export interface CreateRecordData {
   attendedAt: string;
   summary: string;
   notes?: string;
+  doctorName?: string;
+  service?: string;
+  preliminaryDiagnosis?: string;
+  plan?: string;
+  priority?: RecordPriority;
 }
 
 export interface CorrectRecordData {

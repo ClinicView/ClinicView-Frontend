@@ -94,6 +94,30 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
             {record.origin === 'MANUAL' ? 'Entrada manual' : 'Digitalizado'}
           </span>
         </div>
+        {record.doctorName && (
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Médico / profesional</span>
+            <span className={styles.fieldValue}>{record.doctorName}</span>
+          </div>
+        )}
+        {record.service && (
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Servicio / especialidad</span>
+            <span className={styles.fieldValue}>{record.service}</span>
+          </div>
+        )}
+        {record.priority && record.priority !== 'NORMAL' && (
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Prioridad</span>
+            <span className={styles.fieldValue}>
+              {record.priority === 'URGENT'
+                ? 'Urgente'
+                : record.priority === 'PRIORITY'
+                  ? 'Prioritario'
+                  : 'Electivo'}
+            </span>
+          </div>
+        )}
         {record.correctionsCount > 0 && (
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Correcciones</span>
@@ -123,6 +147,20 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
         <div className={styles.section}>
           <p className={styles.sectionTitle}>Notas adicionales</p>
           <div className={styles.textBlock}>{record.notes}</div>
+        </div>
+      )}
+
+      {record.preliminaryDiagnosis && (
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>Diagnóstico preliminar</p>
+          <div className={styles.textBlock}>{record.preliminaryDiagnosis}</div>
+        </div>
+      )}
+
+      {record.plan && (
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>Indicaciones / plan</p>
+          <div className={styles.textBlock}>{record.plan}</div>
         </div>
       )}
 

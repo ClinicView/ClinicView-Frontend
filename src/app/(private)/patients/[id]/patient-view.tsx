@@ -122,7 +122,9 @@ function buildTimeline(
     statusLabel:
       record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
     statusTone: record.status === 'ACTIVE' ? 'green' : record.status === 'CORRECTED' ? 'teal' : 'red',
-    service: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
+    service:
+      [record.doctorName, record.service].filter(Boolean).join(' · ') ||
+      (record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual'),
     href: `/patients/${patientId}/records/${record.id}`,
     searchText: [record.summary, record.notes ?? ''].join('\n').toLowerCase(),
     record,

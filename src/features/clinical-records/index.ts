@@ -6,6 +6,7 @@ export type {
   RecordType,
   RecordStatus,
   RecordOrigin,
+  RecordPriority,
   RecordsPage,
   CreateRecordData,
   CorrectRecordData,
