@@ -37,6 +37,65 @@
   max-width: 760px;
 }
 
+/* ─── Mini-dashboard de pacientes ────────────────────────────── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.statCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xs);
+  padding: 1rem 1.125rem;
+}
+
+.statIcon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+}
+
+.stat_blue  { background: var(--color-primary-light); color: var(--color-primary); }
+.stat_green { background: var(--color-success-light); color: var(--color-success); }
+.stat_teal  { background: var(--color-teal-light);    color: var(--color-teal); }
+.stat_amber { background: var(--color-warning-light); color: var(--color-warning); }
+
+.statBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+.statLabel {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statValue {
+  color: var(--gray-900);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.statHint {
+  color: var(--gray-400);
+  font-size: 0.6875rem;
+}
+
 @media (max-width: 560px) {
   .digitizationGuide {
     flex-direction: column;

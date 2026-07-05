@@ -1,5 +1,6 @@
 export type { Patient, CreatePatientData, UpdatePatientData, PatientsPage, DocumentType, Sex } from './types/patient';
-export { listPatients, getPatient, createPatient, updatePatient, deactivatePatient, activatePatient } from './services/patients.service';
+export { listPatients, getPatient, createPatient, updatePatient, deactivatePatient, activatePatient, getPatientStats } from './services/patients.service';
+export type { PatientStats } from './services/patients.service';
 export { usePatients } from './hooks/use-patients';
 export { usePatient } from './hooks/use-patient';
 export { PatientList } from './components/patient-list';

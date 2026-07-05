@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { NotificationsBell } from '@/features/notifications';
 import { Icon, type IconName } from '@/shared/ui';
 import { can, canAny } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
@@ -226,10 +227,7 @@ export function PageShell({ children }: PageShellProps) {
           </form>
 
           <div className={styles.topbarRight}>
-            <button className={styles.iconBtn} type="button" aria-label="Notificaciones">
-              <Icon name="bell" size={19} />
-              <span className={styles.bellDot} aria-hidden="true" />
-            </button>
+            <NotificationsBell />
 
             <div className={styles.identity}>
               <span className={styles.avatar} aria-hidden="true">{getInitials(user.email)}</span>

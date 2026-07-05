@@ -1,0 +1,394 @@
+/* Registrar paciente — rediseño según mockup julio 2026 */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--gray-500);
+  font-size: 0.8125rem;
+}
+
+.breadcrumb a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.9fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* ─── Card del formulario ────────────────────────────────────── */
+.formCard {
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xs);
+  padding: 1.75rem 1.875rem;
+}
+
+.formHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.formHeaderIcon {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.formTitle {
+  color: var(--gray-900);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.formSubtitle {
+  margin-top: 0.25rem;
+  color: var(--gray-500);
+  font-size: 0.875rem;
+}
+
+.newBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  margin-top: 0.5rem;
+  border-radius: var(--radius-xl);
+  background: var(--color-success-light);
+  padding: 0.1875rem 0.625rem;
+  color: var(--color-success);
+  font-size: 0.71875rem;
+  font-weight: 700;
+}
+
+/* ─── Secciones ──────────────────────────────────────────────── */
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--gray-900);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.sectionTitle svg {
+  color: var(--color-primary);
+}
+
+.sectionTitle::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--gray-100);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.label {
+  color: var(--gray-700);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.required {
+  color: var(--color-danger);
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 0.8125rem;
+  display: inline-flex;
+  color: var(--gray-400);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input,
+.select {
+  height: 46px;
+  width: 100%;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0 0.875rem 0 2.5rem;
+  color: var(--gray-800);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9.5 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  padding-right: 2.25rem;
+  color: var(--gray-800);
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.input:disabled,
+.select:disabled {
+  background: var(--gray-50);
+  color: var(--gray-400);
+}
+
+.hint {
+  color: var(--gray-400);
+  font-size: 0.71875rem;
+}
+
+/* Aviso de duplicado */
+.duplicateWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-light);
+  padding: 0.5625rem 0.75rem;
+  color: var(--gray-800);
+  font-size: 0.78125rem;
+  line-height: 1.45;
+}
+
+.duplicateWarning svg {
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+  color: var(--color-warning);
+}
+
+.duplicateWarning a {
+  font-weight: 700;
+}
+
+/* ─── Pie del formulario ─────────────────────────────────────── */
+.formFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--gray-100);
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+}
+
+.footerNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.footerNote {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  color: var(--gray-500);
+  font-size: 0.71875rem;
+}
+
+.footerNote svg {
+  flex-shrink: 0;
+  color: var(--gray-400);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0.625rem 1.25rem;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnOutline {
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+}
+
+.btnOutline:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.btnPrimary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-light);
+  padding: 0.625rem 0.875rem;
+  color: var(--color-danger);
+  font-size: 0.8425rem;
+}
+
+.draftSaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--color-success);
+  font-size: 0.78125rem;
+  font-weight: 600;
+}
+
+/* ─── Sidebar de recomendaciones ─────────────────────────────── */
+.sideCard {
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xs);
+  padding: 1.375rem;
+}
+
+.sideHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.125rem;
+}
+
+.sideIcon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.sideTitle {
+  color: var(--gray-900);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.tipList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5625rem;
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  background: var(--color-success-light);
+  padding: 0.6875rem 0.8125rem;
+  color: var(--gray-700);
+  font-size: 0.78125rem;
+  line-height: 1.5;
+}
+
+.tip svg {
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+  color: var(--color-success);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .formFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

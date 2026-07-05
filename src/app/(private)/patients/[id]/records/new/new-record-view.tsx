@@ -11,6 +11,7 @@ import { usePatient } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
 import { Icon, Spinner, type IconName } from '@/shared/ui';
 import { ApiError } from '@/shared/services/api-client';
+import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
 import styles from './manual-record.module.css';
 
 /* ─── Constantes ─────────────────────────────────────────────── */
@@ -114,6 +115,35 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredRef = useRef(false);
+
+  // Combobox de médicos registrados en el sistema.
+  const [doctorOptions, setDoctorOptions] = useState<Professional[]>([]);
+  const [doctorOpen, setDoctorOpen] = useState(false);
+  const doctorSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doctorWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (doctorWrapRef.current && !doctorWrapRef.current.contains(event.target as Node)) {
+        setDoctorOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  function searchDoctors(query: string) {
+    if (doctorSearchRef.current) clearTimeout(doctorSearchRef.current);
+    doctorSearchRef.current = setTimeout(async () => {
+      try {
+        const results = await searchProfessionals(query);
+        setDoctorOptions(results);
+        setDoctorOpen(true);
+      } catch {
+        setDoctorOptions([]);
+      }
+    }, 300);
+  }
 
   // Restaurar borrador guardado (una sola vez al montar).
   useEffect(() => {
@@ -357,20 +387,60 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
               <label className={styles.label} htmlFor="doctorName">
                 Médico / profesional <span className={styles.required}>*</span>
               </label>
-              <div className={styles.inputWrap}>
-                <span className={styles.inputIcon} aria-hidden="true">
-                  <Icon name="patient" size={16} />
-                </span>
-                <input
-                  id="doctorName"
-                  className={styles.input}
-                  placeholder="Nombre del médico o profesional…"
-                  value={form.doctorName}
-                  onChange={(e) => update({ doctorName: e.target.value })}
-                  maxLength={120}
-                  disabled={isLoading}
-                  required
-                />
+              <div className={styles.combobox} ref={doctorWrapRef}>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon} aria-hidden="true">
+                    <Icon name="search" size={16} />
+                  </span>
+                  <input
+                    id="doctorName"
+                    className={styles.input}
+                    placeholder="Buscar médico o profesional…"
+                    value={form.doctorName}
+                    onChange={(e) => {
+                      update({ doctorName: e.target.value });
+                      searchDoctors(e.target.value);
+                    }}
+                    onFocus={() => searchDoctors(form.doctorName)}
+                    maxLength={120}
+                    disabled={isLoading}
+                    autoComplete="off"
+                    role="combobox"
+                    aria-expanded={doctorOpen}
+                    aria-controls="doctor-options"
+                    required
+                  />
+                </div>
+                {doctorOpen && doctorOptions.length > 0 && (
+                  <ul id="doctor-options" className={styles.comboList} role="listbox">
+                    {doctorOptions.map((professional) => (
+                      <li key={professional.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={form.doctorName === professional.fullName}
+                          className={styles.comboOption}
+                          onClick={() => {
+                            update({ doctorName: professional.fullName });
+                            setDoctorOpen(false);
+                          }}
+                        >
+                          <span className={styles.comboName}>{professional.fullName}</span>
+                          {professional.profession && (
+                            <span className={styles.comboMeta}>{professional.profession}</span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {doctorOpen && doctorOptions.length === 0 && form.doctorName.trim().length > 1 && (
+                  <div className={styles.comboList}>
+                    <p className={styles.comboEmpty}>
+                      Sin coincidencias en el sistema — se guardará como texto libre.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             <div className={styles.field}>

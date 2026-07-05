@@ -262,9 +262,11 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       {document.status === 'PROCESSING' && (
         <div className={`${styles.banner} ${styles.bannerInfo}`}>
           <div>
-            <p className={styles.bannerTitle}>Procesamiento en curso.</p>
+            <p className={styles.bannerTitle}>Procesamiento en curso en segundo plano.</p>
             <p className={styles.bannerText}>
-              El texto y las entidades aparecerán aquí cuando el motor OCR finalice.
+              Puedes seguir navegando por otras secciones: recibirás una notificación
+              (campana superior) cuando el OCR termine. Esta vista también se
+              actualiza sola.
             </p>
           </div>
         </div>

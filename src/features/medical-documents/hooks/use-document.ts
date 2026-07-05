@@ -34,6 +34,14 @@ export function useDocument(patientId: string, docId: string) {
     void load();
   }, [load]);
 
+  // El OCR corre en segundo plano en el backend: mientras el documento esté
+  // PROCESSING, se refresca cada 5 s para reflejar el resultado sin recargar.
+  useEffect(() => {
+    if (document?.status !== 'PROCESSING') return;
+    const interval = setInterval(() => void load(), 5_000);
+    return () => clearInterval(interval);
+  }, [document?.status, load]);
+
   async function act(fn: () => Promise<MedicalDocument>): Promise<void> {
     setIsActing(true);
     setActionError(null);
