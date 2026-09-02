@@ -599,7 +599,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1180px) {
   .uploadPanel {
     grid-template-columns: auto minmax(0, 1fr);
     padding: 1.25rem;

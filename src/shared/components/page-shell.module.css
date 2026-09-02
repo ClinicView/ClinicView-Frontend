@@ -44,6 +44,9 @@
   top: 0.75rem;
   left: 50%;
   z-index: 500;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius-md);
   background: var(--color-navy-950);
   box-shadow: var(--shadow-lg);

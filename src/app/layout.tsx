@@ -26,7 +26,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${atkinson.variable} ${figtree.variable}`}>
+    <html
+      lang="es"
+      className={`${atkinson.variable} ${figtree.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <Providers>{children}</Providers>
       </body>

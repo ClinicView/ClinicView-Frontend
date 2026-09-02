@@ -606,7 +606,7 @@
 }
 
 .panelLink {
-  min-height: 32px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
