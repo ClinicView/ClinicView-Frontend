@@ -11,7 +11,7 @@ interface ZoomControlsProps {
 
 export function ZoomControls({ zoom, onZoomIn, onZoomOut, onReset }: ZoomControlsProps) {
   return (
-    <div className={styles.zoomControls} aria-label="Controles de zoom de imagen">
+    <div className={styles.zoomControls} role="group" aria-label="Controles de zoom de imagen">
       <button
         className={styles.zoomButton}
         type="button"

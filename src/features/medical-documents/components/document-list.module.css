@@ -247,8 +247,10 @@
 
 .uploadBtn:focus-visible,
 .pageBtn:focus-visible,
+.retryBtn:focus-visible,
 .fileLink:focus-visible,
-.select:focus-visible {
+.select:focus-visible,
+.sectionTitle:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--color-focus-ring);
@@ -356,10 +358,82 @@
   padding: 1rem 1.5rem 0;
 }
 
+.recoverableError {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.recoverableError > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.retryBtn {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface, var(--bg-surface));
+  padding: 0.55rem 0.8rem;
+  color: var(--color-danger);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.retryBtn:hover:not(:disabled) {
+  background: var(--color-danger-light);
+}
+
+.retryBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.statusMessage {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-success-light);
+  padding: 0.7rem 0.9rem;
+  color: var(--color-success);
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.statusMessage svg {
+  flex: 0 0 auto;
+}
+
 .tableWrap {
   min-height: 150px;
   overflow-x: auto;
   background: var(--color-surface, var(--bg-surface));
+}
+
+.loadFailure {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1.5rem;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.loadFailure svg {
+  color: var(--color-danger);
 }
 
 .table {
@@ -395,8 +469,6 @@
 }
 
 .table tbody tr {
-  touch-action: manipulation;
-  cursor: pointer;
   transition:
     background-color var(--transition-fast),
     box-shadow var(--transition-fast);
@@ -792,6 +864,19 @@
   .pageBtn {
     flex: 1;
   }
+
+  .select {
+    font-size: 1rem;
+  }
+
+  .recoverableError {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .retryBtn {
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -800,7 +885,8 @@
   .table tbody tr,
   .fileLink,
   .rowArrow,
-  .pageBtn {
+  .pageBtn,
+  .retryBtn {
     transition-duration: 0.01ms;
   }
 

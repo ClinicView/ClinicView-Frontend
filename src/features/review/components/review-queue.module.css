@@ -213,7 +213,52 @@
 }
 
 .alertWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   animation: queueReveal 360ms var(--ease-out) both;
+}
+
+.alertWrap > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.errorState {
+  min-height: 220px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+}
+
+.errorState > :first-child {
+  width: min(100%, 680px);
+}
+
+.retryBtn {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 11px;
+  background: var(--bg-surface);
+  padding: 0.55rem 0.85rem;
+  color: var(--color-danger);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.retryBtn:hover:not(:disabled) {
+  background: var(--color-danger-light);
+}
+
+.retryBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* ─── Queue panel ───────────────────────────────────────────── */
@@ -530,7 +575,7 @@
   box-shadow: 0 8px 20px rgba(30, 64, 175, 0.14);
   padding: 0.58rem 0.82rem;
   color: var(--color-on-primary);
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -596,7 +641,7 @@
   background: var(--bg-surface);
   padding: 0.55rem 0.75rem;
   color: var(--gray-700);
-  font-size: 0.72rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
@@ -614,6 +659,15 @@
 .pageBtn:disabled {
   opacity: 0.42;
   cursor: not-allowed;
+}
+
+.actionBtn:focus-visible,
+.pageBtn:focus-visible,
+.retryBtn:focus-visible,
+.panelTitle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
 }
 
 .srOnly {
@@ -872,6 +926,16 @@
     min-width: 0;
     flex: 1;
   }
+
+  .alertWrap {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .alertWrap .retryBtn,
+  .errorState .retryBtn {
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -885,7 +949,8 @@
   .table tbody tr,
   .actionBtn,
   .actionBtn svg,
-  .pageBtn {
+  .pageBtn,
+  .retryBtn {
     transition: none;
   }
 

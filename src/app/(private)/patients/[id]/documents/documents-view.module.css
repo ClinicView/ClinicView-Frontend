@@ -1,3 +1,24 @@
+.backLink {
+  min-height: 44px;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  touch-action: manipulation;
+}
+
+.backLink:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
+}
+
+.previousIcon {
+  flex: 0 0 auto;
+  transform: rotate(180deg);
+}
+
 .patientNotice {
   display: flex;
   align-items: flex-start;
@@ -16,4 +37,10 @@
   flex-shrink: 0;
   color: var(--color-primary);
   margin-top: 0.1rem;
+}
+
+@media (max-width: 520px) {
+  .patientNotice {
+    padding: 0.875rem;
+  }
 }

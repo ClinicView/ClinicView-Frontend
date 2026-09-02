@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useSession } from '@/features/auth';
 import { usePatient } from '@/features/patients';
 import { ageFromDateOnly, formatInstant } from '@/shared/lib/date-time';
@@ -65,6 +65,12 @@ function toCorrectedEntities(entities: Array<NerEntity | CorrectedEntity> | null
 
 type TabId = 'text' | 'entities' | 'validation';
 
+const CORRECTION_TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'text', label: 'Texto corregido' },
+  { id: 'entities', label: 'Entidades' },
+  { id: 'validation', label: 'Validación' },
+];
+
 interface DocumentDetailProps {
   patientId: string;
   docId: string;
@@ -97,6 +103,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
     if (!document) return;
@@ -143,7 +150,16 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }, [document?.nerEntities, dismissedSuggestions]);
 
   if (isLoading) return <Spinner label="Cargando documento…" />;
-  if (error) return <Alert variant="error">{error}</Alert>;
+  if (error) {
+    return (
+      <div className={styles.loadError}>
+        <Alert variant="error">{error}</Alert>
+        <button className={styles.btn} type="button" onClick={() => void reload()}>
+          Reintentar carga
+        </button>
+      </div>
+    );
+  }
   if (!document) return null;
 
   const canProcess =
@@ -176,7 +192,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
 
   async function handleMarkReviewed() {
     const updated = await handleSave();
-    if (updated) setActiveTab('validation');
+    if (updated) activateTab('validation', true);
   }
 
   async function handleValidate() {
@@ -236,6 +252,28 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     });
   }
 
+  function activateTab(tabId: TabId, moveFocus = false) {
+    setActiveTab(tabId);
+    if (!moveFocus) return;
+    const tabIndex = CORRECTION_TABS.findIndex((tab) => tab.id === tabId);
+    window.requestAnimationFrame(() => tabRefs.current[tabIndex]?.focus());
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % CORRECTION_TABS.length;
+    if (event.key === 'ArrowLeft') {
+      nextIndex = (index - 1 + CORRECTION_TABS.length) % CORRECTION_TABS.length;
+    }
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = CORRECTION_TABS.length - 1;
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    activateTab(CORRECTION_TABS[nextIndex].id, true);
+  }
+
   const patientLine = patient
     ? `${patient.lastName}, ${patient.firstName}`
     : 'Cargando…';
@@ -269,7 +307,12 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
 
         <div className={styles.headerField}>
           <span className={styles.headerFieldLabel}>Estado</span>
-          <span className={`${styles.statusBadge} ${styles[`status_${document.status}`]}`}>
+          <span
+            className={`${styles.statusBadge} ${styles[`status_${document.status}`]}`}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {STATUS_LABEL[document.status]}
           </span>
         </div>
@@ -286,7 +329,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
 
       {/* Banners de estado */}
       {needsProcessing && (
-        <div className={`${styles.banner} ${styles.bannerWarning}`}>
+        <div className={`${styles.banner} ${styles.bannerWarning}`} role="status">
           <div>
             <p className={styles.bannerTitle}>Este documento todavía necesita procesamiento.</p>
             <p className={styles.bannerText}>
@@ -299,6 +342,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
               type="button"
               onClick={() => void process()}
               disabled={isActing}
+              aria-busy={isActing}
             >
               <Icon name="scan" size={16} />
               {isActing ? 'Procesando…' : 'Procesar digitalización'}
@@ -308,7 +352,11 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       )}
 
       {document.status === 'PROCESSING' && (
-        <div className={`${styles.banner} ${styles.bannerInfo}`}>
+        <div
+          className={`${styles.banner} ${styles.bannerInfo}`}
+          role="status"
+          aria-live="polite"
+        >
           <div>
             <p className={styles.bannerTitle}>Procesamiento en curso en segundo plano.</p>
             <p className={styles.bannerText}>
@@ -321,7 +369,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       )}
 
       {document.status === 'PROCESSED' && !document.ocrText && (
-        <div className={`${styles.banner} ${styles.bannerInfo}`}>
+        <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
           <div>
             <p className={styles.bannerTitle}>El OCR no devolvió texto utilizable.</p>
             <p className={styles.bannerText}>
@@ -333,7 +381,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       )}
 
       {document.rejectReason && (
-        <div className={`${styles.banner} ${styles.bannerDanger}`}>
+        <div className={`${styles.banner} ${styles.bannerDanger}`} role="alert">
           <div>
             <p className={styles.bannerTitle}>Digitalización rechazada</p>
             <p className={styles.bannerText}>{document.rejectReason}</p>
@@ -390,7 +438,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         {/* Panel de corrección profesional */}
         <section className={styles.correctionPanel} aria-labelledby="correction-title">
           <div className={styles.correctionHeader}>
-            <p id="correction-title" className={styles.correctionTitle}>Corrección profesional</p>
+            <h2 id="correction-title" className={styles.correctionTitle}>Corrección profesional</h2>
             {suggestions.length > 0 && (
               <span className={styles.suggestionsChip}>
                 <Icon name="sparkle" size={13} />
@@ -399,67 +447,93 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
             )}
           </div>
 
-          <div className={styles.tabs} role="tablist" aria-label="Paneles de corrección">
-            {(
-              [
-                { id: 'text', label: 'Texto corregido' },
-                { id: 'entities', label: 'Entidades' },
-                { id: 'validation', label: 'Validación' },
-              ] as Array<{ id: TabId; label: string }>
-            ).map((tab) => (
+          <div
+            className={styles.tabs}
+            role="tablist"
+            aria-label="Paneles de corrección"
+            aria-orientation="horizontal"
+          >
+            {CORRECTION_TABS.map((tab, index) => (
               <button
                 key={tab.id}
+                ref={(element) => { tabRefs.current[index] = element; }}
+                id={`correction-tab-${tab.id}`}
                 role="tab"
                 type="button"
                 aria-selected={activeTab === tab.id}
+                aria-controls={`correction-panel-${tab.id}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
                 className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => activateTab(tab.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <div className={styles.tabBody}>
-            {activeTab === 'text' && (
-              <StructuredTextEditor
-                text={correctedText}
-                disabled={!canCorrect || isActing}
-                suggestions={suggestions}
-                onChange={handleCorrectedTextChange}
-                onDismissSuggestion={(id) =>
-                  setDismissedSuggestions((prev) => new Set(prev).add(id))
-                }
-              />
-            )}
+          <div
+            id="correction-panel-text"
+            className={styles.tabBody}
+            role="tabpanel"
+            aria-labelledby="correction-tab-text"
+            aria-busy={isActing}
+            tabIndex={0}
+            hidden={activeTab !== 'text'}
+          >
+            <StructuredTextEditor
+              text={correctedText}
+              disabled={!canCorrect || isActing}
+              suggestions={suggestions}
+              onChange={handleCorrectedTextChange}
+              onDismissSuggestion={(id) =>
+                setDismissedSuggestions((prev) => new Set(prev).add(id))
+              }
+            />
+          </div>
 
-            {activeTab === 'entities' && (
-              <EntitiesPanel
-                detected={document.nerEntities}
-                corrected={correctedEntities}
-                editable={canCorrect}
-                isActing={isActing}
-                onEntityChange={updateEntity}
-                onEntityRemove={removeEntity}
-              />
-            )}
+          <div
+            id="correction-panel-entities"
+            className={styles.tabBody}
+            role="tabpanel"
+            aria-labelledby="correction-tab-entities"
+            aria-busy={isActing}
+            tabIndex={0}
+            hidden={activeTab !== 'entities'}
+          >
+            <EntitiesPanel
+              detected={document.nerEntities}
+              corrected={correctedEntities}
+              editable={canCorrect}
+              isActing={isActing}
+              onEntityChange={updateEntity}
+              onEntityRemove={removeEntity}
+            />
+          </div>
 
-            {activeTab === 'validation' && (
-              <ValidationPanel
-                checked={checkedValidation}
-                canValidate={canValidate}
-                canReject={canReject}
-                isActing={isActing}
-                hasUnsavedChanges={isDirty}
-                showRejectForm={showRejectForm}
-                rejectReason={rejectReason}
-                onToggle={toggleValidationItem}
-                onValidate={() => void handleValidate()}
-                onToggleRejectForm={() => setShowRejectForm((value) => !value)}
-                onRejectReasonChange={setRejectReason}
-                onReject={() => void handleReject()}
-              />
-            )}
+          <div
+            id="correction-panel-validation"
+            className={styles.tabBody}
+            role="tabpanel"
+            aria-labelledby="correction-tab-validation"
+            aria-busy={isActing}
+            tabIndex={0}
+            hidden={activeTab !== 'validation'}
+          >
+            <ValidationPanel
+              checked={checkedValidation}
+              canValidate={canValidate}
+              canReject={canReject}
+              isActing={isActing}
+              hasUnsavedChanges={isDirty}
+              showRejectForm={showRejectForm}
+              rejectReason={rejectReason}
+              onToggle={toggleValidationItem}
+              onValidate={() => void handleValidate()}
+              onToggleRejectForm={() => setShowRejectForm((value) => !value)}
+              onRejectReasonChange={setRejectReason}
+              onReject={() => void handleReject()}
+            />
           </div>
 
           <MetricsPanel metrics={document.metrics} confidenceLevel={document.confidenceLevel} />
@@ -468,12 +542,22 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
 
       {/* Barra inferior de acciones */}
       {(canCorrect || canValidate) && (
-        <footer className={styles.actionBar}>
+        <footer
+          className={styles.actionBar}
+          aria-label="Acciones de la revisión"
+          aria-busy={isActing}
+        >
           <span
             className={`${styles.saveState} ${isDirty ? styles.saveStateDirty : styles.saveStateSaved}`}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
           >
             <Icon name={isDirty ? 'edit' : 'check'} size={15} />
             {isDirty ? 'Cambios sin guardar' : 'Cambios guardados'}
+          </span>
+          <span className={styles.srOnly} role="status" aria-live="polite">
+            {isActing ? 'Actualizando el documento clínico…' : ''}
           </span>
           {actionError && (
             <div className={styles.actionErrorGroup} role="alert">
@@ -520,8 +604,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 type="button"
-                onClick={() => setActiveTab('validation')}
+                onClick={() => activateTab('validation', true)}
                 disabled={isActing || correctedText.trim().length === 0}
+                aria-controls="correction-panel-validation"
               >
                 <Icon name="shield" size={15} />
                 Validar versión final
@@ -532,7 +617,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       )}
 
       {!canCorrect && !canValidate && actionError && (
-        <p className={styles.actionError}>{actionError}</p>
+        <p className={styles.actionError} role="alert">{actionError}</p>
       )}
     </div>
   );

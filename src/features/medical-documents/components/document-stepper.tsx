@@ -78,6 +78,13 @@ const STATE_CLASS: Record<StepState, string> = {
   error: styles.stepError,
 };
 
+const STATE_LABEL: Record<StepState, string> = {
+  done: 'Completado',
+  active: 'Paso actual',
+  pending: 'Pendiente',
+  error: 'Con error',
+};
+
 interface DocumentStepperProps {
   document: MedicalDocument;
 }
@@ -88,7 +95,11 @@ export function DocumentStepper({ document }: DocumentStepperProps) {
   return (
     <ol className={styles.stepper} aria-label="Progreso del documento">
       {steps.map((step, index) => (
-        <li key={step.label} style={{ display: 'contents' }}>
+        <li
+          key={step.label}
+          className={styles.stepItem}
+          aria-current={step.state === 'active' ? 'step' : undefined}
+        >
           <div className={`${styles.step} ${STATE_CLASS[step.state]}`}>
             <span className={styles.stepCircle} aria-hidden="true">
               {step.state === 'done' ? (
@@ -101,6 +112,7 @@ export function DocumentStepper({ document }: DocumentStepperProps) {
             </span>
             <span className={styles.stepLabel}>{step.label}</span>
             {step.meta && <span className={styles.stepMeta}>{step.meta}</span>}
+            <span className={styles.srOnly}>Estado: {STATE_LABEL[step.state]}</span>
           </div>
           {index < steps.length - 1 && (
             <span

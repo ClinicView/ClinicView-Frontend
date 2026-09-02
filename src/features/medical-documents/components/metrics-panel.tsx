@@ -20,6 +20,12 @@ const LEVEL_CLASS: Record<ConfidenceLevel, string> = {
   LOW: styles.conf_low,
 };
 
+const LEVEL_LABEL: Record<ConfidenceLevel, string> = {
+  HIGH: 'Confianza alta',
+  MEDIUM: 'Confianza media',
+  LOW: 'Confianza baja',
+};
+
 export function MetricsPanel({ metrics, confidenceLevel }: MetricsPanelProps) {
   return (
     <details className={styles.metricsPanel} open={Boolean(metrics)}>
@@ -31,24 +37,24 @@ export function MetricsPanel({ metrics, confidenceLevel }: MetricsPanelProps) {
 
       {metrics ? (
         <div className={styles.metricsBody}>
-          <span className={styles.metricItem}>
+          <span className={styles.metricItem} aria-label={`Tasa de error por carácter: ${pct(metrics.cer)}`}>
             <span className={styles.metricLabel}>CER:</span>
             <span className={styles.metricValue}>{pct(metrics.cer)}</span>
           </span>
           <span className={styles.metricDivider} aria-hidden="true">|</span>
-          <span className={styles.metricItem}>
+          <span className={styles.metricItem} aria-label={`Tasa de error por palabra: ${pct(metrics.wer)}`}>
             <span className={styles.metricLabel}>WER:</span>
             <span className={styles.metricValue}>{pct(metrics.wer)}</span>
           </span>
           <span className={styles.metricDivider} aria-hidden="true">|</span>
-          <span className={styles.metricItem}>
+          <span className={styles.metricItem} aria-label={`Exactitud por carácter: ${pct(metrics.charAccuracy)}`}>
             <span className={styles.metricLabel}>Acc:</span>
             <span className={styles.metricValue}>{pct(metrics.charAccuracy)}</span>
           </span>
           {metrics.nerF1 != null && (
             <>
               <span className={styles.metricDivider} aria-hidden="true">|</span>
-              <span className={styles.metricItem}>
+              <span className={styles.metricItem} aria-label={`Puntuación F1 de entidades: ${pct(metrics.nerF1)}`}>
                 <span className={styles.metricLabel}>NER F1:</span>
                 <span className={styles.metricValue}>{pct(metrics.nerF1)}</span>
               </span>
@@ -56,7 +62,7 @@ export function MetricsPanel({ metrics, confidenceLevel }: MetricsPanelProps) {
           )}
           {confidenceLevel && (
             <span className={`${styles.confidenceBadge} ${LEVEL_CLASS[confidenceLevel]}`}>
-              {confidenceLevel}
+              {LEVEL_LABEL[confidenceLevel]}
             </span>
           )}
           {metrics.estimated && (

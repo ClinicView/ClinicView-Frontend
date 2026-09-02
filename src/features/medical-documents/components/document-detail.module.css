@@ -301,13 +301,13 @@
 }
 
 .zoomButton {
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .zoomReset,
 .secondaryButton {
-  min-height: 2rem;
+  min-height: 2.75rem;
   padding: 0.375rem 0.625rem;
 }
 
@@ -390,6 +390,9 @@
 }
 
 .collapsibleSummary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
   color: var(--gray-700);
   font-size: 0.8125rem;
@@ -502,6 +505,7 @@
   font-size: 0.8125rem;
   color: var(--gray-800);
   background: var(--bg-surface);
+  min-height: 44px;
 }
 
 .entitySelect:disabled,
@@ -511,6 +515,7 @@
 }
 
 .entityRemove {
+  min-height: 44px;
   border: 1px solid var(--gray-200);
   background: var(--bg-surface);
   color: var(--gray-600);
@@ -581,6 +586,7 @@
 }
 
 .btn {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
@@ -593,6 +599,7 @@
   color: var(--gray-700);
   transition: background var(--transition-fast), border-color var(--transition-fast);
   text-decoration: none;
+  justify-content: center;
 }
 
 .btnLarge {
@@ -620,6 +627,7 @@
 }
 
 .downloadLink {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -677,6 +685,22 @@
   margin-top: 0.5rem;
 }
 
+.zoomButton:focus-visible,
+.zoomReset:focus-visible,
+.secondaryButton:focus-visible,
+.collapsibleSummary:focus-visible,
+.correctionTextarea:focus-visible,
+.entitySelect:focus-visible,
+.entityInput:focus-visible,
+.entityRemove:focus-visible,
+.btn:focus-visible,
+.downloadLink:focus-visible,
+.rejectTextarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-focus-ring);
+}
+
 @media (max-width: 900px) {
   .reviewLayout {
     grid-template-columns: 1fr;
@@ -714,8 +738,24 @@
   .primaryActions { flex-direction: column; align-items: stretch; }
   .primaryActions .btn { justify-content: center; }
   .panelHeader { flex-direction: column; }
+  .primaryActions { position: static; }
+  .correctionTextarea,
+  .entitySelect,
+  .entityInput,
+  .rejectTextarea { font-size: 1rem; }
 }
 
 @media (max-width: 400px) {
   .grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zoomButton,
+  .zoomReset,
+  .secondaryButton,
+  .btn,
+  .downloadLink,
+  .rejectTextarea {
+    transition: none;
+  }
 }

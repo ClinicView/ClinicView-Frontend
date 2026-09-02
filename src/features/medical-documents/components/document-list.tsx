@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge, Icon, type IconName } from '@/shared/ui';
@@ -55,12 +54,20 @@ interface DocumentListProps {
 export function DocumentList({ patientId, permissions }: DocumentListProps) {
   const {
     data, total, page, totalPages, statusFilter,
-    isLoading, error, isUploading, uploadError,
-    upload, onPageChange, onStatusFilterChange,
+    isLoading, error, isUploading, uploadError, uploadMessage,
+    upload, reload, onPageChange, onStatusFilterChange,
   } = useDocuments(patientId);
 
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const libraryTitleRef = useRef<HTMLHeadingElement>(null);
+  const previousPageRef = useRef(page);
+
+  useEffect(() => {
+    if (previousPageRef.current !== page) {
+      libraryTitleRef.current?.focus();
+      previousPageRef.current = page;
+    }
+  }, [page]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -143,7 +150,12 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
         <div className={styles.libraryHeader}>
           <div className={styles.sectionHeading}>
             <span className={styles.sectionKicker}>Archivo clínico</span>
-            <h2 id="document-library-title" className={styles.sectionTitle}>
+            <h2
+              id="document-library-title"
+              ref={libraryTitleRef}
+              className={styles.sectionTitle}
+              tabIndex={-1}
+            >
               Documentos digitalizados
             </h2>
           </div>
@@ -158,7 +170,6 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
                 className={styles.select}
                 value={statusFilter ?? ''}
                 onChange={(e) => onStatusFilterChange((e.target.value as DocumentStatus) || undefined)}
-                aria-label="Filtrar por estado de digitalización"
               >
                 <option value="">Todos los estados</option>
                 {ALL_STATUSES.map((s) => (
@@ -183,16 +194,39 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
           </div>
         </div>
 
-        {(error || uploadError) && (
+        {(error || uploadError || uploadMessage) && (
           <div className={styles.alertStack}>
-            {error && <Alert variant="error">{error}</Alert>}
+            {error && (
+              <div className={styles.recoverableError}>
+                <Alert variant="error">{error}</Alert>
+                <button
+                  type="button"
+                  className={styles.retryBtn}
+                  onClick={() => void reload()}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Reintentando…' : 'Reintentar carga'}
+                </button>
+              </div>
+            )}
             {uploadError && <Alert variant="error">{uploadError}</Alert>}
+            {uploadMessage && (
+              <p className={styles.statusMessage} role="status" aria-live="polite">
+                <Icon name="check" size={18} />
+                {uploadMessage}
+              </p>
+            )}
           </div>
         )}
 
         <div className={styles.tableWrap}>
           {isLoading ? (
             <Spinner label="Cargando historias clínicas digitalizadas..." />
+          ) : error && data.length === 0 ? (
+            <div className={styles.loadFailure}>
+              <Icon name="warning" size={24} />
+              <p>No se pudo mostrar la biblioteca. Usa «Reintentar carga» para recuperarla.</p>
+            </div>
           ) : data.length === 0 ? (
             <EmptyState
               icon="document"
@@ -220,12 +254,11 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
                   const documentHref = `/patients/${patientId}/documents/${doc.id}`;
 
                   return (
-                    <tr key={doc.id} onClick={() => router.push(documentHref)}>
+                    <tr key={doc.id}>
                       <td data-label="Historia clínica">
                         <Link
                           href={documentHref}
                           className={styles.fileLink}
-                          onClick={(event) => event.stopPropagation()}
                         >
                           <span className={styles.fileIcon} aria-hidden="true">
                             <Icon name="document" size={20} />

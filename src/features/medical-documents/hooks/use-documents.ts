@@ -15,6 +15,7 @@ export function useDocuments(patientId: string) {
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
   const load = useCallback(
     async (p: number, status?: DocumentStatus) => {
@@ -45,9 +46,11 @@ export function useDocuments(patientId: string) {
   async function upload(file: File): Promise<void> {
     setIsUploading(true);
     setUploadError(null);
+    setUploadMessage(null);
     try {
       await uploadDocument(patientId, file);
-      await load(1, undefined);
+      await load(1, statusFilter);
+      setUploadMessage(`El archivo ${file.name} se subió correctamente.`);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Error al subir el archivo.');
     } finally {
@@ -75,6 +78,7 @@ export function useDocuments(patientId: string) {
     error,
     isUploading,
     uploadError,
+    uploadMessage,
     upload,
     reload: () => load(page, statusFilter),
     onPageChange,

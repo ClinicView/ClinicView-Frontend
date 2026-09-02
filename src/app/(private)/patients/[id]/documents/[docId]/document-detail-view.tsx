@@ -24,7 +24,7 @@ export function DocumentDetailView({ patientId, docId }: DocumentDetailViewProps
       <nav className={styles.breadcrumb} aria-label="Ruta de navegación">
         <Link href={`/patients/${patientId}/documents`}>Digitalización</Link>
         <span aria-hidden="true">›</span>
-        <span>Corrección de historia clínica</span>
+        <span aria-current="page">Corrección de historia clínica</span>
       </nav>
       <header className={styles.pageHeaderRow}>
         <div>
@@ -35,7 +35,8 @@ export function DocumentDetailView({ patientId, docId }: DocumentDetailViewProps
         </div>
         <div className={styles.pageHeaderActions}>
           <button className={styles.btn} type="button" onClick={() => router.back()}>
-            ‹ Volver
+            <Icon name="chevron-right" size={15} className={styles.previousIcon} />
+            Volver
           </button>
           <Link href={`/patients/${patientId}`} className={`${styles.btn} ${styles.btnLink}`}>
             <Icon name="patient" size={15} />

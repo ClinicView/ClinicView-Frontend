@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { ValidationChecklistId } from '../types/document';
 import styles from './correction-view.module.css';
 
@@ -62,35 +63,53 @@ export function ValidationPanel({
   onReject,
 }: ValidationPanelProps) {
   const allChecked = VALIDATION_CHECKLIST.every((item) => checked.has(item.id));
+  const rejectTriggerRef = useRef<HTMLButtonElement>(null);
+  const rejectReasonRef = useRef<HTMLTextAreaElement>(null);
+  const wasRejectOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (showRejectForm) {
+      rejectReasonRef.current?.focus();
+    } else if (wasRejectOpenRef.current && canReject) {
+      rejectTriggerRef.current?.focus();
+    }
+    wasRejectOpenRef.current = showRejectForm;
+  }, [canReject, showRejectForm]);
 
   return (
     <div>
-      <div className={styles.checkList}>
+      <fieldset className={styles.checkList}>
+        <legend className={styles.checkListLegend}>Comprobaciones obligatorias</legend>
         {VALIDATION_CHECKLIST.map((item) => {
           const isChecked = checked.has(item.id);
+          const inputId = `validation-check-${item.id}`;
+          const hintId = `${inputId}-hint`;
           return (
             <label
+              htmlFor={inputId}
               key={item.id}
               className={`${styles.checkItem} ${isChecked ? styles.checkItemChecked : ''}`}
             >
               <input
+                id={inputId}
                 type="checkbox"
                 className={styles.checkBox}
                 checked={isChecked}
                 onChange={() => onToggle(item.id)}
                 disabled={!canValidate || isActing}
+                aria-describedby={hintId}
               />
               <span className={styles.checkText}>
                 <span className={styles.checkTitle}>{item.title}</span>
-                <span className={styles.checkHint}>{item.hint}</span>
+                <span id={hintId} className={styles.checkHint}>{item.hint}</span>
               </span>
             </label>
           );
         })}
-      </div>
+      </fieldset>
 
       {canValidate && (
-        <p className={styles.atomicValidationHint}>
+        <p id="validation-operation-hint" className={styles.atomicValidationHint}>
           {hasUnsavedChanges
             ? 'Tus cambios actuales se guardarán junto con la validación en una sola operación.'
             : 'Se validará exactamente la versión guardada que estás revisando.'}
@@ -104,52 +123,86 @@ export function ValidationPanel({
           onClick={onValidate}
           disabled={isActing || !allChecked}
           title={allChecked ? undefined : 'Completa el checklist para validar'}
+          aria-describedby={
+            allChecked
+              ? 'validation-operation-hint'
+              : 'validation-operation-hint validation-checklist-help'
+          }
         >
           {isActing ? 'Guardando y validando…' : 'Guardar y validar versión final'}
         </button>
       )}
       {!allChecked && canValidate && (
-        <p className={styles.checkHint} style={{ marginTop: '0.5rem' }}>
+        <p id="validation-checklist-help" className={styles.checkHint} style={{ marginTop: '0.5rem' }}>
           Marca todos los puntos del checklist para habilitar la validación final.
         </p>
       )}
 
       {canReject && (
         <div className={styles.rejectZone} style={{ marginTop: '1.25rem' }}>
-          {!showRejectForm ? (
-            <button
-              className={`${styles.btn} ${styles.btnDanger}`}
-              type="button"
-              onClick={onToggleRejectForm}
-              disabled={isActing}
+          <button
+            ref={rejectTriggerRef}
+            className={`${styles.btn} ${styles.btnDanger}`}
+            type="button"
+            onClick={onToggleRejectForm}
+            disabled={isActing}
+            aria-expanded={showRejectForm}
+            aria-controls="document-reject-form"
+          >
+            {showRejectForm ? 'Ocultar formulario de rechazo' : 'Rechazar digitalización'}
+          </button>
+          {showRejectForm && (
+            <form
+              id="document-reject-form"
+              className={styles.rejectForm}
+              onSubmit={(event) => {
+                event.preventDefault();
+                onReject();
+              }}
             >
-              Rechazar digitalización
-            </button>
-          ) : (
-            <>
+              <label className={styles.editorFieldLabel} htmlFor="document-reject-reason">
+                Motivo del rechazo
+              </label>
               <textarea
+                ref={rejectReasonRef}
+                id="document-reject-reason"
                 className={styles.rejectTextarea}
                 placeholder="Motivo del rechazo (mínimo 10 caracteres)…"
                 value={rejectReason}
                 onChange={(event) => onRejectReasonChange(event.target.value)}
-                aria-label="Motivo del rechazo"
+                minLength={10}
+                required
+                disabled={isActing}
+                aria-describedby="document-reject-help"
               />
-              <div style={{ display: 'flex', gap: '0.625rem' }}>
+              <p id="document-reject-help" className={styles.rejectHelp}>
+                Explica la causa con al menos 10 caracteres. {rejectReason.trim().length}/10.
+              </p>
+              <div className={styles.rejectActions}>
                 <button
                   className={`${styles.btn} ${styles.btnDanger}`}
-                  type="button"
-                  onClick={onReject}
+                  type="submit"
                   disabled={isActing || rejectReason.trim().length < 10}
                 >
                   {isActing ? 'Rechazando…' : 'Confirmar rechazo'}
                 </button>
-                <button className={styles.btn} type="button" onClick={onToggleRejectForm}>
+                <button
+                  className={styles.btn}
+                  type="button"
+                  onClick={onToggleRejectForm}
+                  disabled={isActing}
+                >
                   Cancelar
                 </button>
               </div>
-            </>
+            </form>
           )}
         </div>
+      )}
+      {!canValidate && (
+        <span className={styles.srOnly} role="status" aria-live="polite">
+          {isActing ? 'Operación clínica en curso.' : ''}
+        </span>
       )}
     </div>
   );

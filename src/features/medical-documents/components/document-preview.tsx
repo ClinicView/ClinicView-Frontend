@@ -33,9 +33,13 @@ export function DocumentPreview({ patientId, docId, mimeType, originalName }: Do
   }
 
   return (
-    <section className={styles.viewerPanel} aria-labelledby="document-preview-title">
+    <section
+      className={styles.viewerPanel}
+      aria-labelledby="document-preview-title"
+      aria-busy={isLoading}
+    >
       <div className={styles.viewerHeader}>
-        <p id="document-preview-title" className={styles.viewerTitle}>Documento original</p>
+        <h2 id="document-preview-title" className={styles.viewerTitle}>Documento original</h2>
         <button
           className={styles.btn}
           type="button"
@@ -47,7 +51,7 @@ export function DocumentPreview({ patientId, docId, mimeType, originalName }: Do
         </button>
       </div>
 
-      <div className={styles.viewerToolbar} aria-label="Controles del visor">
+      <div className={styles.viewerToolbar} role="group" aria-label="Controles del visor">
         {isImage && (
           <>
             <button
@@ -60,7 +64,9 @@ export function DocumentPreview({ patientId, docId, mimeType, originalName }: Do
             >
               <Icon name="zoom-out" size={16} />
             </button>
-            <span className={styles.toolValue} aria-live="polite">{Math.round(zoom * 100)}%</span>
+            <span className={styles.toolValue} aria-live="polite" aria-atomic="true">
+              {Math.round(zoom * 100)}% · {rotation}°
+            </span>
             <button
               className={styles.toolBtn}
               type="button"
@@ -80,6 +86,17 @@ export function DocumentPreview({ patientId, docId, mimeType, originalName }: Do
               title="Rotar"
             >
               <Icon name="rotate" size={16} />
+            </button>
+            <button
+              className={styles.toolReset}
+              type="button"
+              onClick={() => {
+                setZoom(1);
+                setRotation(0);
+              }}
+              disabled={!objectUrl || (zoom === 1 && rotation === 0)}
+            >
+              Restablecer
             </button>
           </>
         )}
@@ -103,9 +120,9 @@ export function DocumentPreview({ patientId, docId, mimeType, originalName }: Do
         {isLoading && <Spinner label="Cargando documento original…" />}
 
         {!isLoading && error && (
-          <div className={styles.viewerState}>
+          <div className={styles.viewerState} role="alert">
             <Icon name="warning" size={22} />
-            <p>No se pudo cargar la vista previa del documento.</p>
+            <p>{error || 'No se pudo cargar la vista previa del documento.'}</p>
             <button className={styles.btn} type="button" onClick={() => void reload()}>
               Reintentar
             </button>

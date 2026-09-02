@@ -18,14 +18,15 @@ export function DocumentsView({ patientId }: DocumentsViewProps) {
 
   return (
     <PageShell>
-      <Link href={`/patients/${patientId}`} className="viewBack">
-        ← Volver al paciente
+      <Link href={`/patients/${patientId}`} className={`viewBack ${styles.backLink}`}>
+        <Icon name="chevron-right" size={16} className={styles.previousIcon} />
+        Volver al paciente
       </Link>
       <h1 className="viewHeading">Digitalización de historias clínicas</h1>
       <p className="viewSubheading">
         Sube PDF o imágenes de historias clínicas físicas, procesa el archivo, corrige el OCR y valida la versión final.
       </p>
-      <section className={styles.patientNotice}>
+      <section className={styles.patientNotice} aria-label="Información sobre la carga de documentos">
         <Icon name="patient" size={20} />
         <p>
           Actualmente debes seleccionar un paciente antes de subir una historia clínica. En una versión posterior, el sistema podrá sugerir el paciente automáticamente a partir del documento digitalizado.

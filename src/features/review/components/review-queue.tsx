@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import { formatInstant } from '@/shared/lib/date-time';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { useReviewQueue } from '../hooks/use-review-queue';
@@ -28,7 +29,16 @@ function getFileType(mimeType: string): string {
 }
 
 export function ReviewQueue() {
-  const { data, total, page, totalPages, isLoading, error, onPageChange } = useReviewQueue();
+  const { data, total, page, totalPages, isLoading, error, onPageChange, reload } = useReviewQueue();
+  const listTitleRef = useRef<HTMLHeadingElement>(null);
+  const previousPageRef = useRef(page);
+
+  useEffect(() => {
+    if (previousPageRef.current !== page) {
+      listTitleRef.current?.focus();
+      previousPageRef.current = page;
+    }
+  }, [page]);
   const queueLabel = total === 0
     ? 'Sin revisiones pendientes'
     : `${total} historia${total !== 1 ? 's' : ''} por revisar`;
@@ -67,7 +77,12 @@ export function ReviewQueue() {
             <strong>{isLoading ? '—' : total}</strong>
             <span>pendiente{total !== 1 ? 's' : ''}</span>
           </div>
-          <div className={`${styles.summaryStatus} ${total === 0 ? styles.summaryStatusEmpty : ''}`}>
+          <div
+            className={`${styles.summaryStatus} ${total === 0 ? styles.summaryStatusEmpty : ''}`}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <span className={styles.statusDot} aria-hidden="true" />
             {isLoading ? 'Actualizando revisiones' : queueLabel}
           </div>
@@ -79,9 +94,12 @@ export function ReviewQueue() {
         </aside>
       </header>
 
-      {error && (
+      {error && data.length > 0 && (
         <div className={styles.alertWrap}>
           <Alert variant="error">{error}</Alert>
+          <button className={styles.retryBtn} type="button" onClick={reload} disabled={isLoading}>
+            {isLoading ? 'Reintentando…' : 'Reintentar carga'}
+          </button>
         </div>
       )}
 
@@ -96,7 +114,12 @@ export function ReviewQueue() {
               <span className={styles.panelDot} aria-hidden="true" />
               Trabajo pendiente
             </span>
-            <h2 className={styles.panelTitle} id="review-list-title">
+            <h2
+              className={styles.panelTitle}
+              id="review-list-title"
+              ref={listTitleRef}
+              tabIndex={-1}
+            >
               Historias por revisar
             </h2>
             <p className={styles.panelSubtitle}>
@@ -113,6 +136,13 @@ export function ReviewQueue() {
         {isLoading ? (
           <div className={styles.loadingState}>
             <Spinner label="Cargando cola de revisión…" />
+          </div>
+        ) : error && data.length === 0 ? (
+          <div className={styles.errorState}>
+            <Alert variant="error">{error}</Alert>
+            <button className={styles.retryBtn} type="button" onClick={reload}>
+              Reintentar carga
+            </button>
           </div>
         ) : data.length === 0 ? (
           <div className={styles.empty}>
