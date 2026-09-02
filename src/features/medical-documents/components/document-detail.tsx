@@ -109,6 +109,26 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     setCheckedValidation(new Set());
   }, [document]);
 
+  const savedText = document?.correctedText ?? document?.ocrText ?? '';
+  const savedEntities = JSON.stringify(
+    document?.correctedEntities
+      ? toCorrectedEntities(document.correctedEntities)
+      : toCorrectedEntities(document?.nerEntities ?? null),
+  );
+  const isDirty = Boolean(
+    document &&
+      (correctedText !== savedText || JSON.stringify(correctedEntities) !== savedEntities),
+  );
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const preventAccidentalExit = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', preventAccidentalExit);
+    return () => window.removeEventListener('beforeunload', preventAccidentalExit);
+  }, [isDirty]);
+
   const suggestions = useMemo<OcrSuggestion[]>(() => {
     if (!document?.nerEntities) return [];
     return document.nerEntities
@@ -131,19 +151,11 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     (document.status === 'PENDING' || document.status === 'FAILED');
   const canCorrect = can(permissions, 'documents.validate') && document.status === 'PROCESSED';
   const canValidate = can(permissions, 'documents.validate') && document.status === 'PROCESSED';
-  const canReject = can(permissions, 'documents.reject') && document.status === 'PROCESSED';
+  const canReject =
+    can(permissions, 'documents.reject') &&
+    (document.status === 'PENDING' || document.status === 'PROCESSED');
 
-  const hasOcr = Boolean(document.ocrText);
   const needsProcessing = document.status === 'PENDING' || document.status === 'FAILED';
-
-  const savedText = document.correctedText ?? document.ocrText ?? '';
-  const savedEntities = JSON.stringify(
-    document.correctedEntities
-      ? toCorrectedEntities(document.correctedEntities)
-      : toCorrectedEntities(document.nerEntities),
-  );
-  const isDirty =
-    correctedText !== savedText || JSON.stringify(correctedEntities) !== savedEntities;
 
   function normalizedEntities(): CorrectedEntity[] {
     return correctedEntities
@@ -179,9 +191,23 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   async function handleReject() {
     const trimmed = rejectReason.trim();
     if (trimmed.length < 10) return;
-    await reject(trimmed);
-    setShowRejectForm(false);
-    setRejectReason('');
+    const updated = await reject(trimmed);
+    if (updated) {
+      setShowRejectForm(false);
+      setRejectReason('');
+    }
+  }
+
+  async function handleReloadLatest() {
+    if (
+      (isDirty || rejectReason.trim().length > 0) &&
+      !window.confirm(
+        'Recargar descartará el texto, las entidades y el motivo de rechazo que no hayas guardado. ¿Deseas continuar?',
+      )
+    ) {
+      return;
+    }
+    await reload();
   }
 
   function updateEntity(index: number, patch: Partial<CorrectedEntity>) {
@@ -294,6 +320,18 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         </div>
       )}
 
+      {document.status === 'PROCESSED' && !document.ocrText && (
+        <div className={`${styles.banner} ${styles.bannerInfo}`}>
+          <div>
+            <p className={styles.bannerTitle}>El OCR no devolvió texto utilizable.</p>
+            <p className={styles.bannerText}>
+              Puedes transcribir el contenido manualmente y completar la revisión clínica sin
+              perder el archivo original.
+            </p>
+          </div>
+        </div>
+      )}
+
       {document.rejectReason && (
         <div className={`${styles.banner} ${styles.bannerDanger}`}>
           <div>
@@ -386,7 +424,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
             {activeTab === 'text' && (
               <StructuredTextEditor
                 text={correctedText}
-                disabled={!canCorrect || isActing || !hasOcr}
+                disabled={!canCorrect || isActing}
                 suggestions={suggestions}
                 onChange={handleCorrectedTextChange}
                 onDismissSuggestion={(id) =>
@@ -399,7 +437,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
               <EntitiesPanel
                 detected={document.nerEntities}
                 corrected={correctedEntities}
-                editable={canCorrect && hasOcr}
+                editable={canCorrect}
                 isActing={isActing}
                 onEntityChange={updateEntity}
                 onEntityRemove={removeEntity}
@@ -444,10 +482,12 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 <button
                   className={`${styles.btn} ${styles.retryButton}`}
                   type="button"
-                  onClick={() => void reload()}
+                  onClick={() => void handleReloadLatest()}
                   disabled={isActing}
                 >
-                  Recargar versión actual
+                  {isDirty || rejectReason.trim()
+                    ? 'Descartar cambios y recargar'
+                    : 'Recargar versión actual'}
                 </button>
               )}
             </div>
@@ -459,7 +499,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={styles.btn}
                 type="button"
                 onClick={() => void handleSave()}
-                disabled={isActing || !hasOcr || !isDirty}
+                disabled={isActing || !isDirty}
               >
                 <Icon name="download" size={15} />
                 Guardar borrador
@@ -470,7 +510,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={styles.btn}
                 type="button"
                 onClick={() => void handleMarkReviewed()}
-                disabled={isActing || !hasOcr}
+                disabled={isActing || correctedText.trim().length === 0}
               >
                 <Icon name="check" size={15} />
                 Marcar como revisado
@@ -481,7 +521,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 type="button"
                 onClick={() => setActiveTab('validation')}
-                disabled={isActing || !hasOcr}
+                disabled={isActing || correctedText.trim().length === 0}
               >
                 <Icon name="shield" size={15} />
                 Validar versión final

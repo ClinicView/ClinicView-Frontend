@@ -53,8 +53,12 @@ export function rejectDocument(
   patientId: string,
   docId: string,
   reason: string,
+  expectedVersion: number,
 ): Promise<MedicalDocument> {
-  return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/reject`, { reason });
+  return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/reject`, {
+    reason,
+    expectedVersion,
+  });
 }
 
 export function getDocumentDownloadUrl(patientId: string, docId: string): string {

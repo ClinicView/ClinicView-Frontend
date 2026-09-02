@@ -22,6 +22,16 @@ export interface CorrectedEntity {
 
 export type ValidationChecklistId = 'text' | 'entities' | 'sections' | 'phi';
 
+export interface ValidationChecklistSnapshot {
+  schemaVersion: number;
+  locale: 'es-PE';
+  items: Array<{
+    id: ValidationChecklistId;
+    title: string;
+    statement: string;
+  }>;
+}
+
 export interface DocumentCorrectionInput {
   correctedText?: string;
   correctedEntities?: CorrectedEntity[];
@@ -70,7 +80,7 @@ export interface MedicalDocument {
   processedAt: string | null;
   reviewedAt: string | null;
   reviewedBy: string | null;
-  validationChecklist: ValidationChecklistId[] | null;
+  validationChecklist: ValidationChecklistSnapshot | null;
   validationAttested: boolean;
   validationAttestedAt: string | null;
   updatedAt: string;

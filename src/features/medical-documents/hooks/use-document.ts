@@ -99,7 +99,10 @@ export function useDocument(patientId: string, docId: string) {
             expectedVersion: document.version,
           }))
         : Promise.resolve(null),
-    reject: (reason: string) => act(() => rejectDocument(patientId, docId, reason)),
+    reject: (reason: string) =>
+      document
+        ? act(() => rejectDocument(patientId, docId, reason, document.version))
+        : Promise.resolve(null),
     reload: load,
   };
 }
