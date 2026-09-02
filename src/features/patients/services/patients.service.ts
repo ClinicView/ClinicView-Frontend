@@ -1,5 +1,11 @@
 import { apiGet, apiPatch, apiPost } from '@/shared/services/api-client';
-import type { CreatePatientData, Patient, PatientsPage, UpdatePatientData } from '../types/patient';
+import type {
+  ClinicalHistoryExport,
+  CreatePatientData,
+  Patient,
+  PatientsPage,
+  UpdatePatientData,
+} from '../types/patient';
 
 export function listPatients(params: {
   search?: string;
@@ -32,6 +38,10 @@ export function getPatientStats(): Promise<PatientStats> {
 
 export function getPatient(id: string): Promise<Patient> {
   return apiGet<Patient>(`/patients/${id}`);
+}
+
+export function getClinicalHistoryExport(id: string): Promise<ClinicalHistoryExport> {
+  return apiGet<ClinicalHistoryExport>(`/patients/${id}/clinical-history/export`);
 }
 
 export function createPatient(data: CreatePatientData): Promise<Patient> {

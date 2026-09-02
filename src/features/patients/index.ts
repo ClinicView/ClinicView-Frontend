@@ -1,5 +1,24 @@
-export type { Patient, CreatePatientData, UpdatePatientData, PatientsPage, DocumentType, Sex } from './types/patient';
-export { listPatients, getPatient, createPatient, updatePatient, deactivatePatient, activatePatient, getPatientStats } from './services/patients.service';
+export type {
+  Patient,
+  CreatePatientData,
+  UpdatePatientData,
+  PatientsPage,
+  DocumentType,
+  Sex,
+  ClinicalHistoryExport,
+  ClinicalHistoryExportDocument,
+  ClinicalHistoryExportRecord,
+} from './types/patient';
+export {
+  listPatients,
+  getPatient,
+  getClinicalHistoryExport,
+  createPatient,
+  updatePatient,
+  deactivatePatient,
+  activatePatient,
+  getPatientStats,
+} from './services/patients.service';
 export type { PatientStats } from './services/patients.service';
 export { usePatients } from './hooks/use-patients';
 export { usePatient } from './hooks/use-patient';

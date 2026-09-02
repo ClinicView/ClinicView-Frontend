@@ -4,11 +4,12 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
-import { usePatient, activatePatient } from '@/features/patients';
+import { activatePatient, getClinicalHistoryExport, usePatient } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import {
+  clinicalHistoryDocumentToExportItem,
   documentToExportItem,
   exportPatientPdf,
   recordToExportItem,
@@ -16,6 +17,7 @@ import {
 } from '@/features/medical-documents/lib/pdf-export';
 import { can } from '@/shared/permissions/can';
 import { PageShell } from '@/shared/components/page-shell';
+import { ageFromDateOnly, formatDateOnly, formatInstant } from '@/shared/lib/date-time';
 import { Alert, Icon, Spinner } from '@/shared/ui';
 import { usePatientOverview } from './use-patient-overview';
 import styles from './patient-profile.module.css';
@@ -50,7 +52,7 @@ const RECORD_TYPE_LABEL: Record<string, string> = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -58,25 +60,15 @@ function formatDate(iso: string): string {
 }
 
 function formatDateLong(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatDateOnly(iso, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-    timeZone: 'UTC',
   });
 }
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
-}
-
-function computeAge(dateOfBirth: string): number {
-  const birth = new Date(dateOfBirth);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const monthDiff = now.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
-  return age;
 }
 
 /** Entrada unificada del timeline (documento digitalizado o registro manual). */
@@ -219,6 +211,7 @@ export function PatientView({ id }: PatientViewProps) {
   }
 
   const permissions = user.permissions;
+  const patientAge = ageFromDateOnly(patient.dateOfBirth);
   const pendingDocs = overview.documents.filter(
     (doc) => doc.status !== 'VALIDATED' && doc.status !== 'REJECTED',
   ).length;
@@ -267,18 +260,54 @@ export function PatientView({ id }: PatientViewProps) {
     );
   }
 
-  function exportFullHistory() {
-    const items = [
-      ...overview.documents.map((doc) => ({ date: doc.createdAt, item: documentToExportItem(doc) })),
-      ...overview.records.map((record) => ({ date: record.attendedAt, item: recordToExportItem(record) })),
-    ]
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map((entry) => entry.item);
-    void runExport(
-      items,
-      'Historia clínica completa',
-      `clinicview_${patient?.documentNumber}_historia_completa`,
-    );
+  async function exportFullHistory() {
+    if (!patient) return;
+
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const history = await getClinicalHistoryExport(id);
+      const items = [
+        ...history.documents.map((document) => ({
+          date: document.createdAt,
+          kind: 'document' as const,
+          id: document.id,
+          item: clinicalHistoryDocumentToExportItem(document),
+        })),
+        ...history.records.map((record) => ({
+          date: record.attendedAt,
+          kind: 'record' as const,
+          id: record.id,
+          item: recordToExportItem(record),
+        })),
+      ]
+        .sort(
+          (a, b) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime() ||
+            a.kind.localeCompare(b.kind) ||
+            a.id.localeCompare(b.id),
+        )
+        .map((entry) => entry.item);
+
+      if (items.length === 0) {
+        setExportError('Este paciente todavía no tiene entradas clínicas para exportar.');
+        return;
+      }
+
+      await exportPatientPdf({
+        patient: history.patient,
+        items,
+        subtitle: 'Historia clínica completa',
+        fileName: `clinicview_${history.patient.documentNumber}_historia_completa`,
+        generatedAt: history.generatedAt,
+      });
+    } catch {
+      setExportError(
+        'No se pudo obtener la historia clínica completa. No se generó ningún archivo.',
+      );
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   function toggleDocSelection(docId: string) {
@@ -335,7 +364,8 @@ export function PatientView({ id }: PatientViewProps) {
             <div>
               <span className={styles.demoLabel}>Fecha de nacimiento</span>
               <span className={styles.demoValue}>
-                {formatDateLong(patient.dateOfBirth)} ({computeAge(patient.dateOfBirth)} años)
+                {formatDateLong(patient.dateOfBirth)}
+                {patientAge === null ? '' : ` (${patientAge} años)`}
               </span>
             </div>
           </div>
@@ -740,15 +770,17 @@ export function PatientView({ id }: PatientViewProps) {
                 <Icon name="export" size={15} />
                 Exportar seleccionados ({selectedDocs.size})
               </button>
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                type="button"
-                onClick={exportFullHistory}
-                disabled={(overview.documents.length === 0 && overview.records.length === 0) || isExporting}
-              >
-                <Icon name="download" size={15} />
-                {isExporting ? 'Generando PDF…' : 'Exportar historia completa'}
-              </button>
+              {can(permissions, 'records.read') && can(permissions, 'documents.read') && (
+                <button
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  type="button"
+                  onClick={() => void exportFullHistory()}
+                  disabled={isExporting}
+                >
+                  <Icon name="download" size={15} />
+                  {isExporting ? 'Generando PDF…' : 'Exportar historia completa'}
+                </button>
+              )}
             </div>
           </div>
 

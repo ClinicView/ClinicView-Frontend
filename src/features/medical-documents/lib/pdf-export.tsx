@@ -7,7 +7,11 @@
  * ~400 KB en el bundle principal.
  */
 
-import type { Patient } from '@/features/patients';
+import type {
+  ClinicalHistoryExportDocument,
+  ClinicalHistoryExportRecord,
+  Patient,
+} from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
 import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
 import { parseClinicalSections } from './clinical-sections';
@@ -45,6 +49,19 @@ const RECORD_TYPE_LABEL: Record<string, string> = {
   OTHER: 'Otro',
 };
 
+const RECORD_PRIORITY_LABEL: Record<string, string> = {
+  URGENT: 'Urgente',
+  PRIORITY: 'Prioritaria',
+  NORMAL: 'Normal',
+  ELECTIVE: 'Electiva',
+};
+
+const SEX_LABEL: Record<string, string> = {
+  M: 'Masculino',
+  F: 'Femenino',
+  OTHER: 'Otro',
+};
+
 const PDF_COLORS = {
   ink: '#0B1026',
   primary: '#1E40AF',
@@ -57,6 +74,16 @@ function formatDate(iso: string): string {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: 'America/Lima',
+  });
+}
+
+function formatDateOnly(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
@@ -87,10 +114,79 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   };
 }
 
-export function recordToExportItem(record: ClinicalRecord): ExportItem {
-  const sections: ExportSection[] = [{ title: 'RESUMEN', content: record.summary }];
+export function clinicalHistoryDocumentToExportItem(
+  document: ClinicalHistoryExportDocument,
+): ExportItem {
+  const text = document.clinicalText ?? '';
+  const parsed = parseClinicalSections(text);
+  const sections: ExportSection[] = [
+    {
+      title: 'ARCHIVO',
+      content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+    },
+  ];
+
+  if (parsed.isStructured) {
+    if (parsed.preamble.trim()) {
+      sections.push({ title: 'TEXTO SIN CLASIFICAR', content: parsed.preamble.trim() });
+    }
+    for (const section of parsed.sections) {
+      sections.push({ title: section.title, content: section.content.trim() || '—' });
+    }
+  } else if (text.trim()) {
+    sections.push({ title: 'TEXTO DEL DOCUMENTO', content: text.trim() });
+  } else {
+    sections.push({
+      title: 'TEXTO DEL DOCUMENTO',
+      content:
+        document.status === 'VALIDATED'
+          ? 'El documento validado no contiene texto clínico disponible.'
+          : `Contenido clínico omitido: el documento no está validado (estado ${DOC_STATUS_LABEL[document.status] ?? document.status}).`,
+    });
+  }
+
+  if (document.rejectReason?.trim()) {
+    sections.push({ title: 'MOTIVO DE RECHAZO', content: document.rejectReason.trim() });
+  }
+
+  return {
+    title: document.originalName,
+    date: document.createdAt,
+    status: DOC_STATUS_LABEL[document.status] ?? document.status,
+    origin: 'Documento digitalizado',
+    sections,
+  };
+}
+
+export function recordToExportItem(
+  record: ClinicalRecord | ClinicalHistoryExportRecord,
+): ExportItem {
+  const sections: ExportSection[] = [];
+  if (record.doctorName?.trim()) {
+    sections.push({ title: 'PROFESIONAL', content: record.doctorName.trim() });
+  }
+  if (record.service?.trim()) {
+    sections.push({ title: 'SERVICIO', content: record.service.trim() });
+  }
+  sections.push({
+    title: 'PRIORIDAD',
+    content: RECORD_PRIORITY_LABEL[record.priority] ?? record.priority,
+  });
+  sections.push({ title: 'RESUMEN', content: record.summary });
+  if (record.preliminaryDiagnosis?.trim()) {
+    sections.push({
+      title: 'DIAGNÓSTICO PRELIMINAR',
+      content: record.preliminaryDiagnosis.trim(),
+    });
+  }
+  if (record.plan?.trim()) {
+    sections.push({ title: 'PLAN', content: record.plan.trim() });
+  }
   if (record.notes?.trim()) {
     sections.push({ title: 'NOTAS', content: record.notes.trim() });
+  }
+  if (record.voidReason?.trim()) {
+    sections.push({ title: 'MOTIVO DE ANULACIÓN', content: record.voidReason.trim() });
   }
   return {
     title: RECORD_TYPE_LABEL[record.recordType] ?? record.recordType,
@@ -102,12 +198,24 @@ export function recordToExportItem(record: ClinicalRecord): ExportItem {
 }
 
 export async function exportPatientPdf(options: {
-  patient: Patient;
+  patient: Pick<
+    Patient,
+    | 'documentType'
+    | 'documentNumber'
+    | 'firstName'
+    | 'lastName'
+    | 'dateOfBirth'
+    | 'sex'
+    | 'phone'
+    | 'email'
+    | 'address'
+  >;
   items: ExportItem[];
   subtitle: string;
   fileName: string;
+  generatedAt?: string;
 }): Promise<void> {
-  const { patient, items, subtitle, fileName } = options;
+  const { patient, items, subtitle, fileName, generatedAt } = options;
   const { pdf, Document, Image: PdfImage, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
   const brandLogoUrl = new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
@@ -141,6 +249,13 @@ export async function exportPatientPdf(options: {
     headerMeta: { fontSize: 8, color: PDF_COLORS.primary, marginTop: 2 },
     coverTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PDF_COLORS.ink, marginBottom: 4 },
     coverSubtitle: { fontSize: 10, color: PDF_COLORS.primary, marginBottom: 18 },
+    patientDetails: {
+      fontSize: 8.5,
+      lineHeight: 1.45,
+      color: PDF_COLORS.ink,
+      marginTop: -10,
+      marginBottom: 18,
+    },
     item: { marginBottom: 22 },
     itemHeader: {
       backgroundColor: PDF_COLORS.surface,
@@ -174,12 +289,13 @@ export async function exportPatientPdf(options: {
     footerText: { fontSize: 7.5, color: PDF_COLORS.primary },
   });
 
-  const exportedAt = new Date().toLocaleString('es-PE', {
+  const exportedAt = new Date(generatedAt ?? Date.now()).toLocaleString('es-PE', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Lima',
   });
 
   const doc = (
@@ -203,7 +319,14 @@ export async function exportPatientPdf(options: {
 
         <Text style={styles.coverTitle}>{subtitle}</Text>
         <Text style={styles.coverSubtitle}>
-          {items.length} {items.length === 1 ? 'documento' : 'documentos'} · ordenados cronológicamente
+          {items.length} {items.length === 1 ? 'entrada clínica' : 'entradas clínicas'} · orden cronológico
+        </Text>
+        <Text style={styles.patientDetails}>
+          Fecha de nacimiento: {formatDateOnly(patient.dateOfBirth)} · Sexo:{' '}
+          {SEX_LABEL[patient.sex] ?? patient.sex}
+          {'\n'}Contacto:{' '}
+          {[patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado'}
+          {'\n'}Dirección: {patient.address || 'No registrada'}
         </Text>
 
         {items.map((item, index) => (
