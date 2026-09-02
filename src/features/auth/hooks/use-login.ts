@@ -38,9 +38,9 @@ export function useLogin(): UseLoginResult {
       };
       setSession(session);
       router.replace('/dashboard');
-    } catch {
-      // Mensaje genérico — no revelar si la cuenta existe.
-      setError('Email o contraseña incorrectos. Verifica tus credenciales.');
+    } catch (caught) {
+      const isCredentialError = caught instanceof Error && caught.message === 'login_failed';
+      setError(isCredentialError ? 'login_failed' : 'network_error');
     } finally {
       setIsLoading(false);
     }
