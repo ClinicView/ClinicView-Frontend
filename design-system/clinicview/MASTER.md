@@ -11,6 +11,12 @@
 **Category:** Healthcare App
 **Design Dials:** Variance 7/10 (Balanced / Modern) | Motion 5/10 (Standard) | Density 7/10 (Standard)
 
+> **Implementation adaptation (2026-09-02):** the generated recommendation is a
+> starting point, not a literal prescription. ClinicView uses Swiss/editorial clarity
+> with soft depth instead of low-contrast neumorphism. Production colors are adjusted
+> to accessible navy/cyan/teal pairs in `src/app/globals.css`; motion remains subtle
+> and optional. `STYLEGUIDE.md` is the implementation companion for component rules.
+
 ---
 
 ## Global Rules

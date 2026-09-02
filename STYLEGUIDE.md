@@ -1,129 +1,151 @@
-# STYLEGUIDE — Plataforma Clínica Hospitalaria
+# ClinicView — guía de interfaz clínica
 
-Guía de estilos del rediseño `feature/ui-redesign`. Fuente de verdad visual: mockups
-de mayo 2026 (dashboard, corrección de historia clínica, login, perfil de paciente).
-Los tokens viven en `src/app/globals.css` — **usar siempre variables CSS, nunca
-valores hex sueltos en los módulos**.
+Esta guía describe la implementación visual de `feature/ui-redesign`. Los tokens de
+producción viven en `src/app/globals.css`; los módulos deben consumir esas variables
+en lugar de introducir nuevos colores o sombras sin una razón documentada.
 
-## 1. Paleta de colores
+## Dirección visual
 
-### Marca y primarios
+ClinicView combina una estructura editorial clara con profundidad suave: superficies
+blancas, navy clínico, acentos cyan/teal y jerarquía tipográfica marcada. El resultado
+debe sentirse preciso, sereno y contemporáneo, no decorativo.
+
+- Usar composiciones tipo bento para resumir información relacionada.
+- Reservar fondos oscuros para navegación, hero y bloques de alta jerarquía.
+- Usar animación solo para explicar una transición o dar feedback.
+- Evitar neumorfismo literal, neón, glassmorphism ornamental y movimiento continuo.
+- Mantener la lógica, los estados y los permisos visibles de cada flujo clínico.
+
+## Tipografía
+
+| Rol | Familia | Uso |
+|---|---|---|
+| Display y títulos | `Figtree` | H1, títulos de cards, valores destacados |
+| Lectura e interfaz | `Atkinson Hyperlegible` | cuerpo, labels, tablas, formularios |
+| Datos | cifras tabulares | métricas, fechas, identificadores |
+
+Los títulos usan entre 600 y 750 de peso, tracking ligeramente negativo y wrapping
+natural. El cuerpo parte de 16 px en pantallas pequeñas y una altura de línea mínima
+de 1.5.
+
+## Paleta y tokens
+
+### Marca
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--color-primary` | `#2563eb` | Botones primarios, links, acentos, íconos activos |
-| `--color-primary-dark` | `#1d4ed8` | Hover de botones primarios |
-| `--color-primary-hover` | `#1e40af` | Estados presionados |
-| `--color-primary-light` | `#eff6ff` | Fondos suaves de acento, hover de filas |
-| `--color-primary-border` | `#bfdbfe` | Bordes de elementos acentuados |
+| `--color-primary` | `#0e7490` | acción principal, foco y navegación activa |
+| `--color-primary-dark` | `#155e75` | texto/acento de mayor contraste |
+| `--color-primary-hover` | `#164e63` | estado hover/pressed |
+| `--color-primary-light` | `#ecfeff` | superficie cyan tenue |
+| `--color-accent` | `#047857` | acción clínica positiva |
+| `--color-teal` | `#0f766e` | acento secundario |
 
-### Sidebar (azul marino oscuro)
+### Navy clínico
 
-| Token | Valor | Uso |
+`--color-navy-950` a `--color-navy-700` forman la capa institucional. El sidebar usa
+`--sidebar-bg`, `--sidebar-bg-deep`, `--sidebar-item` y `--sidebar-border`; no deben
+duplicarse esos valores en módulos.
+
+### Estados
+
+| Estado | Token base | Significado |
 |---|---|---|
-| `--sidebar-bg` | `#0b1c3f` | Fondo del sidebar |
-| `--sidebar-bg-deep` | `#081430` | Degradado inferior / zonas profundas |
-| `--sidebar-item` | `#a9b8d8` | Texto/íconos de navegación en reposo |
-| `--sidebar-item-hover` | `#ffffff` | Texto/íconos en hover |
-| `--sidebar-item-active-bg` | `rgba(59, 130, 246, 0.22)` | Fondo del ítem activo |
-| `--sidebar-border` | `rgba(148, 163, 198, 0.16)` | Separadores internos |
+| Éxito | `--color-success` | validado, completado, activo |
+| Advertencia | `--color-warning` | pendiente de atención, en cola |
+| Error | `--color-danger` | fallo, rechazo, acción destructiva |
+| Información | `--color-info` | proceso o contexto informativo |
 
-### Semánticos (estados)
+El color nunca comunica un estado por sí solo: acompañarlo con texto, icono o ambos.
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-success` / `-light` / `-border` | `#059669` / `#d1fae5` / `#6ee7b7` | Validado, completado, activo |
-| `--color-warning` / `-light` / `-border` | `#d97706` / `#fef3c7` / `#fcd34d` | En proceso, en cola, sugerencia OCR |
-| `--color-danger` / `-light` / `-border` | `#dc2626` / `#fee2e2` / `#fecaca` | Errores OCR, rechazos, acciones destructivas |
-| `--color-info` / `-light` / `-border` | `#2563eb` / `#eff6ff` / `#bfdbfe` | Información, en corrección |
-| `--color-teal` / `-light` | `#0d9488` / `#ccfbf1` | Acento clínico secundario (OCR ok, éxitos suaves) |
+### Superficies y elevación
 
-Regla: el estado de un documento siempre usa el mismo color en toda la app —
-verde = validado, naranja/ámbar = en proceso o en cola, rojo = error/rechazado,
-azul = en corrección, gris = pendiente.
+- Página: `--bg-page`; cards: `--bg-surface`; fondos internos: `--surface-subtle`.
+- Bordes: `--border-clinical` o `--color-border`.
+- Sombras: `--shadow-xs` a `--shadow-xl`, según jerarquía.
+- Radios: 8 / 12 / 18 / 26 px mediante `--radius-sm` a `--radius-xl`.
 
-### Neutros (escala slate)
+## Espaciado y layout
 
-`--gray-50 … --gray-900` (de `#f8fafc` a `#0f172a`). Fondo de página
-`--bg-page: #f4f7fb`, superficies `--bg-surface: #ffffff`, borde estándar
-`--border-clinical: #e2e8f0`.
+- Ritmo base de 4/8 px mediante `--space-xs` a `--space-3xl`.
+- Contenido principal: `--content-max-width: 1560px`.
+- Sidebar: 276 px; colapsado: 86 px; header: `--header-height: 72px`.
+- Breakpoints de referencia: 420, 560, 760/820, 1024/1120 y 1440 px.
+- En móvil, priorizar la acción y el estado actual; las tablas pueden convertirse en
+  cards, pero deben conservar todas las etiquetas y valores relevantes.
 
-## 2. Tipografía
+## Componentes
 
-- **Familia**: `Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`
-  (Inter vía `next/font` con fallback de sistema; sans-serif limpia como los mockups).
-- **Escala**:
+### Botones y enlaces de acción
 
-| Rol | Tamaño / peso | Ejemplo |
-|---|---|---|
-| Display (saludo dashboard, hero) | `1.75rem / 800` | "¡Buenos días, Administrador!" |
-| Título de vista (h1) | `1.5rem / 700` | "Corrección de historia clínica" |
-| Título de sección/card (h2) | `1.0625rem / 700` | "Flujo operativo" |
-| Métrica grande | `1.875rem / 800` | "128" |
-| Cuerpo | `0.9375rem / 400` | Texto general |
-| Secundario / meta | `0.8125rem / 500`, `--gray-500` | Fechas, hints |
-| Overline / etiqueta de sección clínica | `0.75rem / 700`, mayúsculas, `letter-spacing: 0.04em` | "DATOS DE IDENTIFICACIÓN" |
+- Altura táctil recomendada: 44 px como mínimo.
+- Un solo CTA primario por región; las acciones secundarias se subordinan.
+- Estados hover, active, focus y disabled deben ser distinguibles.
+- No desplazar el layout con el hover; animar color, sombra, opacity o transform del
+  propio elemento con `--transition-fast` / `--transition-base`.
 
-## 3. Espaciado y grid
+### Inputs y búsqueda
 
-- Unidad base **4px**; escala usual: 4 / 8 / 12 / 16 / 20 / 24 / 32.
-- Contenido principal: `max-width: 1440px`, padding lateral `2rem`.
-- Sidebar fijo `264px` (colapsado `76px`), topbar `64px`.
-- Grids de cards: `repeat(auto-fit, minmax(240px, 1fr))` con `gap: 1rem`.
-- Vista de corrección: split `1fr 1fr` (50/50) con `gap: 1.25rem`; en < 1100px apila.
-- Cards: padding `1.25rem`, `--radius-lg` (14px), `--shadow-sm`; hover eleva a `--shadow-md`.
+- Label visible asociado al control; placeholder solo como ejemplo.
+- Altura mínima de 44 px y texto de 16 px en móvil.
+- Focus mediante el ring global; los errores se conectan con `aria-describedby`.
+- Mantener autocomplete, pegado y gestores de contraseña en autenticación.
 
-## 4. Componentes base
+### Cards, bento y métricas
 
-### Botones
-- **Primario**: fondo `--color-primary`, texto blanco, radio `--radius-md`,
-  padding `0.625rem 1.25rem`, peso 600. Hover: `--color-primary-dark`.
-- **Secundario**: fondo blanco, borde `--border-clinical`, texto `--gray-700`.
-- **Peligro**: variante sutil (texto/borde rojo, fondo blanco) salvo confirmaciones.
-- **Éxito**: fondo `--color-success` para "Validar versión final".
-- Siempre con ícono a la izquierda cuando exista uno pertinente (18px).
+- Una card agrupa una sola idea o tarea.
+- Reservar espacio para contenido asíncrono con skeletons, evitando saltos de layout.
+- Las cifras usan `font-variant-numeric: tabular-nums`.
+- Una card clicable debe ser operable con teclado y mostrar affordance clara.
 
-### Cards de métrica (dashboard/perfil)
-Ícono en contenedor 44×44 con fondo `-light` del color semántico + valor grande +
-etiqueta + delta ("↑ 12% vs. ayer") en el color semántico.
+### Tablas y listas clínicas
 
-### Badges de estado
-Pastilla `--radius-xl`, fondo `-light`, texto del color pleno, peso 600,
-`0.75rem`. Ej.: `Validado` verde, `En cola` ámbar, `Error` rojo, `En corrección` azul.
+- En desktop, encabezados explícitos y áreas de interacción completas.
+- En móvil, cada registro se presenta como card etiquetada, sin scroll horizontal.
+- Una fila navegable acepta Enter y conserva una ruta/enlace accesible.
+- Estados vacíos explican el siguiente paso; errores ofrecen una vía de recuperación.
 
-### Inputs
-Altura 42px, borde `--border-clinical`, radio `--radius-md`, fondo blanco;
-focus: borde `--color-primary` + ring `0 0 0 3px rgba(37,99,235,.15)`.
-Con ícono izquierdo opcional (búsqueda, correo, candado).
+### Badges
 
-### Stepper (flujo operativo / estado del documento)
-Círculos 40px conectados por línea punteada. Estados: completado (verde, check),
-activo (azul pleno, número), pendiente (gris claro, número). Etiqueta debajo
-en `0.8125rem/600` + descripción `0.75rem` gris.
+Pastilla compacta, texto explícito y color semántico. Evitar abreviaturas ambiguas y
+no truncar el estado esencial.
 
-### Sugerencia OCR
-Resaltado `background: --color-warning-light`, borde inferior punteado ámbar,
-más badge adjunto "Sugerencia OCR ✕" (pastilla ámbar descartable).
+## Movimiento y rendimiento
 
-### Métricas OCR (CER/WER)
-Panel colapsable en la vista de corrección:
-`CER: 5.2% | WER: 8.1% | Acc: 94.8%` + badge de confianza HIGH/MEDIUM/LOW
-(verde/ámbar/rojo). Si `metrics.estimated === true`, mostrar sufijo "(estimado)".
+- Duraciones compartidas de 150–240 ms; máximo uno o dos efectos relevantes por vista.
+- Animar `transform` y `opacity`, no propiedades que produzcan reflow.
+- Respetar `prefers-reduced-motion`; el contenido debe ser legible sin animación.
+- Imágenes con dimensiones/aspect-ratio reservados y `next/image` cuando corresponda.
+- No incorporar librerías visuales completas para un patrón que CSS Modules resuelve.
 
-## 5. Secciones de la historia clínica
+## Accesibilidad obligatoria
 
-Orden y nombres canónicos (único formato soportado por ahora — HC del médico):
+- Contraste WCAG AA: 4.5:1 para texto normal y 3:1 para UI no textual.
+- Foco visible; orden de tabulación coherente; enlace para saltar al contenido.
+- Iconos decorativos con `aria-hidden`; controles icon-only con nombre accesible.
+- Targets de 44 × 44 px en las acciones táctiles principales.
+- La experiencia debe soportar teclado, zoom de texto y 375 px sin overflow.
+- Drawers/modales cierran con Escape y no dejan el foco oculto tras overlays.
 
-1. `DATOS DE IDENTIFICACIÓN` — grid de campos
-2. `ANTECEDENTES` — lista por tipo (familiares, patológicos, quirúrgicos, gineco-obstétricos, alergias)
-3. `ANAMNESIS / ENFERMEDAD ACTUAL` — campos estructurados (tiempo, inicio y curso, síntomas, relato)
+## Flujo documental
+
+Los estados y contratos son funcionales, no solo visuales:
+`PENDING → PROCESSING → PROCESSED → VALIDATED/REJECTED`, además de `FAILED`.
+La corrección OCR debe conservar el parser y el texto plano canónico. Secciones:
+
+1. `DATOS DE IDENTIFICACIÓN`
+2. `ANTECEDENTES`
+3. `ANAMNESIS / ENFERMEDAD ACTUAL`
 4. `FUNCIONES BIOLÓGICAS`
 5. `EXAMEN FÍSICO`
 6. `OBSERVACIONES`
 
-## 6. Accesibilidad
+## Referencias de patrones
 
-- Contraste AA mínimo; el texto del sidebar sobre navy usa `#a9b8d8`+.
-- `:focus-visible` con outline `--color-primary`.
-- Estados no dependen solo de color: badge siempre lleva texto.
-- Targets táctiles ≥ 40px en controles principales.
+- UI/UX Pro Max guía accesibilidad, jerarquía y elección del sistema.
+- Magic UI inspira el dot pattern, bento grid y entradas suaves.
+- KokonutUI inspira navegación pill, búsqueda y presentación del uploader.
+- UI Layouts se usa solo como referencia secundaria de composición.
+
+Los patrones se implementan de forma nativa con React y CSS Modules; no se copian
+dependencias ni demos que puedan alterar los contratos clínicos.
