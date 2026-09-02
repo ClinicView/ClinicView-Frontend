@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { NotificationsBell } from '@/features/notifications';
-import { Icon, type IconName } from '@/shared/ui';
+import { BrandLogo, Icon, type IconName } from '@/shared/ui';
 import { can, canAny } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
 import { useSession } from '@/shared/session/use-session';
@@ -58,6 +58,17 @@ export function PageShell({ children }: PageShellProps) {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const desktopViewport = window.matchMedia('(min-width: 861px)');
+
+    function closeMobileMenu(event: MediaQueryListEvent) {
+      if (event.matches) setIsMobileOpen(false);
+    }
+
+    desktopViewport.addEventListener('change', closeMobileMenu);
+    return () => desktopViewport.removeEventListener('change', closeMobileMenu);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -179,13 +190,11 @@ export function PageShell({ children }: PageShellProps) {
       <aside className={styles.sidebar} aria-label="Navegación principal">
         <div className={styles.brandBlock}>
           <Link href="/dashboard" className={styles.brand} aria-label="ClinicView, ir al dashboard">
-            <span className={styles.brandMark} aria-hidden="true">
-              <span className={styles.brandCross} />
-            </span>
-            <span className={styles.brandCopy}>
-              <span className={styles.brandName}>ClinicView</span>
-              <span className={styles.brandDescriptor}>Registro clínico</span>
-            </span>
+            {isCollapsed && !isMobileOpen ? (
+              <BrandLogo variant="mark" size="navigation" decorative />
+            ) : (
+              <BrandLogo variant="lockup" tone="inverse" size="navigation" decorative />
+            )}
           </Link>
 
           <button
@@ -253,6 +262,10 @@ export function PageShell({ children }: PageShellProps) {
           >
             <Icon name="menu" size={20} />
           </button>
+
+          <Link href="/dashboard" className={styles.mobileBrand} aria-label="ClinicView, ir al dashboard">
+            <BrandLogo variant="mark" size="compact" decorative />
+          </Link>
 
           <div className={styles.routeContext}>
             <span className={styles.routeEyebrow}>Workspace</span>

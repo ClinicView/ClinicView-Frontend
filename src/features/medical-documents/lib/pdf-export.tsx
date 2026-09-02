@@ -9,6 +9,7 @@
 
 import type { Patient } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
+import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
 import { parseClinicalSections } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
 
@@ -43,6 +44,13 @@ const RECORD_TYPE_LABEL: Record<string, string> = {
   PROCEDURE: 'Procedimiento',
   OTHER: 'Otro',
 };
+
+const PDF_COLORS = {
+  ink: '#0B1026',
+  primary: '#1E40AF',
+  accent: '#00C7FF',
+  surface: '#E6F2FF',
+} as const;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-PE', {
@@ -100,7 +108,8 @@ export async function exportPatientPdf(options: {
   fileName: string;
 }): Promise<void> {
   const { patient, items, subtitle, fileName } = options;
-  const { pdf, Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+  const { pdf, Document, Image: PdfImage, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+  const brandLogoUrl = new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
   const styles = StyleSheet.create({
     page: {
@@ -109,7 +118,7 @@ export async function exportPatientPdf(options: {
       paddingHorizontal: 48,
       fontSize: 10,
       fontFamily: 'Helvetica',
-      color: '#1e293b',
+      color: PDF_COLORS.ink,
     },
     header: {
       position: 'absolute',
@@ -120,48 +129,37 @@ export async function exportPatientPdf(options: {
       justifyContent: 'space-between',
       alignItems: 'center',
       borderBottomWidth: 2,
-      borderBottomColor: '#2563eb',
+      borderBottomColor: PDF_COLORS.accent,
       paddingBottom: 10,
     },
-    brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    brandMark: {
-      width: 26,
-      height: 26,
-      backgroundColor: '#2563eb',
-      borderRadius: 6,
-      color: '#ffffff',
-      fontSize: 11,
-      fontFamily: 'Helvetica-Bold',
-      textAlign: 'center',
-      paddingTop: 7,
-      marginRight: 8,
+    brandLogo: {
+      width: 132,
+      height: 33,
     },
-    brandName: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#0f172a' },
-    brandSub: { fontSize: 7, color: '#0d9488', letterSpacing: 2 },
     headerRight: { alignItems: 'flex-end' },
     headerPatient: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
-    headerMeta: { fontSize: 8, color: '#64748b', marginTop: 2 },
-    coverTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#0f172a', marginBottom: 4 },
-    coverSubtitle: { fontSize: 10, color: '#475569', marginBottom: 18 },
+    headerMeta: { fontSize: 8, color: PDF_COLORS.primary, marginTop: 2 },
+    coverTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PDF_COLORS.ink, marginBottom: 4 },
+    coverSubtitle: { fontSize: 10, color: PDF_COLORS.primary, marginBottom: 18 },
     item: { marginBottom: 22 },
     itemHeader: {
-      backgroundColor: '#eff6ff',
+      backgroundColor: PDF_COLORS.surface,
       borderLeftWidth: 3,
-      borderLeftColor: '#2563eb',
+      borderLeftColor: PDF_COLORS.primary,
       padding: 8,
       marginBottom: 10,
     },
-    itemTitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#0f172a' },
-    itemMeta: { fontSize: 8.5, color: '#475569', marginTop: 3 },
+    itemTitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: PDF_COLORS.ink },
+    itemMeta: { fontSize: 8.5, color: PDF_COLORS.primary, marginTop: 3 },
     sectionTitle: {
       fontSize: 9,
       fontFamily: 'Helvetica-Bold',
-      color: '#1d4ed8',
+      color: PDF_COLORS.primary,
       letterSpacing: 0.8,
       marginTop: 10,
       marginBottom: 4,
     },
-    sectionContent: { fontSize: 9.5, lineHeight: 1.55, color: '#334155' },
+    sectionContent: { fontSize: 9.5, lineHeight: 1.55, color: PDF_COLORS.ink },
     footer: {
       position: 'absolute',
       bottom: 28,
@@ -170,10 +168,10 @@ export async function exportPatientPdf(options: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       borderTopWidth: 1,
-      borderTopColor: '#e2e8f0',
+      borderTopColor: PDF_COLORS.accent,
       paddingTop: 8,
     },
-    footerText: { fontSize: 7.5, color: '#94a3b8' },
+    footerText: { fontSize: 7.5, color: PDF_COLORS.primary },
   });
 
   const exportedAt = new Date().toLocaleString('es-PE', {
@@ -188,16 +186,11 @@ export async function exportPatientPdf(options: {
     <Document
       title={`${subtitle} — ${patient.lastName}, ${patient.firstName}`}
       author="ClinicView"
+      language="es-PE"
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.header} fixed>
-          <View style={styles.brandRow}>
-            <Text style={styles.brandMark}>PC</Text>
-            <View>
-              <Text style={styles.brandName}>ClinicView</Text>
-              <Text style={styles.brandSub}>PLATAFORMA CLINICA HOSPITALARIA</Text>
-            </View>
-          </View>
+          <PdfImage src={brandLogoUrl} style={styles.brandLogo} />
           <View style={styles.headerRight}>
             <Text style={styles.headerPatient}>
               {patient.lastName}, {patient.firstName}

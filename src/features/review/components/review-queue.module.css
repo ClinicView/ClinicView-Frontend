@@ -14,12 +14,12 @@
   align-items: center;
   gap: clamp(1.5rem, 4vw, 3.5rem);
   overflow: hidden;
-  border: 1px solid rgba(103, 232, 249, 0.14);
+  border: 1px solid rgba(0, 199, 255, 0.17);
   border-radius: 28px;
   background:
-    linear-gradient(118deg, rgba(4, 120, 87, 0.13), transparent 45%),
+    linear-gradient(118deg, rgba(30, 64, 175, 0.2), transparent 45%),
     linear-gradient(145deg, var(--color-navy-950) 0%, var(--color-navy-900) 54%, var(--color-navy-800) 100%);
-  box-shadow: 0 24px 58px rgba(6, 19, 31, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 58px rgba(11, 16, 38, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   padding: clamp(1.75rem, 4vw, 3rem);
   color: var(--color-on-primary);
   animation: queueReveal 480ms var(--ease-out) both;
@@ -28,7 +28,7 @@
 .heroPattern {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(165, 243, 252, 0.14) 0.8px, transparent 0.8px);
+  background-image: radial-gradient(rgba(0, 199, 255, 0.15) 0.8px, transparent 0.8px);
   background-size: 19px 19px;
   mask-image: linear-gradient(105deg, #000, transparent 68%);
   pointer-events: none;
@@ -41,7 +41,7 @@
   width: 31rem;
   height: 31rem;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(34, 211, 238, 0.19), rgba(16, 185, 129, 0.07) 42%, transparent 70%);
+  background: radial-gradient(circle, rgba(0, 199, 255, 0.2), rgba(30, 64, 175, 0.11) 42%, transparent 70%);
   pointer-events: none;
 }
 
@@ -60,9 +60,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  border: 1px solid rgba(103, 232, 249, 0.18);
+  border: 1px solid rgba(0, 199, 255, 0.2);
   border-radius: 999px;
-  background: rgba(34, 211, 238, 0.08);
+  background: rgba(0, 199, 255, 0.09);
   padding: 0.42rem 0.72rem;
   color: var(--color-primary-border);
   font-size: 0.69rem;
@@ -85,7 +85,7 @@
 .subtitle {
   max-width: 640px;
   margin-top: 0.95rem;
-  color: #bad0d8;
+  color: #c8d8f0;
   font-size: clamp(0.93rem, 1.5vw, 1rem);
   line-height: 1.65;
 }
@@ -302,7 +302,7 @@
 
 .empty {
   background:
-    radial-gradient(circle at 50% 40%, rgba(34, 211, 238, 0.08), transparent 15rem),
+    radial-gradient(circle at 50% 40%, rgba(0, 199, 255, 0.08), transparent 15rem),
     var(--bg-surface);
 }
 
@@ -527,7 +527,7 @@
   border: 1px solid var(--color-primary);
   border-radius: 12px;
   background: var(--color-primary);
-  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.14);
+  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.14);
   padding: 0.58rem 0.82rem;
   color: var(--color-on-primary);
   font-size: 0.72rem;
@@ -634,7 +634,7 @@
   .actionBtn:hover {
     border-color: var(--color-primary-dark);
     background: var(--color-primary-dark);
-    box-shadow: 0 11px 24px rgba(14, 116, 144, 0.2);
+    box-shadow: 0 11px 24px rgba(30, 64, 175, 0.2);
     color: var(--color-on-primary);
     text-decoration: none;
     transform: translateY(-1px);

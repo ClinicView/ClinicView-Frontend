@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { FormEvent, useState } from 'react';
-import { Icon } from '@/shared/ui';
+import { BrandLogo, Icon } from '@/shared/ui';
 import { useLogin } from '../hooks/use-login';
 import styles from './login-form.module.css';
 
@@ -25,21 +25,18 @@ export function LoginForm() {
           src="/images/clinic-login-hero.png"
           alt=""
           fill
-          priority
+          preload
           sizes="(max-width: 767px) 100vw, 56vw"
           className={styles.heroImage}
         />
 
         <div className={styles.brandContent}>
-          <div className={styles.brandHeader}>
-            <span className={styles.logoMark} aria-hidden="true">
-              CV
-            </span>
-            <span className={styles.logoText}>
-              <span className={styles.logoName}>ClinicView</span>
-              <span className={styles.logoSub}>PLATAFORMA CLÍNICA</span>
-            </span>
-          </div>
+          <BrandLogo
+            variant="lockup"
+            tone="inverse"
+            size="hero"
+            className={styles.brandHeader}
+          />
 
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>
@@ -71,17 +68,12 @@ export function LoginForm() {
 
       <section className={styles.formPanel} aria-labelledby="login-title">
         <div className={styles.formCard}>
-          <div className={styles.formBrand}>
-            <span className={styles.logoMark} aria-hidden="true">
-              CV
-            </span>
-            <span className={styles.logoText}>
-              <span className={`${styles.logoName} ${styles.logoNameDark}`}>
-                ClinicView
-              </span>
-              <span className={styles.logoSub}>PLATAFORMA CLÍNICA</span>
-            </span>
-          </div>
+          <BrandLogo
+            variant="horizontal"
+            size="hero"
+            className={styles.formBrand}
+            decorative
+          />
 
           <div className={styles.formHeader}>
             <span className={styles.formKicker}>Acceso institucional</span>

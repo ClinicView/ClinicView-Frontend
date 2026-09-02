@@ -18,7 +18,7 @@
   justify-content: center;
   background: var(--color-teal-light);
   border: 1px solid var(--color-teal-border);
-  color: #075466;
+  color: var(--color-primary-dark);
   font-size: 0.875rem;
   font-weight: 800;
   margin-bottom: 0.5rem;

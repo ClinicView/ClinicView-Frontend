@@ -71,51 +71,8 @@
   animation: contentReveal 280ms ease-out both;
 }
 
-.brandHeader,
-.formBrand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.logoMark {
-  width: 46px;
-  height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 28px rgba(2, 8, 23, 0.2);
-  color: #ffffff;
-  font-size: 1.0625rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  backdrop-filter: blur(12px);
-}
-
-.logoText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.18;
-}
-
-.logoName {
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 750;
-  letter-spacing: -0.015em;
-}
-
-.logoSub {
-  margin-top: 0.18rem;
-  color: var(--color-teal-border);
-  font-size: 0.625rem;
-  font-weight: 800;
-  letter-spacing: 0.24em;
+.brandHeader {
+  width: fit-content;
 }
 
 .heroCopy {
@@ -238,26 +195,8 @@
 }
 
 .formBrand {
+  width: fit-content;
   margin-bottom: clamp(2rem, 6vh, 3.75rem);
-}
-
-.formBrand .logoMark {
-  border-color: transparent;
-  background: linear-gradient(
-    140deg,
-    var(--color-primary) 0%,
-    var(--color-navy-900, var(--sidebar-bg)) 100%
-  );
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 24%, transparent);
-  backdrop-filter: none;
-}
-
-.logoNameDark {
-  color: var(--color-navy-950, var(--gray-900));
-}
-
-.formBrand .logoSub {
-  color: var(--gray-600);
 }
 
 .formHeader {
@@ -645,21 +584,6 @@
     padding: 1.25rem 1.25rem 2.5rem;
   }
 
-  .logoMark {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    font-size: 0.9375rem;
-  }
-
-  .logoName {
-    font-size: 0.9375rem;
-  }
-
-  .logoSub {
-    font-size: 0.5625rem;
-  }
-
   .heroCopy {
     padding-top: 3.75rem;
   }
@@ -693,7 +617,7 @@
   }
 
   .formBrand {
-    display: none;
+    margin-bottom: 1.5rem;
   }
 
   .formHeader {

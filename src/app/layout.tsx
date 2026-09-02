@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Atkinson_Hyperlegible, Figtree } from 'next/font/google';
+import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -17,11 +18,24 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
+  applicationName: 'ClinicView',
   title: {
     default: 'ClinicView',
     template: '%s · ClinicView',
   },
-  description: 'Plataforma segura para digitalizar, revisar y gestionar historias clínicas.',
+  description: 'ClinicView: plataforma segura para digitalizar, revisar y gestionar historias clínicas.',
+  icons: {
+    icon: [{
+      url: CLINICVIEW_BRAND_ASSETS.mark.src,
+      type: 'image/png',
+      sizes: `${CLINICVIEW_BRAND_ASSETS.mark.width}x${CLINICVIEW_BRAND_ASSETS.mark.height}`,
+    }],
+    apple: [{
+      url: CLINICVIEW_BRAND_ASSETS.appleTouchIcon.src,
+      type: 'image/png',
+      sizes: `${CLINICVIEW_BRAND_ASSETS.appleTouchIcon.width}x${CLINICVIEW_BRAND_ASSETS.appleTouchIcon.height}`,
+    }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

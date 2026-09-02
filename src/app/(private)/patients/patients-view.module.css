@@ -54,8 +54,8 @@
   border: 1px solid var(--color-primary-border);
   border-radius: 21px;
   background:
-    radial-gradient(circle at 92% 20%, rgba(34, 211, 238, 0.15), transparent 14rem),
-    linear-gradient(135deg, #f2fcfd, #fff 68%);
+    radial-gradient(circle at 92% 20%, rgba(0, 199, 255, 0.15), transparent 14rem),
+    linear-gradient(135deg, var(--color-brand-ice), #fff 68%);
   box-shadow: var(--shadow-sm);
   padding: 1.15rem 1.3rem;
   animation: reveal 500ms 50ms var(--ease-out) both;
@@ -65,7 +65,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(14, 116, 144, 0.12) 0.75px, transparent 0.75px);
+  background-image: radial-gradient(rgba(30, 64, 175, 0.12) 0.75px, transparent 0.75px);
   background-size: 16px 16px;
   mask-image: linear-gradient(90deg, transparent 52%, #000);
   pointer-events: none;
@@ -83,7 +83,7 @@
   border: 1px solid var(--color-primary-border);
   border-radius: 15px;
   background: #fff;
-  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.08);
+  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.08);
   color: var(--color-primary-dark);
 }
 
@@ -183,9 +183,9 @@
   pointer-events: none;
 }
 
-.statCard_blue::after { background: radial-gradient(circle, #cffafe, transparent 70%); }
+.statCard_blue::after { background: radial-gradient(circle, var(--color-brand-ice), transparent 70%); }
 .statCard_green::after { background: radial-gradient(circle, #d1fae5, transparent 70%); }
-.statCard_teal::after { background: radial-gradient(circle, #ccfbf1, transparent 70%); }
+.statCard_teal::after { background: radial-gradient(circle, #dceaff, transparent 70%); }
 .statCard_amber::after { background: radial-gradient(circle, #fef3c7, transparent 70%); }
 
 .statCard:hover {

@@ -1,35 +1,44 @@
 :root {
   color-scheme: light;
 
-  /* Brand */
-  --color-primary: #0e7490;
-  --color-primary-dark: #155e75;
-  --color-primary-hover: #164e63;
-  --color-primary-light: #ecfeff;
-  --color-primary-border: #a5f3fc;
+  /* ClinicView brand */
+  --color-brand-navy: #0b1026;
+  --color-brand-blue: #1e40af;
+  --color-brand-cyan: #00c7ff;
+  --color-brand-cyan-strong: #007fa8;
+  --color-brand-ice: #e6f2ff;
+  --color-brand-cloud: #f4f7fb;
+  --color-brand-slate: #596983;
+
+  --color-primary: var(--color-brand-blue);
+  --color-primary-dark: #18358f;
+  --color-primary-hover: #142d7c;
+  --color-primary-light: var(--color-brand-ice);
+  --color-primary-border: #93b4f8;
   --color-on-primary: #ffffff;
-  --color-secondary: #0891b2;
-  --color-accent: #047857;
-  --color-on-accent: #ffffff;
+  --color-secondary: var(--color-brand-cyan);
+  --color-on-secondary: var(--color-brand-navy);
+  --color-accent: var(--color-brand-cyan);
+  --color-on-accent: var(--color-brand-navy);
 
   /* Deep clinical navy */
-  --color-navy-950: #06131f;
-  --color-navy-900: #0a1e2e;
-  --color-navy-800: #102d42;
-  --color-navy-700: #173f58;
+  --color-navy-950: var(--color-brand-navy);
+  --color-navy-900: #111a3c;
+  --color-navy-800: #172552;
+  --color-navy-700: #1c326a;
 
   /* Navigation */
-  --sidebar-bg: #081b2a;
-  --sidebar-bg-deep: #05121d;
-  --sidebar-item: #a9bfca;
+  --sidebar-bg: var(--color-brand-navy);
+  --sidebar-bg-deep: #070b1a;
+  --sidebar-item: #bdc9e2;
   --sidebar-item-hover: #ffffff;
-  --sidebar-item-active-bg: rgba(34, 211, 238, 0.12);
-  --sidebar-border: rgba(165, 243, 252, 0.12);
+  --sidebar-item-active-bg: rgba(0, 199, 255, 0.14);
+  --sidebar-border: rgba(0, 199, 255, 0.14);
 
-  /* Clinical accent */
-  --color-teal: #0f766e;
-  --color-teal-light: #ccfbf1;
-  --color-teal-border: #5eead4;
+  /* Legacy aliases kept for existing components */
+  --color-teal: var(--color-primary);
+  --color-teal-light: var(--color-brand-ice);
+  --color-teal-border: var(--color-brand-cyan);
 
   /* Semantic */
   --color-success: #047857;
@@ -42,43 +51,43 @@
   --color-danger-dark: #991b1b;
   --color-danger-light: #fef2f2;
   --color-danger-border: #fecaca;
-  --color-info: #0369a1;
-  --color-info-light: #f0f9ff;
-  --color-info-border: #bae6fd;
+  --color-info: var(--color-brand-blue);
+  --color-info-light: var(--color-brand-ice);
+  --color-info-border: #93b4f8;
 
   /* Neutral scale */
-  --gray-50: #f8fafb;
-  --gray-100: #f0f4f5;
-  --gray-200: #dfe7e9;
-  --gray-300: #c5d2d6;
-  --gray-400: #91a3aa;
-  --gray-500: #647780;
-  --gray-600: #4a5d66;
-  --gray-700: #344750;
-  --gray-800: #20343e;
-  --gray-900: #102630;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #596983;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: var(--color-brand-navy);
 
   /* Surfaces */
-  --bg-page: #f3f7f8;
+  --bg-page: var(--color-brand-cloud);
   --bg-surface: #ffffff;
   --color-surface: #ffffff;
-  --color-background: #f3f7f8;
-  --color-foreground: #102630;
-  --color-muted: #eaf1f3;
-  --color-muted-foreground: #526770;
-  --color-border: #d7e3e6;
-  --border-clinical: #dce6e8;
-  --surface-subtle: #f7fafb;
-  --surface-tint: #effafb;
+  --color-background: var(--color-brand-cloud);
+  --color-foreground: var(--color-brand-navy);
+  --color-muted: var(--color-brand-ice);
+  --color-muted-foreground: #52627c;
+  --color-border: #d6e2f0;
+  --border-clinical: #dbe4f0;
+  --surface-subtle: #f8faff;
+  --surface-tint: #eef6ff;
   --surface-raised: rgba(255, 255, 255, 0.88);
-  --color-focus-ring: rgba(8, 145, 178, 0.24);
+  --color-focus-ring: rgba(30, 64, 175, 0.24);
 
   /* Elevation */
-  --shadow-xs: 0 1px 2px rgba(6, 19, 31, 0.04);
-  --shadow-sm: 0 1px 3px rgba(6, 19, 31, 0.06), 0 8px 24px rgba(6, 19, 31, 0.035);
-  --shadow-md: 0 8px 24px rgba(6, 19, 31, 0.08), 0 2px 8px rgba(6, 19, 31, 0.05);
-  --shadow-lg: 0 20px 55px rgba(6, 19, 31, 0.13), 0 4px 14px rgba(6, 19, 31, 0.07);
-  --shadow-xl: 0 30px 80px rgba(6, 19, 31, 0.18);
+  --shadow-xs: 0 1px 2px rgba(11, 16, 38, 0.04);
+  --shadow-sm: 0 1px 3px rgba(11, 16, 38, 0.06), 0 8px 24px rgba(11, 16, 38, 0.035);
+  --shadow-md: 0 8px 24px rgba(11, 16, 38, 0.08), 0 2px 8px rgba(11, 16, 38, 0.05);
+  --shadow-lg: 0 20px 55px rgba(11, 16, 38, 0.13), 0 4px 14px rgba(11, 16, 38, 0.07);
+  --shadow-xl: 0 30px 80px rgba(11, 16, 38, 0.18);
 
   /* Shape and layout */
   --radius-sm: 8px;
@@ -112,7 +121,6 @@
 }
 
 html {
-  min-width: 320px;
   font-size: 16px;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
@@ -123,8 +131,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 8% -10%, rgba(34, 211, 238, 0.08), transparent 28rem),
-    radial-gradient(circle at 95% 0%, rgba(16, 185, 129, 0.06), transparent 24rem),
+    radial-gradient(circle at 8% -10%, rgba(0, 199, 255, 0.08), transparent 28rem),
+    radial-gradient(circle at 95% 0%, rgba(30, 64, 175, 0.06), transparent 24rem),
     var(--bg-page);
   color: var(--gray-800);
   font-family: var(--font-atkinson), Arial, sans-serif;

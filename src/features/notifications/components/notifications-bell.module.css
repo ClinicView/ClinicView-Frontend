@@ -80,7 +80,7 @@
   gap: 0.75rem;
   border-bottom: 1px solid var(--border-clinical);
   background:
-    radial-gradient(circle at 8% 10%, rgba(34, 211, 238, 0.13), transparent 8rem),
+    radial-gradient(circle at 8% 10%, rgba(0, 199, 255, 0.13), transparent 8rem),
     var(--surface-subtle);
   padding: 1rem 1.125rem;
 }
