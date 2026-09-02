@@ -1,103 +1,328 @@
+.pageHeader {
+  margin-bottom: 1.3rem;
+  animation: reveal 450ms var(--ease-out) both;
+}
+
+.pageEyebrow,
+.directoryEyebrow,
+.guideKicker {
+  color: var(--color-primary-dark);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.pageEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.pageEyebrow > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
+}
+
+.pageTitle {
+  margin-top: 0.6rem;
+  color: var(--gray-900);
+  font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.pageDescription {
+  margin-top: 0.6rem;
+  color: var(--gray-500);
+  font-size: 0.925rem;
+}
+
 .digitizationGuide {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: 1rem;
-  align-items: flex-start;
-  padding: 1.125rem;
-  margin-bottom: 1.25rem;
-  background: linear-gradient(135deg, var(--color-teal-light), #fff);
-  border: 1px solid var(--color-teal-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  border: 1px solid var(--color-primary-border);
+  border-radius: 21px;
+  background:
+    radial-gradient(circle at 92% 20%, rgba(34, 211, 238, 0.15), transparent 14rem),
+    linear-gradient(135deg, #f2fcfd, #fff 68%);
+  box-shadow: var(--shadow-sm);
+  padding: 1.15rem 1.3rem;
+  animation: reveal 500ms 50ms var(--ease-out) both;
+}
+
+.digitizationGuide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(14, 116, 144, 0.12) 0.75px, transparent 0.75px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(90deg, transparent 52%, #000);
+  pointer-events: none;
 }
 
 .guideIcon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-sm);
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #075466;
-  background: #fff;
-  border: 1px solid var(--color-teal-border);
   flex-shrink: 0;
+  border: 1px solid var(--color-primary-border);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(14, 116, 144, 0.08);
+  color: var(--color-primary-dark);
+}
+
+.guideContent {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
 }
 
 .guideTitle {
+  margin-top: 0.33rem;
   color: var(--gray-900);
+  font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
   font-size: 1rem;
-  font-weight: 750;
-  margin-bottom: 0.25rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
 }
 
 .guideText {
-  color: var(--gray-600);
-  font-size: 0.875rem;
-  line-height: 1.5;
   max-width: 760px;
+  margin-top: 0.3rem;
+  color: var(--gray-600);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
-/* ─── Mini-dashboard de pacientes ────────────────────────────── */
+.guideFlow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 0.35rem;
+}
+
+.guideFlow span {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-primary-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-primary);
+}
+
+.guideFlow span:last-child {
+  border-color: var(--color-success-border);
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.guideFlow i {
+  width: 22px;
+  height: 1px;
+  background: var(--gray-300);
+}
+
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0.9rem 0;
 }
 
 .statCard {
+  position: relative;
+  min-height: 116px;
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.7rem;
+  overflow: hidden;
   border: 1px solid var(--border-clinical);
-  border-radius: var(--radius-lg);
-  background: var(--bg-surface);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
   box-shadow: var(--shadow-xs);
-  padding: 1rem 1.125rem;
+  padding: 0.95rem;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+  animation: reveal 500ms var(--ease-out) both;
+}
+
+.statCard:nth-child(1) { animation-delay: 100ms; }
+.statCard:nth-child(2) { animation-delay: 140ms; }
+.statCard:nth-child(3) { animation-delay: 180ms; }
+.statCard:nth-child(4) { animation-delay: 220ms; }
+
+.statCard::after {
+  content: '';
+  position: absolute;
+  top: -34px;
+  right: -28px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.statCard_blue::after { background: radial-gradient(circle, #cffafe, transparent 70%); }
+.statCard_green::after { background: radial-gradient(circle, #d1fae5, transparent 70%); }
+.statCard_teal::after { background: radial-gradient(circle, #ccfbf1, transparent 70%); }
+.statCard_amber::after { background: radial-gradient(circle, #fef3c7, transparent 70%); }
+
+.statCard:hover {
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .statIcon {
-  width: 40px;
-  height: 40px;
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
 }
 
-.stat_blue  { background: var(--color-primary-light); color: var(--color-primary); }
+.stat_blue { background: var(--color-primary-light); color: var(--color-primary); }
 .stat_green { background: var(--color-success-light); color: var(--color-success); }
-.stat_teal  { background: var(--color-teal-light);    color: var(--color-teal); }
+.stat_teal { background: var(--color-teal-light); color: var(--color-teal); }
 .stat_amber { background: var(--color-warning-light); color: var(--color-warning); }
 
 .statBody {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.0625rem;
-  min-width: 0;
 }
 
 .statLabel {
   color: var(--gray-500);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .statValue {
+  margin-top: 0.1rem;
   color: var(--gray-900);
-  font-size: 1.5rem;
-  font-weight: 800;
-  line-height: 1.15;
+  font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
 }
 
 .statHint {
+  margin-top: 0.18rem;
   color: var(--gray-400);
-  font-size: 0.6875rem;
+  font-size: 0.63rem;
+  line-height: 1.3;
+}
+
+.directory {
+  border: 1px solid var(--border-clinical);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow-sm);
+  padding: 1.35rem;
+  animation: reveal 520ms 220ms var(--ease-out) both;
+}
+
+.directoryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.directoryTitle {
+  margin-top: 0.35rem;
+  color: var(--gray-900);
+  font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1120px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .digitizationGuide {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .guideFlow {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
+  .pageTitle {
+    font-size: 1.8rem;
+  }
+
   .digitizationGuide {
+    align-items: flex-start;
+    border-radius: 18px;
+    padding: 1rem;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  .statCard {
+    min-height: 142px;
     flex-direction: column;
+  }
+
+  .directory {
+    border-radius: 19px;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statCard {
+    min-height: 108px;
+    flex-direction: row;
   }
 }

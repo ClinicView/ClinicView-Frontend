@@ -18,7 +18,7 @@ interface StatCardProps {
 
 function StatCard({ icon, tone, label, value, hint }: StatCardProps) {
   return (
-    <article className={styles.statCard}>
+    <article className={`${styles.statCard} ${styles[`statCard_${tone}`]}`}>
       <span className={`${styles.statIcon} ${styles[`stat_${tone}`]}`} aria-hidden="true">
         <Icon name={icon} size={19} />
       </span>
@@ -44,7 +44,7 @@ function PatientsContent() {
         if (!cancelled) setStats(result);
       })
       .catch(() => {
-        // El mini-dashboard es informativo; la lista funciona sin él.
+        // El resumen es informativo; la lista sigue disponible sin él.
       });
     return () => {
       cancelled = true;
@@ -55,19 +55,39 @@ function PatientsContent() {
 
   return (
     <PageShell>
-      <section className={styles.digitizationGuide}>
+      <header className={styles.pageHeader}>
+        <span className={styles.pageEyebrow}>
+          <span aria-hidden="true" /> Directorio clínico
+        </span>
+        <h1 className={styles.pageTitle}>Pacientes</h1>
+        <p className={styles.pageDescription}>
+          Encuentra una ficha, revisa su historia o inicia una nueva digitalización.
+        </p>
+      </header>
+
+      <section className={styles.digitizationGuide} aria-labelledby="digitization-guide-title">
         <div className={styles.guideIcon} aria-hidden="true">
-          <Icon name="patient" size={24} />
+          <Icon name="scan" size={22} />
         </div>
-        <div>
-          <h1 className={styles.guideTitle}>Selecciona un paciente para digitalizar su historia clínica</h1>
+        <div className={styles.guideContent}>
+          <span className={styles.guideKicker}>Punto de partida</span>
+          <h2 id="digitization-guide-title" className={styles.guideTitle}>
+            Toda digitalización comienza en la ficha del paciente
+          </h2>
           <p className={styles.guideText}>
-            Para digitalizar una historia clínica, primero selecciona o registra al paciente. Luego podrás subir PDF o imágenes, procesarlas y corregir la transcripción.
+            Selecciona una persona registrada o crea una nueva ficha para cargar PDF e imágenes,
+            procesarlas y revisar la transcripción clínica.
           </p>
+        </div>
+        <div className={styles.guideFlow} aria-hidden="true">
+          <span><Icon name="patient" size={16} /></span>
+          <i />
+          <span><Icon name="upload" size={16} /></span>
+          <i />
+          <span><Icon name="check" size={16} /></span>
         </div>
       </section>
 
-      {/* Mini-dashboard de pacientes */}
       <section className={styles.statsGrid} aria-label="Indicadores de pacientes">
         <StatCard
           icon="users"
@@ -88,19 +108,26 @@ function PatientsContent() {
           tone="teal"
           label="Documentación reciente"
           value={stats?.withRecentDocs ?? null}
-          hint="Con documentos en los últimos 30 días"
+          hint="Últimos 30 días"
         />
         <StatCard
           icon="clock"
           tone="amber"
           label="Con pendientes"
           value={stats?.withPendingDocs ?? null}
-          hint="Documentos por procesar o validar"
+          hint="Por procesar o validar"
         />
       </section>
 
-      <h1 className="viewHeading">Pacientes</h1>
-      <PatientList permissions={user.permissions} initialSearch={initialSearch} />
+      <section className={styles.directory} aria-labelledby="patient-directory-title">
+        <div className={styles.directoryHeader}>
+          <div>
+            <span className={styles.directoryEyebrow}>Directorio</span>
+            <h2 id="patient-directory-title" className={styles.directoryTitle}>Fichas registradas</h2>
+          </div>
+        </div>
+        <PatientList permissions={user.permissions} initialSearch={initialSearch} />
+      </section>
     </PageShell>
   );
 }
