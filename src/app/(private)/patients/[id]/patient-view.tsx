@@ -227,12 +227,17 @@ export function PatientView({ id }: PatientViewProps) {
     }
   }
 
-  async function runExport(items: ExportItem[], subtitle: string, fileName: string) {
+  async function runExport(
+    items: ExportItem[],
+    subtitle: string,
+    fileName: string,
+    orderDescription?: string,
+  ) {
     if (!patient || items.length === 0) return;
     setIsExporting(true);
     setExportError(null);
     try {
-      await exportPatientPdf({ patient, items, subtitle, fileName });
+      await exportPatientPdf({ patient, items, subtitle, fileName, orderDescription });
     } catch {
       setExportError('No se pudo generar el PDF. Inténtalo nuevamente.');
     } finally {
@@ -244,7 +249,8 @@ export function PatientView({ id }: PatientViewProps) {
     void runExport(
       [documentToExportItem(doc)],
       'Documento clínico digitalizado',
-      `clinicview_${patient?.documentNumber}_${doc.id.slice(0, 8)}`,
+      `clinicview_${patient?.id.slice(0, 8)}_${doc.id.slice(0, 8)}`,
+      'fecha indicada corresponde a la carga',
     );
   }
 
@@ -256,7 +262,8 @@ export function PatientView({ id }: PatientViewProps) {
     void runExport(
       items,
       `Documentos seleccionados (${items.length})`,
-      `clinicview_${patient?.documentNumber}_seleccion`,
+      `clinicview_${patient?.id.slice(0, 8)}_seleccion`,
+      'orden por fecha de carga',
     );
   }
 
@@ -265,17 +272,29 @@ export function PatientView({ id }: PatientViewProps) {
 
     setIsExporting(true);
     setExportError(null);
+    let history: Awaited<ReturnType<typeof getClinicalHistoryExport>>;
     try {
-      const history = await getClinicalHistoryExport(id);
+      history = await getClinicalHistoryExport(id);
+    } catch {
+      setExportError(
+        'No se pudo obtener la historia clínica completa. No se generó ningún archivo.',
+      );
+      setIsExporting(false);
+      return;
+    }
+
+    try {
       const items = [
         ...history.documents.map((document) => ({
           date: document.createdAt,
+          createdAt: document.createdAt,
           kind: 'document' as const,
           id: document.id,
           item: clinicalHistoryDocumentToExportItem(document),
         })),
         ...history.records.map((record) => ({
           date: record.attendedAt,
+          createdAt: record.createdAt,
           kind: 'record' as const,
           id: record.id,
           item: recordToExportItem(record),
@@ -284,6 +303,7 @@ export function PatientView({ id }: PatientViewProps) {
         .sort(
           (a, b) =>
             new Date(a.date).getTime() - new Date(b.date).getTime() ||
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
             a.kind.localeCompare(b.kind) ||
             a.id.localeCompare(b.id),
         )
@@ -298,13 +318,12 @@ export function PatientView({ id }: PatientViewProps) {
         patient: history.patient,
         items,
         subtitle: 'Historia clínica completa',
-        fileName: `clinicview_${history.patient.documentNumber}_historia_completa`,
+        fileName: `clinicview_${history.patient.id.slice(0, 8)}_historia_completa`,
         generatedAt: history.generatedAt,
+        orderDescription: 'orden por fecha de atención o de carga, según el tipo de entrada',
       });
     } catch {
-      setExportError(
-        'No se pudo obtener la historia clínica completa. No se generó ningún archivo.',
-      );
+      setExportError('La historia se obtuvo, pero no se pudo generar el PDF. Inténtalo nuevamente.');
     } finally {
       setIsExporting(false);
     }

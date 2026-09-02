@@ -71,7 +71,9 @@ export interface ClinicalHistoryExportRecord {
   parentRecordId: string | null;
   voidReason: string | null;
   createdAt: string;
+  createdBy: string | null;
   updatedAt: string;
+  updatedBy: string | null;
 }
 
 export interface ClinicalHistoryExportDocument {
@@ -86,7 +88,12 @@ export interface ClinicalHistoryExportDocument {
   createdAt: string;
   processedAt: string | null;
   correctedAt: string | null;
+  correctedById: string | null;
   reviewedAt: string | null;
+  reviewedBy: string | null;
+  validationAttestedAt: string | null;
+  createdBy: string | null;
+  updatedBy: string | null;
 }
 
 export interface ClinicalHistoryExport {

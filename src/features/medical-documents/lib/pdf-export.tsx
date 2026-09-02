@@ -25,6 +25,7 @@ export interface ExportSection {
 export interface ExportItem {
   title: string;
   date: string;
+  dateLabel: string;
   status: string;
   origin: string;
   sections: ExportSection[];
@@ -78,6 +79,20 @@ function formatDate(iso: string): string {
   });
 }
 
+function formatDateTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString('es-PE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Lima',
+  });
+}
+
 function formatDateOnly(iso: string): string {
   return new Date(iso).toLocaleDateString('es-PE', {
     day: '2-digit',
@@ -88,10 +103,19 @@ function formatDateOnly(iso: string): string {
 }
 
 export function documentToExportItem(document: MedicalDocument): ExportItem {
-  const text = document.correctedText ?? document.ocrText ?? '';
+  const correctedText = document.correctedText?.trim();
+  const text =
+    document.status === 'VALIDATED'
+      ? (correctedText || document.ocrText?.trim() || '')
+      : '';
   const parsed = parseClinicalSections(text);
 
-  const sections: ExportSection[] = [];
+  const sections: ExportSection[] = [
+    {
+      title: 'ARCHIVO',
+      content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+    },
+  ];
   if (parsed.isStructured) {
     if (parsed.preamble.trim()) {
       sections.push({ title: 'TEXTO SIN CLASIFICAR', content: parsed.preamble.trim() });
@@ -102,12 +126,36 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   } else if (text.trim()) {
     sections.push({ title: 'TEXTO DEL DOCUMENTO', content: text.trim() });
   } else {
-    sections.push({ title: 'TEXTO DEL DOCUMENTO', content: 'Sin texto disponible (documento no procesado).' });
+    sections.push({
+      title: 'TEXTO DEL DOCUMENTO',
+      content:
+        document.status === 'VALIDATED'
+          ? 'El documento validado no contiene texto clínico disponible.'
+          : `Contenido clínico omitido: el documento no está validado (estado ${DOC_STATUS_LABEL[document.status] ?? document.status}).`,
+    });
+  }
+
+  if (document.rejectReason?.trim()) {
+    sections.push({ title: 'MOTIVO DE RECHAZO', content: document.rejectReason.trim() });
+  }
+
+  const trace = [
+    `Subido: ${formatDateTime(document.createdAt) ?? 'No registrado'}`,
+    document.processedAt ? `Procesado: ${formatDateTime(document.processedAt)}` : null,
+    document.correctedAt ? `Corregido: ${formatDateTime(document.correctedAt)}` : null,
+    document.reviewedAt ? `Revisado: ${formatDateTime(document.reviewedAt)}` : null,
+    document.createdBy ? `Creador (ID): ${document.createdBy}` : null,
+    document.correctedById ? `Corrector (ID): ${document.correctedById}` : null,
+    document.reviewedBy ? `Revisor (ID): ${document.reviewedBy}` : null,
+  ].filter((line): line is string => Boolean(line));
+  if (trace.length > 0) {
+    sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
   }
 
   return {
     title: document.originalName,
     date: document.createdAt,
+    dateLabel: 'Fecha de carga',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
@@ -149,9 +197,26 @@ export function clinicalHistoryDocumentToExportItem(
     sections.push({ title: 'MOTIVO DE RECHAZO', content: document.rejectReason.trim() });
   }
 
+  const trace = [
+    `Fuente del texto: ${document.textSource === 'CORRECTED' ? 'Corrección profesional' : document.textSource === 'OCR' ? 'OCR validado' : 'Sin texto exportable'}`,
+    `Subido: ${formatDateTime(document.createdAt) ?? 'No registrado'}`,
+    document.processedAt ? `Procesado: ${formatDateTime(document.processedAt)}` : null,
+    document.correctedAt ? `Corregido: ${formatDateTime(document.correctedAt)}` : null,
+    document.reviewedAt ? `Revisado: ${formatDateTime(document.reviewedAt)}` : null,
+    document.validationAttestedAt
+      ? `Atestación registrada: ${formatDateTime(document.validationAttestedAt)}`
+      : null,
+    document.createdBy ? `Creador (ID): ${document.createdBy}` : null,
+    document.correctedById ? `Corrector (ID): ${document.correctedById}` : null,
+    document.reviewedBy ? `Revisor (ID): ${document.reviewedBy}` : null,
+    document.updatedBy ? `Última actualización (ID): ${document.updatedBy}` : null,
+  ].filter((line): line is string => Boolean(line));
+  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
+
   return {
     title: document.originalName,
     date: document.createdAt,
+    dateLabel: 'Fecha de carga',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
@@ -188,9 +253,22 @@ export function recordToExportItem(
   if (record.voidReason?.trim()) {
     sections.push({ title: 'MOTIVO DE ANULACIÓN', content: record.voidReason.trim() });
   }
+  const trace = [
+    record.parentRecordId
+      ? `Corrige al registro: ${record.parentRecordId}`
+      : 'Registro raíz de la cadena clínica',
+    record.createdBy ? `Creador (ID): ${record.createdBy}` : null,
+    'updatedBy' in record && record.updatedBy
+      ? `Última actualización (ID): ${record.updatedBy}`
+      : null,
+    `Creado: ${formatDateTime(record.createdAt) ?? 'No registrado'}`,
+    `Actualizado: ${formatDateTime(record.updatedAt) ?? 'No registrado'}`,
+  ].filter((line): line is string => Boolean(line));
+  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
   return {
     title: RECORD_TYPE_LABEL[record.recordType] ?? record.recordType,
     date: record.attendedAt,
+    dateLabel: 'Fecha de atención',
     status: record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
     origin: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
     sections,
@@ -214,8 +292,9 @@ export async function exportPatientPdf(options: {
   subtitle: string;
   fileName: string;
   generatedAt?: string;
+  orderDescription?: string;
 }): Promise<void> {
-  const { patient, items, subtitle, fileName, generatedAt } = options;
+  const { patient, items, subtitle, fileName, generatedAt, orderDescription } = options;
   const { pdf, Document, Image: PdfImage, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
   const brandLogoUrl = new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
@@ -319,7 +398,8 @@ export async function exportPatientPdf(options: {
 
         <Text style={styles.coverTitle}>{subtitle}</Text>
         <Text style={styles.coverSubtitle}>
-          {items.length} {items.length === 1 ? 'entrada clínica' : 'entradas clínicas'} · orden cronológico
+          {items.length} {items.length === 1 ? 'entrada clínica' : 'entradas clínicas'}
+          {orderDescription ? ` · ${orderDescription}` : ''}
         </Text>
         <Text style={styles.patientDetails}>
           Fecha de nacimiento: {formatDateOnly(patient.dateOfBirth)} · Sexo:{' '}
@@ -334,7 +414,7 @@ export async function exportPatientPdf(options: {
             <View style={styles.itemHeader} minPresenceAhead={80}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemMeta}>
-                {formatDate(item.date)} · {item.origin} · Estado: {item.status}
+                {item.dateLabel}: {formatDate(item.date)} · {item.origin} · Estado: {item.status}
               </Text>
             </View>
             {item.sections.map((section, sectionIndex) => (
