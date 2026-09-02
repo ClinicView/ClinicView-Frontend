@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Spinner, EmptyState, Alert } from '@/shared/ui';
+import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { useReviewQueue } from '../hooks/use-review-queue';
 import styles from './review-queue.module.css';
 
@@ -19,104 +19,225 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getInitials(firstName: string, lastName: string): string {
+  return `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.toUpperCase() || 'PX';
+}
+
+function getFileType(mimeType: string): string {
+  return mimeType.split('/')[1]?.toUpperCase() || 'ARCHIVO';
+}
+
 export function ReviewQueue() {
   const { data, total, page, totalPages, isLoading, error, onPageChange } = useReviewQueue();
+  const queueLabel = total === 0
+    ? 'Sin revisiones pendientes'
+    : `${total} historia${total !== 1 ? 's' : ''} por revisar`;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Cola de revisión de historias clínicas digitalizadas</h1>
+    <section className={styles.container} aria-labelledby="review-queue-title">
+      <header className={styles.hero}>
+        <span className={styles.heroPattern} aria-hidden="true" />
+        <span className={styles.heroGlow} aria-hidden="true" />
+
+        <div className={styles.heroContent}>
+          <span className={styles.eyebrow}>
+            <Icon name="review" size={15} />
+            Centro de validación clínica
+          </span>
+          <h1 className={styles.title} id="review-queue-title">
+            Historias digitalizadas, listas para revisión
+          </h1>
           <p className={styles.subtitle}>
-            Aquí aparecerán los documentos procesados que necesitan revisión profesional.
+            Verifica cada documento procesado y accede a su detalle sin perder el contexto del paciente.
           </p>
-        </div>
-        <span className={`${styles.countPill} ${total === 0 ? styles.countPillEmpty : ''}`}>
-          {total === 0
-            ? 'Sin revisiones pendientes'
-            : `${total} historia${total !== 1 ? 's' : ''} por revisar`}
-        </span>
-      </div>
-
-      {error && <Alert variant="error">{error}</Alert>}
-
-      {isLoading ? (
-        <Spinner label="Cargando cola de revisión…" />
-      ) : data.length === 0 ? (
-        <div className={styles.empty}>
-          <EmptyState
-            icon="review"
-            title="Cola vacía"
-            description="No hay historias clínicas digitalizadas pendientes de revisión."
-          />
-        </div>
-      ) : (
-        <>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Paciente</th>
-                  <th>Historia clínica digitalizada</th>
-                  <th>Procesado</th>
-                  <th>Subido</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <div className={styles.patientName}>
-                        {item.patient.lastName}, {item.patient.firstName}
-                      </div>
-                      <div className={styles.patientDoc}>
-                        {item.patient.documentType} {item.patient.documentNumber}
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.docName}>{item.originalName}</div>
-                      <div className={styles.docMeta}>
-                        {item.mimeType.split('/')[1]?.toUpperCase()} · {formatSize(item.sizeBytes)}
-                      </div>
-                    </td>
-                    <td>{formatDate(item.processedAt)}</td>
-                    <td>{formatDate(item.createdAt)}</td>
-                    <td>
-                      <Link
-                        className={styles.actionBtn}
-                        href={`/patients/${item.patient.id}/documents/${item.id}`}
-                      >
-                        Revisar digitalización
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={styles.heroSignals} aria-label="Características del flujo de revisión">
+            <span><Icon name="shield" size={15} /> Acceso clínico protegido</span>
+            <span><Icon name="check" size={15} /> Flujo de revisión trazable</span>
           </div>
+        </div>
 
-          {totalPages > 1 && (
-            <div className={styles.pagination}>
-              <button
-                className={styles.pageBtn}
-                disabled={page <= 1}
-                onClick={() => onPageChange(page - 1)}
-              >
-                Anterior
-              </button>
-              <span className={styles.pageInfo}>Página {page} de {totalPages}</span>
-              <button
-                className={styles.pageBtn}
-                disabled={page >= totalPages}
-                onClick={() => onPageChange(page + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
+        <aside className={styles.queueSummary} aria-label="Resumen de la cola de revisión">
+          <div className={styles.summaryHeading}>
+            <span className={styles.summaryIcon} aria-hidden="true">
+              <Icon name="review" size={21} />
+            </span>
+            <span>Estado de la cola</span>
+          </div>
+          <div className={styles.summaryMetric}>
+            <strong>{isLoading ? '—' : total}</strong>
+            <span>pendiente{total !== 1 ? 's' : ''}</span>
+          </div>
+          <div className={`${styles.summaryStatus} ${total === 0 ? styles.summaryStatusEmpty : ''}`}>
+            <span className={styles.statusDot} aria-hidden="true" />
+            {isLoading ? 'Actualizando revisiones' : queueLabel}
+          </div>
+          {!isLoading && total > 0 && (
+            <p className={styles.summaryFootnote}>
+              Mostrando {data.length} en la página actual
+            </p>
           )}
-        </>
+        </aside>
+      </header>
+
+      {error && (
+        <div className={styles.alertWrap}>
+          <Alert variant="error">{error}</Alert>
+        </div>
       )}
-    </div>
+
+      <section
+        className={styles.queuePanel}
+        aria-labelledby="review-list-title"
+        aria-busy={isLoading}
+      >
+        <header className={styles.panelHeader}>
+          <div>
+            <span className={styles.panelEyebrow}>
+              <span className={styles.panelDot} aria-hidden="true" />
+              Trabajo pendiente
+            </span>
+            <h2 className={styles.panelTitle} id="review-list-title">
+              Historias por revisar
+            </h2>
+            <p className={styles.panelSubtitle}>
+              Selecciona una digitalización para contrastar y validar su contenido.
+            </p>
+          </div>
+          {!isLoading && data.length > 0 && (
+            <span className={styles.visibleCount}>
+              {data.length} visible{data.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </header>
+
+        {isLoading ? (
+          <div className={styles.loadingState}>
+            <Spinner label="Cargando cola de revisión…" />
+          </div>
+        ) : data.length === 0 ? (
+          <div className={styles.empty}>
+            <EmptyState
+              icon="review"
+              title="Cola vacía"
+              description="No hay historias clínicas digitalizadas pendientes de revisión."
+            />
+          </div>
+        ) : (
+          <>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <caption className={styles.srOnly}>
+                  Historias clínicas digitalizadas pendientes de revisión profesional
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Paciente</th>
+                    <th scope="col">Documento digitalizado</th>
+                    <th scope="col">Procesado</th>
+                    <th scope="col">Subido</th>
+                    <th scope="col"><span className={styles.srOnly}>Acciones</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((item) => {
+                    const patientName = `${item.patient.lastName}, ${item.patient.firstName}`;
+
+                    return (
+                      <tr key={item.id}>
+                        <td className={styles.patientCell} data-label="Paciente">
+                          <span className={styles.cellContent}>
+                            <span className={styles.patientAvatar} aria-hidden="true">
+                              {getInitials(item.patient.firstName, item.patient.lastName)}
+                            </span>
+                            <span className={styles.patientIdentity}>
+                              <span className={styles.patientName}>{patientName}</span>
+                              <span className={styles.patientDoc}>
+                                <span>{item.patient.documentType}</span>
+                                {item.patient.documentNumber}
+                              </span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className={styles.documentCell} data-label="Documento digitalizado">
+                          <span className={styles.cellContent}>
+                            <span className={styles.documentIcon} aria-hidden="true">
+                              <Icon name="document" size={18} />
+                            </span>
+                            <span className={styles.documentIdentity}>
+                              <span className={styles.docName}>{item.originalName}</span>
+                              <span className={styles.docMeta}>
+                                {getFileType(item.mimeType)}
+                                <i aria-hidden="true" />
+                                {formatSize(item.sizeBytes)}
+                              </span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className={styles.dateCell} data-label="Procesado">
+                          <span className={styles.dateValue}>
+                            <Icon name="check" size={15} />
+                            <time dateTime={item.processedAt ?? undefined}>
+                              {formatDate(item.processedAt)}
+                            </time>
+                          </span>
+                        </td>
+                        <td className={styles.dateCell} data-label="Subido">
+                          <span className={styles.dateValue}>
+                            <Icon name="calendar" size={15} />
+                            <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
+                          </span>
+                        </td>
+                        <td className={styles.actionCell}>
+                          <Link
+                            className={styles.actionBtn}
+                            href={`/patients/${item.patient.id}/documents/${item.id}`}
+                            aria-label={`Revisar digitalización ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
+                          >
+                            Revisar digitalización
+                            <Icon name="arrow-right" size={16} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <nav className={styles.pagination} aria-label="Páginas de la cola de revisión">
+                <p className={styles.pageInfo} aria-live="polite">
+                  Página <strong>{page}</strong> de <strong>{totalPages}</strong>
+                  <span aria-hidden="true"> · </span>
+                  {total} historia{total !== 1 ? 's' : ''}
+                </p>
+                <div className={styles.paginationButtons}>
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    disabled={page <= 1}
+                    onClick={() => onPageChange(page - 1)}
+                    aria-label="Ir a la página anterior"
+                  >
+                    <Icon name="chevron-right" className={styles.previousIcon} size={15} />
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    disabled={page >= totalPages}
+                    onClick={() => onPageChange(page + 1)}
+                    aria-label="Ir a la página siguiente"
+                  >
+                    Siguiente
+                    <Icon name="chevron-right" size={15} />
+                  </button>
+                </div>
+              </nav>
+            )}
+          </>
+        )}
+      </section>
+    </section>
   );
 }
