@@ -10,13 +10,11 @@ import { PageShell } from '@/shared/components/page-shell';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './dashboard.module.css';
 
-/* ─── Helpers ────────────────────────────────────────────────── */
-
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return '¡Buenos días';
-  if (hour < 19) return '¡Buenas tardes';
-  return '¡Buenas noches';
+  if (hour < 12) return 'Buenos días';
+  if (hour < 19) return 'Buenas tardes';
+  return 'Buenas noches';
 }
 
 function getRoleDisplay(permissions: string[]): string {
@@ -44,10 +42,8 @@ function formatTime(iso: string): string {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) return `Ayer, ${time}`;
-  return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' }) + ` ${time}`;
+  return `${date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' })} ${time}`;
 }
-
-/* ─── Sub-componentes ────────────────────────────────────────── */
 
 interface StatCardProps {
   icon: IconName;
@@ -55,18 +51,34 @@ interface StatCardProps {
   label: string;
   value: number | null;
   hint: string | null;
+  isLoading: boolean;
   hintTone?: 'up' | 'down' | 'neutral';
 }
 
-function StatCard({ icon, tone, label, value, hint, hintTone = 'neutral' }: StatCardProps) {
+function StatCard({
+  icon,
+  tone,
+  label,
+  value,
+  hint,
+  isLoading,
+  hintTone = 'neutral',
+}: StatCardProps) {
   return (
-    <article className={styles.statCard}>
-      <span className={`${styles.statIcon} ${styles[`statIcon_${tone}`]}`} aria-hidden="true">
-        <Icon name={icon} size={22} />
-      </span>
-      <div className={styles.statBody}>
+    <article className={`${styles.statCard} ${styles[`statCard_${tone}`]}`}>
+      <div className={styles.statTopline}>
+        <span className={`${styles.statIcon} ${styles[`statIcon_${tone}`]}`} aria-hidden="true">
+          <Icon name={icon} size={20} />
+        </span>
         <span className={styles.statLabel}>{label}</span>
-        <span className={styles.statValue}>{value ?? '—'}</span>
+      </div>
+
+      <div className={styles.statBottomline}>
+        {isLoading ? (
+          <span className={styles.statSkeleton} aria-label={`Cargando ${label}`} />
+        ) : (
+          <span className={styles.statValue}>{value ?? '—'}</span>
+        )}
         {hint && (
           <span className={`${styles.statHint} ${styles[`statHint_${hintTone}`]}`}>{hint}</span>
         )}
@@ -76,11 +88,11 @@ function StatCard({ icon, tone, label, value, hint, hintTone = 'neutral' }: Stat
 }
 
 const FLOW_STEPS: Array<{ icon: IconName; title: string; text: string }> = [
-  { icon: 'patient', title: 'Selección de paciente', text: 'Elige el paciente y la historia clínica' },
-  { icon: 'upload', title: 'Subida de archivo', text: 'Carga el documento físico a procesar' },
-  { icon: 'scan', title: 'Procesamiento OCR', text: 'Extracción automática de la información' },
-  { icon: 'edit', title: 'Corrección', text: 'Revisión y corrección de datos extraídos' },
-  { icon: 'shield', title: 'Validación', text: 'Validación final y cierre del proceso' },
+  { icon: 'patient', title: 'Paciente', text: 'Selecciona la historia' },
+  { icon: 'upload', title: 'Captura', text: 'Carga el documento' },
+  { icon: 'scan', title: 'Extracción', text: 'Procesamiento OCR' },
+  { icon: 'edit', title: 'Corrección', text: 'Contrasta y ajusta' },
+  { icon: 'shield', title: 'Validación', text: 'Cierra con trazabilidad' },
 ];
 
 const ACTIVITY_META: Record<
@@ -93,8 +105,6 @@ const ACTIVITY_META: Record<
   CORRECTED: { icon: 'edit', tone: 'teal', badge: 'Corregido' },
   ERROR: { icon: 'alert', tone: 'red', badge: 'Error' },
 };
-
-/* ─── Vista ──────────────────────────────────────────────────── */
 
 export function DashboardView() {
   const { user } = useSession();
@@ -123,70 +133,110 @@ export function DashboardView() {
 
   return (
     <PageShell>
-      {/* Saludo + fecha */}
       <header className={styles.pageHeader}>
         <div>
+          <span className={styles.pageEyebrow}>
+            <span className={styles.liveDot} aria-hidden="true" />
+            Resumen operativo
+          </span>
           <h1 className={styles.greeting}>
-            {getGreeting()}, <strong>{getRoleDisplay(permissions)}</strong>!
+            {getGreeting()}, <strong>{getRoleDisplay(permissions)}</strong>.
           </h1>
-          <p className={styles.date}>{formatToday()}</p>
+          <p className={styles.headerCopy}>Todo lo importante de tu jornada clínica, en un solo lugar.</p>
+        </div>
+
+        <div className={styles.datePill}>
+          <Icon name="calendar" size={16} />
+          <span>{formatToday()}</span>
         </div>
       </header>
 
-      {/* Hero */}
       <section className={styles.hero} aria-labelledby="dashboard-hero-title">
+        <div className={styles.heroPattern} aria-hidden="true" />
+        <div className={styles.heroGlow} aria-hidden="true" />
+
         <div className={styles.heroContent}>
+          <span className={styles.heroKicker}>
+            <Icon name="sparkle" size={14} />
+            Flujo clínico conectado
+          </span>
           <h2 id="dashboard-hero-title" className={styles.heroTitle}>
-            Digitaliza, corrige y valida historias clínicas con trazabilidad
+            Cada historia, del papel a una decisión confiable.
           </h2>
           <p className={styles.heroText}>
-            Centraliza el proceso de digitalización, corrige con precisión y valida cada
-            historia clínica con un flujo seguro y auditado.
+            Digitaliza, contrasta y valida información clínica con un proceso seguro,
+            trazable y diseñado para tu equipo.
           </p>
+
           <div className={styles.heroActions}>
             {canDigitize && (
-              <button className={styles.btnPrimary} onClick={() => router.push('/patients')}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => router.push('/patients')}
+              >
                 <Icon name="upload" size={17} />
                 Nueva digitalización
               </button>
             )}
             {canReview && (
-              <button className={styles.btnSecondary} onClick={() => router.push('/review')}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => router.push('/review')}
+              >
                 <Icon name="review" size={17} />
-                Ver revisión digital
+                Abrir revisión
               </button>
             )}
           </div>
+
+          <div className={styles.heroSignals} aria-label="Características de la plataforma">
+            <span><Icon name="check" size={14} /> OCR asistido</span>
+            <span><Icon name="check" size={14} /> Versionado clínico</span>
+            <span><Icon name="check" size={14} /> Acceso por roles</span>
+          </div>
         </div>
+
         <div className={styles.heroVisual} aria-hidden="true">
-          <div className={styles.heroDoc}>
-            <span className={styles.heroDocDot} />
-            <span className={styles.heroDocBar} />
-            <span className={styles.heroDocRow}>
-              <span className={styles.heroDocSquare} />
-              <span className={styles.heroDocLines}>
-                <i /><i /><i />
+          <div className={styles.documentCard}>
+            <div className={styles.documentHeader}>
+              <span className={styles.documentIdentity}>
+                <i />
+                <span>
+                  <strong>Historia clínica</strong>
+                  <small>Documento en análisis</small>
+                </span>
               </span>
-            </span>
-            <span className={styles.heroDocRow}>
-              <span className={styles.heroDocSquare} />
-              <span className={styles.heroDocLines}>
-                <i /><i /><i />
+              <span className={styles.processingBadge}>Procesando</span>
+            </div>
+            <div className={styles.documentBody}>
+              <span className={styles.documentLine} />
+              <span className={`${styles.documentLine} ${styles.documentLineMedium}`} />
+              <span className={styles.documentField}>
+                <i />
+                <span><b /><b /></span>
               </span>
-            </span>
+              <span className={styles.documentField}>
+                <i />
+                <span><b /><b /></span>
+              </span>
+              <span className={styles.scanLine} />
+            </div>
           </div>
-          <div className={styles.heroOcrChip}>
-            <span className={styles.heroOcrLabel}>OCR</span>
-            <span className={styles.heroOcrValue}>99%</span>
-            <span className={styles.heroOcrBar} />
+
+          <div className={styles.structureChip}>
+            <span className={styles.chipIcon}><Icon name="sparkle" size={15} /></span>
+            <span><strong>Datos estructurados</strong><small>Extracción asistida</small></span>
           </div>
-          <span className={styles.heroCheck}>
-            <Icon name="check" size={22} />
-          </span>
+
+          <div className={styles.reviewChip}>
+            <Icon name="shield" size={17} />
+            Listo para revisión
+          </div>
         </div>
       </section>
 
-      {/* Métricas */}
       <section className={styles.statsGrid} aria-label="Indicadores del día">
         <StatCard
           icon="users"
@@ -195,14 +245,16 @@ export function DashboardView() {
           value={stats?.patientsToday ?? null}
           hint={isLoading ? null : patientsDelta.hint}
           hintTone={patientsDelta.tone}
+          isLoading={isLoading}
         />
         <StatCard
           icon="document"
           tone="amber"
           label="Documentos en cola"
           value={stats?.documentsInQueue ?? null}
-          hint={isLoading || !stats ? null : 'En espera de procesamiento'}
+          hint={isLoading || !stats ? null : 'Esperando procesamiento'}
           hintTone="neutral"
+          isLoading={isLoading}
         />
         <StatCard
           icon="shield"
@@ -211,6 +263,7 @@ export function DashboardView() {
           value={stats?.readyToValidate ?? null}
           hint={isLoading ? null : validateDelta.hint}
           hintTone={validateDelta.tone}
+          isLoading={isLoading}
         />
         <StatCard
           icon="alert"
@@ -219,92 +272,47 @@ export function DashboardView() {
           value={stats?.ocrErrors ?? null}
           hint={isLoading ? null : errorsDelta.hint}
           hintTone={errorsDelta.tone === 'down' ? 'up' : errorsDelta.tone === 'up' ? 'down' : 'neutral'}
+          isLoading={isLoading}
         />
       </section>
 
-      <div className={styles.mainGrid}>
-        <div className={styles.mainColumn}>
-          {/* Flujo operativo */}
-          <section className={styles.panel} aria-labelledby="flow-title">
-            <h2 id="flow-title" className={styles.panelTitle}>Flujo operativo</h2>
-            <ol className={styles.flow}>
-              {FLOW_STEPS.map((step, index) => (
-                <li key={step.title} className={styles.flowStep}>
-                  <span className={styles.flowIcon} aria-hidden="true">
-                    <Icon name={step.icon} size={22} />
-                  </span>
-                  <span className={styles.flowTitle}>{step.title}</span>
-                  <span className={styles.flowText}>{step.text}</span>
-                  {index < FLOW_STEPS.length - 1 && (
-                    <span className={styles.flowConnector} aria-hidden="true" />
-                  )}
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          {/* Accesos rápidos */}
-          <section aria-labelledby="quick-title">
-            <h2 id="quick-title" className={styles.sectionTitle}>Accesos rápidos</h2>
-            <div className={styles.quickGrid}>
-              {can(permissions, 'patients.read') && (
-                <Link href="/patients" className={`${styles.quickCard} ${styles.quick_blue}`}>
-                  <span className={styles.quickIcon}><Icon name="patient" size={20} /></span>
-                  <span className={styles.quickTitle}>Pacientes</span>
-                  <span className={styles.quickText}>
-                    Buscar pacientes, abrir su ficha y acceder a registros o digitalización.
-                  </span>
-                  <span className={styles.quickArrow} aria-hidden="true">
-                    <Icon name="arrow-right" size={15} />
-                  </span>
-                </Link>
-              )}
-              {can(permissions, 'records.read') && (
-                <Link href="/patients" className={`${styles.quickCard} ${styles.quick_amber}`}>
-                  <span className={styles.quickIcon}><Icon name="records" size={20} /></span>
-                  <span className={styles.quickTitle}>Registro manual de atención</span>
-                  <span className={styles.quickText}>
-                    Crear y consultar historias clínicas estructuradas registradas manualmente.
-                  </span>
-                  <span className={styles.quickArrow} aria-hidden="true">
-                    <Icon name="arrow-right" size={15} />
-                  </span>
-                </Link>
-              )}
-              {canReview && (
-                <Link href="/review" className={`${styles.quickCard} ${styles.quick_green}`}>
-                  <span className={styles.quickIcon}><Icon name="review" size={20} /></span>
-                  <span className={styles.quickTitle}>Cola de revisión digital</span>
-                  <span className={styles.quickText}>
-                    Historias clínicas digitalizadas listas para corregir y validar.
-                  </span>
-                  <span className={styles.quickArrow} aria-hidden="true">
-                    <Icon name="arrow-right" size={15} />
-                  </span>
-                </Link>
-              )}
-              {canAdmin && (
-                <Link href="/admin" className={`${styles.quickCard} ${styles.quick_slate}`}>
-                  <span className={styles.quickIcon}><Icon name="admin" size={20} /></span>
-                  <span className={styles.quickTitle}>Administración</span>
-                  <span className={styles.quickText}>
-                    Usuarios, roles y configuración general del sistema.
-                  </span>
-                  <span className={styles.quickArrow} aria-hidden="true">
-                    <Icon name="arrow-right" size={15} />
-                  </span>
-                </Link>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* Actividad reciente */}
-        <section className={styles.panel} aria-labelledby="activity-title">
+      <div className={styles.bentoGrid}>
+        <section className={`${styles.panel} ${styles.flowPanel}`} aria-labelledby="flow-title">
           <div className={styles.panelHeader}>
-            <h2 id="activity-title" className={styles.panelTitle}>Actividad reciente</h2>
+            <div>
+              <span className={styles.panelEyebrow}>Proceso</span>
+              <h2 id="flow-title" className={styles.panelTitle}>Flujo operativo</h2>
+            </div>
+            <span className={styles.panelMeta}>5 etapas</span>
+          </div>
+
+          <ol className={styles.flow}>
+            {FLOW_STEPS.map((step, index) => (
+              <li key={step.title} className={styles.flowStep}>
+                <span className={styles.flowNumber}>{String(index + 1).padStart(2, '0')}</span>
+                <span className={styles.flowIcon} aria-hidden="true">
+                  <Icon name={step.icon} size={20} />
+                </span>
+                <span className={styles.flowTitle}>{step.title}</span>
+                <span className={styles.flowText}>{step.text}</span>
+                {index < FLOW_STEPS.length - 1 && (
+                  <span className={styles.flowConnector} aria-hidden="true" />
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className={`${styles.panel} ${styles.activityPanel}`} aria-labelledby="activity-title">
+          <div className={styles.panelHeader}>
+            <div>
+              <span className={styles.panelEyebrow}>En tiempo reciente</span>
+              <h2 id="activity-title" className={styles.panelTitle}>Actividad</h2>
+            </div>
             {canReview && (
-              <Link href="/review" className={styles.panelLink}>Ver todas</Link>
+              <Link href="/review" className={styles.panelLink}>
+                Ver todas <Icon name="arrow-right" size={14} />
+              </Link>
             )}
           </div>
 
@@ -341,6 +349,7 @@ export function DashboardView() {
                     </span>
                   </>
                 );
+
                 return (
                   <li key={item.id}>
                     {href ? (
@@ -353,12 +362,68 @@ export function DashboardView() {
               })}
             </ul>
           ) : (
-            <p className={styles.activityEmpty}>
-              {isLoading
-                ? 'Cargando actividad…'
-                : 'Sin actividad reciente registrada. Las últimas acciones sobre documentos aparecerán aquí.'}
-            </p>
+            <div className={styles.activityEmpty}>
+              <span><Icon name={isLoading ? 'clock' : 'sparkle'} size={20} /></span>
+              <strong>{isLoading ? 'Cargando actividad' : 'Tu actividad aparecerá aquí'}</strong>
+              <p>
+                {isLoading
+                  ? 'Estamos reuniendo las últimas acciones del equipo.'
+                  : 'Aún no hay acciones recientes sobre documentos clínicos.'}
+              </p>
+            </div>
           )}
+        </section>
+
+        <section className={styles.quickSection} aria-labelledby="quick-title">
+          <div className={styles.sectionHeading}>
+            <div>
+              <span className={styles.panelEyebrow}>Atajos</span>
+              <h2 id="quick-title" className={styles.panelTitle}>Continúa tu trabajo</h2>
+            </div>
+          </div>
+
+          <div className={styles.quickGrid}>
+            {can(permissions, 'patients.read') && (
+              <Link href="/patients" className={`${styles.quickCard} ${styles.quick_blue}`}>
+                <span className={styles.quickTopline}>
+                  <span className={styles.quickIcon}><Icon name="patient" size={20} /></span>
+                  <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
+                </span>
+                <span className={styles.quickTitle}>Pacientes</span>
+                <span className={styles.quickText}>Busca fichas, registros y documentos clínicos.</span>
+              </Link>
+            )}
+            {can(permissions, 'records.read') && (
+              <Link href="/patients" className={`${styles.quickCard} ${styles.quick_amber}`}>
+                <span className={styles.quickTopline}>
+                  <span className={styles.quickIcon}><Icon name="records" size={20} /></span>
+                  <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
+                </span>
+                <span className={styles.quickTitle}>Registro manual</span>
+                <span className={styles.quickText}>Crea una atención clínica estructurada.</span>
+              </Link>
+            )}
+            {canReview && (
+              <Link href="/review" className={`${styles.quickCard} ${styles.quick_green}`}>
+                <span className={styles.quickTopline}>
+                  <span className={styles.quickIcon}><Icon name="review" size={20} /></span>
+                  <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
+                </span>
+                <span className={styles.quickTitle}>Cola de revisión</span>
+                <span className={styles.quickText}>Corrige y valida extracciones pendientes.</span>
+              </Link>
+            )}
+            {canAdmin && (
+              <Link href="/admin" className={`${styles.quickCard} ${styles.quick_slate}`}>
+                <span className={styles.quickTopline}>
+                  <span className={styles.quickIcon}><Icon name="admin" size={20} /></span>
+                  <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
+                </span>
+                <span className={styles.quickTitle}>Administración</span>
+                <span className={styles.quickText}>Gestiona usuarios, roles y accesos.</span>
+              </Link>
+            )}
+          </div>
         </section>
       </div>
     </PageShell>
