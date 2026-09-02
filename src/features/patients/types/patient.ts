@@ -91,6 +91,11 @@ export interface ClinicalHistoryExportDocument {
   correctedById: string | null;
   reviewedAt: string | null;
   reviewedBy: string | null;
+  validationChecklist: {
+    schemaVersion: number;
+    locale: 'es-PE';
+    items: Array<{ id: string; title: string; statement: string }>;
+  } | null;
   validationAttestedAt: string | null;
   createdBy: string | null;
   updatedBy: string | null;

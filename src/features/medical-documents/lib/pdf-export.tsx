@@ -14,6 +14,11 @@ import type {
 } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
 import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
+import {
+  CLINICAL_TIME_ZONE,
+  formatDateOnly,
+  formatInstant,
+} from '@/shared/lib/date-time';
 import { parseClinicalSections } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
 
@@ -71,11 +76,10 @@ const PDF_COLORS = {
 } as const;
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-    timeZone: 'America/Lima',
   });
 }
 
@@ -83,22 +87,12 @@ function formatDateTime(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString('es-PE', {
+  return formatInstant(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Lima',
-  });
-}
-
-function formatDateOnly(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
   });
 }
 
@@ -137,6 +131,15 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
 
   if (document.rejectReason?.trim()) {
     sections.push({ title: 'MOTIVO DE RECHAZO', content: document.rejectReason.trim() });
+  }
+
+  if (document.validationChecklist?.items.length) {
+    sections.push({
+      title: `ATESTACIÓN CLÍNICA · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      content: document.validationChecklist.items
+        .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
+        .join('\n'),
+    });
   }
 
   const trace = [
@@ -195,6 +198,15 @@ export function clinicalHistoryDocumentToExportItem(
 
   if (document.rejectReason?.trim()) {
     sections.push({ title: 'MOTIVO DE RECHAZO', content: document.rejectReason.trim() });
+  }
+
+  if (document.validationChecklist?.items.length) {
+    sections.push({
+      title: `ATESTACIÓN CLÍNICA · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      content: document.validationChecklist.items
+        .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
+        .join('\n'),
+    });
   }
 
   const trace = [
@@ -374,7 +386,7 @@ export async function exportPatientPdf(options: {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Lima',
+    timeZone: CLINICAL_TIME_ZONE,
   });
 
   const doc = (
@@ -402,7 +414,13 @@ export async function exportPatientPdf(options: {
           {orderDescription ? ` · ${orderDescription}` : ''}
         </Text>
         <Text style={styles.patientDetails}>
-          Fecha de nacimiento: {formatDateOnly(patient.dateOfBirth)} · Sexo:{' '}
+          Fecha de nacimiento:{' '}
+          {formatDateOnly(patient.dateOfBirth, {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })}{' '}
+          · Sexo:{' '}
           {SEX_LABEL[patient.sex] ?? patient.sex}
           {'\n'}Contacto:{' '}
           {[patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado'}
