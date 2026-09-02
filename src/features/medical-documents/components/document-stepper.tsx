@@ -1,5 +1,6 @@
 'use client';
 
+import { formatInstant } from '@/shared/lib/date-time';
 import { Icon } from '@/shared/ui';
 import type { MedicalDocument } from '../types/document';
 import styles from './correction-view.module.css';
@@ -14,7 +15,7 @@ interface Step {
 
 function formatShort(iso: string | null): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',

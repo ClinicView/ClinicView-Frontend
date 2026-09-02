@@ -1,6 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  currentDateTimeLocal,
+  dateTimeLocalToIso,
+  isoToDateTimeLocal,
+} from '@/shared/lib/date-time';
 import type { ClinicalRecord, CorrectRecordData, CreateRecordData, RecordType } from '../types/record';
 import styles from './record-form.module.css';
 
@@ -47,24 +52,16 @@ function validateCreate(d: Partial<CreateRecordData>): FieldErrors {
   const e: FieldErrors = {};
   if (!d.recordType) e.recordType = 'Requerido';
   if (!d.attendedAt) e.attendedAt = 'Requerido';
+  else if (!dateTimeLocalToIso(d.attendedAt)) e.attendedAt = 'Fecha y hora inválida';
   if (!d.summary?.trim()) e.summary = 'Requerido';
   return e;
 }
 
 function validateCorrect(d: Partial<CorrectRecordData>): FieldErrors {
   const e: FieldErrors = {};
+  if (d.attendedAt && !dateTimeLocalToIso(d.attendedAt)) e.attendedAt = 'Fecha y hora inválida';
   if (!d.summary?.trim()) e.summary = 'Requerido';
   return e;
-}
-
-function todayLocal(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const h = String(now.getHours()).padStart(2, '0');
-  const min = String(now.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${d}T${h}:${min}`;
 }
 
 export function RecordForm(props: RecordFormProps) {
@@ -72,8 +69,8 @@ export function RecordForm(props: RecordFormProps) {
 
   const initialAttendedAt =
     !isCreate && props.mode === 'correct'
-      ? props.original.attendedAt.slice(0, 16)
-      : todayLocal();
+      ? isoToDateTimeLocal(props.original.attendedAt)
+      : currentDateTimeLocal();
 
   const initialSummary =
     !isCreate && props.mode === 'correct' ? props.original.summary : '';
@@ -105,13 +102,25 @@ export function RecordForm(props: RecordFormProps) {
       const errors = validateCreate(data);
       setFieldErrors(errors);
       if (Object.keys(errors).length > 0) return;
-      await props.onSubmit({ recordType: recordType as RecordType, attendedAt, summary, notes: notes || undefined });
+      await props.onSubmit({
+        recordType: recordType as RecordType,
+        attendedAt: dateTimeLocalToIso(attendedAt)!,
+        summary,
+        notes: notes || undefined,
+      });
     } else {
-      const data: Partial<CorrectRecordData> = { summary };
+      const data: Partial<CorrectRecordData> = { attendedAt, summary };
       const errors = validateCorrect(data);
       setFieldErrors(errors);
       if (Object.keys(errors).length > 0) return;
-      await props.onSubmit({ attendedAt, summary, notes: notes || undefined });
+      await props.onSubmit({
+        attendedAt:
+          attendedAt && attendedAt !== initialAttendedAt
+            ? (dateTimeLocalToIso(attendedAt) ?? undefined)
+            : undefined,
+        summary,
+        notes: notes || undefined,
+      });
     }
   }
 
@@ -160,7 +169,7 @@ export function RecordForm(props: RecordFormProps) {
             className={`${styles.input} ${fieldErrors.attendedAt ? styles.inputError : ''}`}
             type="datetime-local"
             value={attendedAt}
-            max={todayLocal()}
+            max={currentDateTimeLocal()}
             onChange={(e) => {
               setAttendedAt(e.target.value);
               revalidate({ attendedAt: e.target.value });

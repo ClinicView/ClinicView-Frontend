@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { formatDateOnly } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { usePatients } from '../hooks/use-patients';
@@ -8,12 +9,6 @@ import styles from './patient-list.module.css';
 
 const SEX_LABEL: Record<string, string> = { M: 'Masculino', F: 'Femenino', OTHER: 'Otro' };
 const DOC_LABEL: Record<string, string> = { DNI: 'DNI', CE: 'CE', PAS: 'PAS', OTHER: 'Otro' };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  });
-}
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.toUpperCase() || 'PX';
@@ -120,7 +115,7 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
                       <span className={styles.documentNumber}>{patient.documentNumber}</span>
                     </td>
                     <td data-label="Nacimiento">
-                      <time dateTime={patient.dateOfBirth}>{formatDate(patient.dateOfBirth)}</time>
+                      <time dateTime={patient.dateOfBirth}>{formatDateOnly(patient.dateOfBirth)}</time>
                     </td>
                     <td data-label="Sexo">{SEX_LABEL[patient.sex]}</td>
                     <td className={styles.arrowCell} aria-hidden="true">

@@ -9,6 +9,13 @@ import { useRecords } from '@/features/clinical-records/hooks/use-records';
 import type { RecordPriority, RecordType } from '@/features/clinical-records';
 import { usePatient } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
+import {
+  ageFromDateOnly,
+  currentDateTimeLocal,
+  dateTimeLocalToIso,
+  formatDateOnly,
+  formatInstant,
+} from '@/shared/lib/date-time';
 import { Icon, Spinner, type IconName } from '@/shared/ui';
 import { ApiError } from '@/shared/services/api-client';
 import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
@@ -71,17 +78,10 @@ interface DraftState {
   priority: RecordPriority;
 }
 
-function nowLocalDatetime(): string {
-  const now = new Date();
-  now.setSeconds(0, 0);
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 16);
-}
-
 function emptyDraft(): DraftState {
   return {
     recordType: '',
-    attendedAt: nowLocalDatetime(),
+    attendedAt: currentDateTimeLocal(),
     doctorName: '',
     service: '',
     summary: '',
@@ -93,7 +93,7 @@ function emptyDraft(): DraftState {
 }
 
 function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+  return formatInstant(iso, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 /* ─── Vista ──────────────────────────────────────────────────── */
@@ -206,12 +206,17 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
+    const attendedAt = dateTimeLocalToIso(form.attendedAt);
+    if (!attendedAt) {
+      setError('La fecha y hora de atención no es válida.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
       const record = await createRecord(patientId, {
         recordType: form.recordType as RecordType,
-        attendedAt: new Date(form.attendedAt).toISOString(),
+        attendedAt,
         summary: form.summary.trim(),
         notes: form.notes.trim() || undefined,
         doctorName: form.doctorName.trim() || undefined,
@@ -228,15 +233,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     }
   }
 
-  const patientAge = useMemo(() => {
-    if (!patient) return null;
-    const birth = new Date(patient.dateOfBirth);
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const monthDiff = now.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
-    return age;
-  }, [patient]);
+  const patientAge = useMemo(() => ageFromDateOnly(patient?.dateOfBirth), [patient]);
 
   if (!user) return null;
 
@@ -285,8 +282,8 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
               <div>
                 <span className={styles.demoLabel}>Fecha de nacimiento</span>
                 <span className={styles.demoValue}>
-                  {new Date(patient.dateOfBirth).toLocaleDateString('es-PE', {
-                    day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC',
+                  {formatDateOnly(patient.dateOfBirth, {
+                    day: '2-digit', month: 'long', year: 'numeric',
                   })}
                   {patientAge != null && ` (${patientAge} años)`}
                 </span>
@@ -375,6 +372,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                 type="datetime-local"
                 className={styles.input}
                 value={form.attendedAt}
+                max={currentDateTimeLocal()}
                 onChange={(e) => update({ attendedAt: e.target.value })}
                 disabled={isLoading}
                 required

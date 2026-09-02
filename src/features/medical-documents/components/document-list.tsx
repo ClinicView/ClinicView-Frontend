@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge, Icon, type IconName } from '@/shared/ui';
 import type { DocumentStatus } from '../types/document';
@@ -35,7 +36,7 @@ const MIME_LABEL: Record<string, string> = {
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }

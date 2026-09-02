@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests yet — add Jest/Vitest when first test is written\"",
+    "test": "tsc --outDir .next/date-tests --module commonjs --moduleResolution node --target ES2022 --noEmit false --incremental false --isolatedModules false --skipLibCheck src/shared/lib/date-time.ts src/shared/lib/date-time.test.ts && node --test .next/date-tests/date-time.test.js",
     "gen-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/shared/types/api.generated.ts"
   },
   "dependencies": {

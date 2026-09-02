@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, Alert } from '@/shared/ui';
 import type { RecordType } from '../types/record';
@@ -19,7 +20,7 @@ const TYPE_LABEL: Record<RecordType, string> = {
 };
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { currentDateOnly } from '@/shared/lib/date-time';
 import type { CreatePatientData, DocumentType, Sex } from '../types/patient';
 import styles from './patient-form.module.css';
 
@@ -121,7 +122,7 @@ export function PatientForm({ onSubmit, onCancel, isLoading, error }: PatientFor
           <input
             className={`${styles.input} ${fieldErrors.dateOfBirth ? styles.inputError : ''}`}
             type="date"
-            max={new Date().toISOString().split('T')[0]}
+            max={currentDateOnly()}
             value={form.dateOfBirth ?? ''}
             onChange={(e) => set('dateOfBirth', e.target.value)}
           />

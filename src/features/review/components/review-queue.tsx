@@ -1,16 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import { formatInstant } from '@/shared/lib/date-time';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { useReviewQueue } from '../hooks/use-review-queue';
 import styles from './review-queue.module.css';
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
-  } as Intl.DateTimeFormatOptions);
+  });
 }
 
 function formatSize(bytes: number): string {

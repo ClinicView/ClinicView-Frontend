@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatDateOnly } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Icon } from '@/shared/ui';
 import { deactivatePatient } from '../services/patients.service';
@@ -15,15 +16,6 @@ const DOC_LABEL: Record<string, string> = {
   PAS: 'Pasaporte',
   OTHER: 'Otro',
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
 
 interface PatientDetailProps {
   patient: Patient;
@@ -67,7 +59,13 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
       <div className={styles.grid}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Fecha de nacimiento</span>
-          <span className={styles.fieldValue}>{formatDate(patient.dateOfBirth)}</span>
+          <span className={styles.fieldValue}>
+            {formatDateOnly(patient.dateOfBirth, {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </span>
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Sexo</span>

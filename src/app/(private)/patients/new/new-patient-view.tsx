@@ -7,6 +7,7 @@ import { useSession } from '@/features/auth';
 import { createPatient, listPatients } from '@/features/patients';
 import type { DocumentType, Patient, Sex } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
+import { currentDateOnly } from '@/shared/lib/date-time';
 import { Icon } from '@/shared/ui';
 import { ApiError } from '@/shared/services/api-client';
 import styles from './register-patient.module.css';
@@ -326,7 +327,7 @@ export function NewPatientView() {
                     type="date"
                     className={styles.input}
                     value={form.dateOfBirth}
-                    max={new Date().toISOString().slice(0, 10)}
+                    max={currentDateOnly()}
                     onChange={(e) => update({ dateOfBirth: e.target.value })}
                     disabled={isLoading}
                     required

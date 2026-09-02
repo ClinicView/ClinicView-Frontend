@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { currentDateOnly, toDateOnlyInputValue } from '@/shared/lib/date-time';
 import type { Patient, Sex, UpdatePatientData } from '../types/patient';
 import styles from './patient-form.module.css';
 
@@ -36,7 +37,7 @@ export function PatientEditForm({
   const [form, setForm] = useState<UpdatePatientData>({
     firstName: patient.firstName,
     lastName: patient.lastName,
-    dateOfBirth: patient.dateOfBirth.slice(0, 10),
+    dateOfBirth: toDateOnlyInputValue(patient.dateOfBirth),
     sex: patient.sex,
     phone: patient.phone ?? '',
     email: patient.email ?? '',
@@ -106,7 +107,7 @@ export function PatientEditForm({
           <input
             className={`${styles.input} ${fieldErrors.dateOfBirth ? styles.inputError : ''}`}
             type="date"
-            max={new Date().toISOString().slice(0, 10)}
+            max={currentDateOnly()}
             value={form.dateOfBirth ?? ''}
             onChange={(e) => set('dateOfBirth', e.target.value)}
           />

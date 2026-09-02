@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge } from '@/shared/ui';
 import type { RecordStatus, RecordType } from '../types/record';
@@ -27,7 +28,7 @@ const STATUS_LABEL: Record<RecordStatus, string> = {
 const ALL_STATUSES: RecordStatus[] = ['ACTIVE', 'CORRECTED', 'VOIDED'];
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }
