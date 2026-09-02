@@ -30,6 +30,7 @@ export function NotificationsBell() {
   const { notifications, unreadCount, refresh, markRead, markAllRead } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Cerrar al hacer clic fuera o presionar Escape.
   useEffect(() => {
@@ -41,7 +42,10 @@ export function NotificationsBell() {
       }
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
     }
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -69,24 +73,37 @@ export function NotificationsBell() {
   return (
     <div className={styles.wrapper} ref={panelRef}>
       <button
+        ref={triggerRef}
         className={styles.bellBtn}
         type="button"
         aria-label={
           unreadCount > 0 ? `Notificaciones (${unreadCount} sin leer)` : 'Notificaciones'
         }
         aria-expanded={isOpen}
+        aria-controls="notifications-panel"
+        aria-haspopup="dialog"
         onClick={handleOpen}
       >
         <Icon name="bell" size={19} />
         {unreadCount > 0 && (
-          <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+          <span className={styles.badge} aria-hidden="true">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </button>
 
       {isOpen && (
-        <div className={styles.panel} role="dialog" aria-label="Notificaciones">
+        <div
+          id="notifications-panel"
+          className={styles.panel}
+          role="dialog"
+          aria-labelledby="notifications-title"
+        >
           <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>Notificaciones</span>
+            <div>
+              <span className={styles.panelEyebrow}>Centro de actividad</span>
+              <h2 id="notifications-title" className={styles.panelTitle}>Notificaciones</h2>
+            </div>
             {unreadCount > 0 && (
               <button className={styles.markAll} type="button" onClick={() => void markAllRead()}>
                 Marcar todas como leídas
@@ -96,7 +113,9 @@ export function NotificationsBell() {
 
           {notifications.length === 0 ? (
             <div className={styles.empty}>
-              <Icon name="bell" size={22} />
+              <span className={styles.emptyIcon} aria-hidden="true">
+                <Icon name="bell" size={22} />
+              </span>
               <p>Sin notificaciones por ahora.</p>
               <p className={styles.emptyHint}>
                 Te avisaremos aquí cuando una digitalización termine de procesarse.
