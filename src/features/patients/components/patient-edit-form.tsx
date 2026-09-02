@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { currentDateOnly, toDateOnlyInputValue } from '@/shared/lib/date-time';
+import {
+  currentDateOnly,
+  isFutureDateOnly,
+  isValidDateOnly,
+  toDateOnlyInputValue,
+} from '@/shared/lib/date-time';
 import type { Patient, Sex, UpdatePatientData } from '../types/patient';
 import styles from './patient-form.module.css';
 
@@ -16,6 +21,8 @@ function validate(data: UpdatePatientData): FieldErrors {
   if (!data.firstName?.trim()) e.firstName = 'Requerido';
   if (!data.lastName?.trim()) e.lastName = 'Requerido';
   if (!data.dateOfBirth) e.dateOfBirth = 'Requerido';
+  else if (!isValidDateOnly(data.dateOfBirth)) e.dateOfBirth = 'Fecha inválida';
+  else if (isFutureDateOnly(data.dateOfBirth)) e.dateOfBirth = 'No puede estar en el futuro';
   return e;
 }
 

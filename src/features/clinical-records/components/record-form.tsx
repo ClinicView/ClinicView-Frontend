@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   currentDateTimeLocal,
   dateTimeLocalToIso,
+  isFutureDateTimeLocal,
   isoToDateTimeLocal,
 } from '@/shared/lib/date-time';
 import type { ClinicalRecord, CorrectRecordData, CreateRecordData, RecordType } from '../types/record';
@@ -53,13 +54,24 @@ function validateCreate(d: Partial<CreateRecordData>): FieldErrors {
   if (!d.recordType) e.recordType = 'Requerido';
   if (!d.attendedAt) e.attendedAt = 'Requerido';
   else if (!dateTimeLocalToIso(d.attendedAt)) e.attendedAt = 'Fecha y hora inválida';
+  else if (isFutureDateTimeLocal(d.attendedAt)) e.attendedAt = 'No puede estar en el futuro';
   if (!d.summary?.trim()) e.summary = 'Requerido';
   return e;
 }
 
-function validateCorrect(d: Partial<CorrectRecordData>): FieldErrors {
+function validateCorrect(
+  d: Partial<CorrectRecordData>,
+  unchangedAttendedAt?: string,
+): FieldErrors {
   const e: FieldErrors = {};
   if (d.attendedAt && !dateTimeLocalToIso(d.attendedAt)) e.attendedAt = 'Fecha y hora inválida';
+  else if (
+    d.attendedAt &&
+    d.attendedAt !== unchangedAttendedAt &&
+    isFutureDateTimeLocal(d.attendedAt)
+  ) {
+    e.attendedAt = 'No puede estar en el futuro';
+  }
   if (!d.summary?.trim()) e.summary = 'Requerido';
   return e;
 }
@@ -90,7 +102,11 @@ export function RecordForm(props: RecordFormProps) {
   function revalidate(patch: Partial<{ recordType: string; attendedAt: string; summary: string }>) {
     if (!touched) return;
     const current = { recordType, attendedAt, summary, ...patch };
-    setFieldErrors(isCreate ? validateCreate(current as CreateRecordData) : validateCorrect(current));
+    setFieldErrors(
+      isCreate
+        ? validateCreate(current as CreateRecordData)
+        : validateCorrect(current, initialAttendedAt),
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -110,13 +126,15 @@ export function RecordForm(props: RecordFormProps) {
       });
     } else {
       const data: Partial<CorrectRecordData> = { attendedAt, summary };
-      const errors = validateCorrect(data);
+      const errors = validateCorrect(data, initialAttendedAt);
       setFieldErrors(errors);
       if (Object.keys(errors).length > 0) return;
       await props.onSubmit({
         attendedAt:
           attendedAt && attendedAt !== initialAttendedAt
-            ? (dateTimeLocalToIso(attendedAt) ?? undefined)
+            ? (dateTimeLocalToIso(attendedAt, {
+                preserveSubMinuteFrom: props.original.attendedAt,
+              }) ?? undefined)
             : undefined,
         summary,
         notes: notes || undefined,

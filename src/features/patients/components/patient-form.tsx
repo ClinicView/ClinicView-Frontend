@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { currentDateOnly } from '@/shared/lib/date-time';
+import { currentDateOnly, isFutureDateOnly, isValidDateOnly } from '@/shared/lib/date-time';
 import type { CreatePatientData, DocumentType, Sex } from '../types/patient';
 import styles from './patient-form.module.css';
 
@@ -21,6 +21,8 @@ function validate(data: Partial<CreatePatientData>): FieldErrors {
   if (!data.firstName?.trim()) errors.firstName = 'Requerido';
   if (!data.lastName?.trim()) errors.lastName = 'Requerido';
   if (!data.dateOfBirth) errors.dateOfBirth = 'Requerido';
+  else if (!isValidDateOnly(data.dateOfBirth)) errors.dateOfBirth = 'Fecha inválida';
+  else if (isFutureDateOnly(data.dateOfBirth)) errors.dateOfBirth = 'No puede estar en el futuro';
   if (!data.sex) errors.sex = 'Requerido';
   return errors;
 }

@@ -7,7 +7,7 @@ import { useSession } from '@/features/auth';
 import { createPatient, listPatients } from '@/features/patients';
 import type { DocumentType, Patient, Sex } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
-import { currentDateOnly } from '@/shared/lib/date-time';
+import { currentDateOnly, isFutureDateOnly, isValidDateOnly } from '@/shared/lib/date-time';
 import { Icon } from '@/shared/ui';
 import { ApiError } from '@/shared/services/api-client';
 import styles from './register-patient.module.css';
@@ -135,6 +135,14 @@ export function NewPatientView() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
+    if (!isValidDateOnly(form.dateOfBirth)) {
+      setError('La fecha de nacimiento no es válida.');
+      return;
+    }
+    if (isFutureDateOnly(form.dateOfBirth)) {
+      setError('La fecha de nacimiento no puede estar en el futuro.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {

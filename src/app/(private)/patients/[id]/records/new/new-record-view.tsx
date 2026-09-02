@@ -15,6 +15,7 @@ import {
   dateTimeLocalToIso,
   formatDateOnly,
   formatInstant,
+  isFutureDateTimeLocal,
 } from '@/shared/lib/date-time';
 import { Icon, Spinner, type IconName } from '@/shared/ui';
 import { ApiError } from '@/shared/services/api-client';
@@ -209,6 +210,10 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     const attendedAt = dateTimeLocalToIso(form.attendedAt);
     if (!attendedAt) {
       setError('La fecha y hora de atención no es válida.');
+      return;
+    }
+    if (isFutureDateTimeLocal(form.attendedAt)) {
+      setError('La fecha y hora de atención no puede estar en el futuro.');
       return;
     }
     setIsLoading(true);

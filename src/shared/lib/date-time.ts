@@ -1,4 +1,5 @@
 const DEFAULT_LOCALE = 'es-PE';
+export const CLINICAL_TIME_ZONE = 'America/Lima';
 
 const DEFAULT_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -11,6 +12,32 @@ interface DateOnlyParts {
   month: number;
   day: number;
 }
+
+interface DateTimeParts extends DateOnlyParts {
+  hour: number;
+  minute: number;
+  second: number;
+  millisecond: number;
+}
+
+export interface DateTimeLocalToIsoOptions {
+  /** Conserva segundos y milisegundos ocultos por un input con precisión de minutos. */
+  preserveSubMinuteFrom?: string | Date | null;
+}
+
+const CLINICAL_PARTS_FORMATTER = new Intl.DateTimeFormat(
+  'en-CA-u-ca-gregory-nu-latn',
+  {
+    timeZone: CLINICAL_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  },
+);
 
 function pad(value: number, length = 2): string {
   return String(value).padStart(length, '0');
@@ -26,7 +53,7 @@ function daysInMonth(year: number, month: number): number {
 }
 
 function parseDateOnly(value: string): DateOnlyParts | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return null;
 
   const year = Number(match[1]);
@@ -55,14 +82,79 @@ function validInstant(value: string | Date): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function clinicalDateTimeParts(date: Date): DateTimeParts {
+  const values = new Map(
+    CLINICAL_PARTS_FORMATTER.formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, Number(part.value)]),
+  );
+
+  return {
+    year: values.get('year')!,
+    month: values.get('month')!,
+    day: values.get('day')!,
+    hour: values.get('hour')!,
+    minute: values.get('minute')!,
+    second: values.get('second')!,
+    millisecond: date.getUTCMilliseconds(),
+  };
+}
+
+function utcTimestampFromParts(parts: DateTimeParts): number {
+  const date = new Date(0);
+  date.setUTCFullYear(parts.year, parts.month - 1, parts.day);
+  date.setUTCHours(parts.hour, parts.minute, parts.second, parts.millisecond);
+  return date.getTime();
+}
+
+function clinicalOffsetMilliseconds(date: Date): number {
+  return utcTimestampFromParts(clinicalDateTimeParts(date)) - date.getTime();
+}
+
+function sameDateTimeParts(left: DateTimeParts, right: DateTimeParts): boolean {
+  return (
+    left.year === right.year &&
+    left.month === right.month &&
+    left.day === right.day &&
+    left.hour === right.hour &&
+    left.minute === right.minute &&
+    left.second === right.second &&
+    left.millisecond === right.millisecond
+  );
+}
+
+/** Resuelve una hora de pared de Lima y rechaza horas inexistentes o duplicadas. */
+function clinicalDateTimeToInstant(parts: DateTimeParts): Date | null {
+  const wallClockTimestamp = utcTimestampFromParts(parts);
+  const sampleWindow = 36 * 60 * 60 * 1000;
+  const offsets = new Set(
+    [-sampleWindow, 0, sampleWindow].map((delta) =>
+      clinicalOffsetMilliseconds(new Date(wallClockTimestamp + delta)),
+    ),
+  );
+  const candidates = new Map<number, Date>();
+
+  for (const offset of offsets) {
+    const candidate = new Date(wallClockTimestamp - offset);
+    if (sameDateTimeParts(clinicalDateTimeParts(candidate), parts)) {
+      candidates.set(candidate.getTime(), candidate);
+    }
+  }
+
+  return candidates.size === 1 ? [...candidates.values()][0] : null;
+}
+
 /**
- * Normaliza un DATE de API (`YYYY-MM-DD` o un ISO que empiece por esa fecha)
- * sin convertirlo a la zona horaria del navegador.
+ * Normaliza un DATE de API (`YYYY-MM-DD`) sin convertirlo a un instante.
  */
 export function toDateOnlyInputValue(value: string | null | undefined): string {
   if (!value) return '';
   const parts = parseDateOnly(value);
   return parts ? dateOnlyFromParts(parts) : '';
+}
+
+export function isValidDateOnly(value: string | null | undefined): boolean {
+  return Boolean(value && parseDateOnly(value));
 }
 
 /** Formatea una fecha civil sin desplazarla por UTC/zona horaria. */
@@ -81,13 +173,14 @@ export function formatDateOnly(
   }).format(dateAtUtcMidnight(parts));
 }
 
-/** Devuelve la fecha civil local actual para inputs `type="date"`. */
+/** Devuelve la fecha civil actual en Lima para inputs `type="date"`. */
 export function currentDateOnly(now = new Date()): string {
-  return dateOnlyFromParts({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    day: now.getDate(),
-  });
+  return dateOnlyFromParts(clinicalDateTimeParts(now));
+}
+
+export function isFutureDateOnly(value: string, now = new Date()): boolean {
+  const normalized = toDateOnlyInputValue(value);
+  return normalized !== '' && normalized > currentDateOnly(now);
 }
 
 /** Calcula edad comparando calendarios, nunca instantes UTC. */
@@ -99,11 +192,7 @@ export function ageFromDateOnly(
   const birth = parseDateOnly(value);
   if (!birth) return null;
 
-  const today = {
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    day: now.getDate(),
-  };
+  const today = clinicalDateTimeParts(now);
   const birthKey = birth.year * 10_000 + birth.month * 100 + birth.day;
   const todayKey = today.year * 10_000 + today.month * 100 + today.day;
   if (birthKey > todayKey) return null;
@@ -115,7 +204,7 @@ export function ageFromDateOnly(
   return age;
 }
 
-/** Formatea un instante ISO en la zona horaria local del usuario. */
+/** Formatea un instante ISO con la zona clínica fija de Lima. */
 export function formatInstant(
   value: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = DEFAULT_DATE_OPTIONS,
@@ -124,27 +213,34 @@ export function formatInstant(
   if (!value) return fallback;
   const date = validInstant(value);
   if (!date) return fallback;
-  return new Intl.DateTimeFormat(DEFAULT_LOCALE, options).format(date);
+  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
+    ...options,
+    timeZone: CLINICAL_TIME_ZONE,
+  }).format(date);
 }
 
-/** Convierte un instante ISO al valor local esperado por `datetime-local`. */
+/** Convierte un instante ISO a la hora de Lima esperada por `datetime-local`. */
 export function isoToDateTimeLocal(value: string | Date | null | undefined): string {
   if (!value) return '';
   const date = validInstant(value);
   if (!date) return '';
+  const parts = clinicalDateTimeParts(date);
   return [
-    `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+    `${pad(parts.year, 4)}-${pad(parts.month)}-${pad(parts.day)}`,
+    `${pad(parts.hour)}:${pad(parts.minute)}`,
   ].join('T');
 }
 
-/** Devuelve el instante actual como valor local para `datetime-local`. */
+/** Devuelve el instante actual como hora de pared de Lima para `datetime-local`. */
 export function currentDateTimeLocal(now = new Date()): string {
   return isoToDateTimeLocal(now);
 }
 
-/** Convierte de forma explícita un `datetime-local` a ISO UTC. */
-export function dateTimeLocalToIso(value: string): string | null {
+/** Interpreta un `datetime-local` como hora de Lima y lo convierte a ISO UTC. */
+export function dateTimeLocalToIso(
+  value: string,
+  options: DateTimeLocalToIsoOptions = {},
+): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(
     value.trim(),
   );
@@ -155,25 +251,27 @@ export function dateTimeLocalToIso(value: string): string | null {
 
   const hour = Number(match[4]);
   const minute = Number(match[5]);
-  const second = Number(match[6] ?? 0);
-  const millisecond = Number((match[7] ?? '0').padEnd(3, '0'));
+  let second = Number(match[6] ?? 0);
+  let millisecond = Number((match[7] ?? '0').padEnd(3, '0'));
   if (hour > 23 || minute > 59 || second > 59) return null;
 
-  const date = new Date(0);
-  date.setFullYear(dateParts.year, dateParts.month - 1, dateParts.day);
-  date.setHours(hour, minute, second, millisecond);
-
-  // También detecta horas locales inexistentes durante cambios de DST.
-  if (
-    date.getFullYear() !== dateParts.year ||
-    date.getMonth() !== dateParts.month - 1 ||
-    date.getDate() !== dateParts.day ||
-    date.getHours() !== hour ||
-    date.getMinutes() !== minute ||
-    date.getSeconds() !== second
-  ) {
-    return null;
+  if (match[6] === undefined && options.preserveSubMinuteFrom) {
+    const original = validInstant(options.preserveSubMinuteFrom);
+    if (!original) return null;
+    second = original.getUTCSeconds();
+    millisecond = original.getUTCMilliseconds();
   }
 
-  return date.toISOString();
+  return clinicalDateTimeToInstant({
+    ...dateParts,
+    hour,
+    minute,
+    second,
+    millisecond,
+  })?.toISOString() ?? null;
+}
+
+export function isFutureDateTimeLocal(value: string, now = new Date()): boolean {
+  const instant = dateTimeLocalToIso(value);
+  return instant !== null && new Date(instant).getTime() > now.getTime();
 }
