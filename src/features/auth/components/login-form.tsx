@@ -33,11 +33,11 @@ export function LoginForm() {
         <div className={styles.brandContent}>
           <div className={styles.brandHeader}>
             <span className={styles.logoMark} aria-hidden="true">
-              PC
+              CV
             </span>
             <span className={styles.logoText}>
-              <span className={styles.logoName}>Plataforma Clínica</span>
-              <span className={styles.logoSub}>HOSPITALARIA</span>
+              <span className={styles.logoName}>ClinicView</span>
+              <span className={styles.logoSub}>PLATAFORMA CLÍNICA</span>
             </span>
           </div>
 
@@ -73,13 +73,13 @@ export function LoginForm() {
         <div className={styles.formCard}>
           <div className={styles.formBrand}>
             <span className={styles.logoMark} aria-hidden="true">
-              PC
+              CV
             </span>
             <span className={styles.logoText}>
               <span className={`${styles.logoName} ${styles.logoNameDark}`}>
-                Plataforma Clínica
+                ClinicView
               </span>
-              <span className={styles.logoSub}>HOSPITALARIA</span>
+              <span className={styles.logoSub}>PLATAFORMA CLÍNICA</span>
             </span>
           </div>
 
