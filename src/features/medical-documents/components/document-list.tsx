@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { can } from '@/shared/permissions/can';
@@ -72,125 +73,215 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
   };
 
   return (
-    <div>
-      <div className={styles.flowSteps} aria-label="Flujo de digitalización">
-        {FLOW_STEPS.map((step, index) => (
-          <div className={styles.flowStep} key={step.label}>
-            <span className={styles.stepNumber}>{index + 1}</span>
-            <Icon name={step.icon} size={18} />
-            <span>{step.label}</span>
-          </div>
-        ))}
-      </div>
+    <div className={styles.documentWorkspace}>
+      <section className={styles.flowPanel} aria-labelledby="document-flow-title">
+        <div className={styles.sectionHeading}>
+          <span className={styles.sectionKicker}>Flujo asistido</span>
+          <h2 id="document-flow-title" className={styles.sectionTitle}>
+            Del archivo físico al registro validado
+          </h2>
+        </div>
+
+        <ol className={styles.flowSteps}>
+          {FLOW_STEPS.map((step, index) => (
+            <li className={styles.flowStep} key={step.label}>
+              <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
+              <span className={styles.stepIcon} aria-hidden="true">
+                <Icon name={step.icon} size={19} />
+              </span>
+              <span className={styles.stepLabel}>
+                <span className={styles.srOnly}>Paso {index + 1}: </span>
+                {step.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {can(permissions, 'documents.upload') && (
-        <div className={styles.uploadPanel}>
+        <section className={styles.uploadPanel} aria-labelledby="document-upload-title">
           <div className={styles.uploadIcon} aria-hidden="true">
             <Icon name="upload" size={28} />
           </div>
           <div className={styles.uploadCopy}>
-            <p className={styles.uploadTitle}>Sube una historia clínica en PDF, JPG o PNG</p>
-            <p className={styles.uploadNote}>El archivo se vinculará al paciente seleccionado.</p>
+            <span className={styles.uploadEyebrow}>Nueva digitalización</span>
+            <h2 id="document-upload-title" className={styles.uploadTitle}>
+              Sube una historia clínica en PDF, JPG o PNG
+            </h2>
+            <p className={styles.uploadNote}>
+              El archivo se vinculará al paciente seleccionado.
+            </p>
+            <ul className={styles.fileTypes} aria-label="Formatos permitidos">
+              <li>PDF</li>
+              <li>JPG</li>
+              <li>PNG</li>
+            </ul>
           </div>
           <button
+            type="button"
             className={styles.uploadBtn}
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
+            aria-busy={isUploading}
           >
-            {isUploading ? 'Subiendo...' : 'Subir PDF/imagen'}
+            {isUploading ? (
+              <span className={styles.buttonSpinner} aria-hidden="true" />
+            ) : (
+              <Icon name="upload" size={18} />
+            )}
+            <span>{isUploading ? 'Subiendo...' : 'Subir PDF/imagen'}</span>
           </button>
-        </div>
+        </section>
       )}
 
-      <div className={styles.toolbar}>
-        <select
-          className={styles.select}
-          value={statusFilter ?? ''}
-          onChange={(e) => onStatusFilterChange((e.target.value as DocumentStatus) || undefined)}
-          aria-label="Filtrar por estado de digitalización"
-        >
-          <option value="">Todos los estados</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-          ))}
-        </select>
+      <section
+        className={styles.library}
+        aria-labelledby="document-library-title"
+        aria-busy={isLoading}
+      >
+        <div className={styles.libraryHeader}>
+          <div className={styles.sectionHeading}>
+            <span className={styles.sectionKicker}>Archivo clínico</span>
+            <h2 id="document-library-title" className={styles.sectionTitle}>
+              Documentos digitalizados
+            </h2>
+          </div>
 
-        {can(permissions, 'documents.upload') && (
-          <input
-            ref={fileInputRef}
-            className={styles.fileInput}
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            onChange={handleFileChange}
-          />
-        )}
-      </div>
+          <div className={styles.toolbar}>
+            <div className={styles.filterField}>
+              <label htmlFor="document-status-filter" className={styles.filterLabel}>
+                Estado
+              </label>
+              <select
+                id="document-status-filter"
+                className={styles.select}
+                value={statusFilter ?? ''}
+                onChange={(e) => onStatusFilterChange((e.target.value as DocumentStatus) || undefined)}
+                aria-label="Filtrar por estado de digitalización"
+              >
+                <option value="">Todos los estados</option>
+                {ALL_STATUSES.map((s) => (
+                  <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                ))}
+              </select>
+            </div>
 
-      {error && <Alert variant="error">{error}</Alert>}
-      {uploadError && <Alert variant="error">{uploadError}</Alert>}
+            <span className={styles.resultCount} aria-live="polite">
+              {isLoading ? 'Actualizando...' : `${total} archivo${total !== 1 ? 's' : ''}`}
+            </span>
 
-      <div className={styles.tableWrap}>
-        {isLoading ? (
-          <Spinner label="Cargando historias clínicas digitalizadas..." />
-        ) : data.length === 0 ? (
-          <EmptyState
-            icon="document"
-            title={statusFilter ? 'Sin archivos con ese estado' : 'Sin historias clínicas digitalizadas'}
-            description={
-              statusFilter
-                ? 'Prueba con otro filtro o sube un nuevo PDF o imagen.'
-                : 'Sube una historia clínica física en PDF o imagen para iniciar la digitalización.'
-            }
-          />
-        ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Historia clínica subida</th>
-                <th>Formato</th>
-                <th>Tamaño</th>
-                <th>Estado</th>
-                <th>Subida</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((doc) => (
-                <tr
-                  key={doc.id}
-                  onClick={() => router.push(`/patients/${patientId}/documents/${doc.id}`)}
-                >
-                  <td>
-                    <div className={styles.fileName}>{doc.originalName}</div>
-                    <div className={styles.fileMeta}>Abrir revisión y corrección</div>
-                  </td>
-                  <td>{mimeExt(doc.mimeType)}</td>
-                  <td>{formatSize(doc.sizeBytes)}</td>
-                  <td>
-                    <StatusBadge status={doc.status} label={STATUS_LABEL[doc.status]} dot />
-                  </td>
-                  <td>{formatDate(doc.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {!isLoading && total > 0 && (
-        <div className={styles.pagination}>
-          <span>
-            {total} archivo{total !== 1 ? 's' : ''} - página {page} de {totalPages}
-          </span>
-          <div className={styles.paginationBtns}>
-            <button className={styles.pageBtn} onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
-              Anterior
-            </button>
-            <button className={styles.pageBtn} onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
-              Siguiente
-            </button>
+            {can(permissions, 'documents.upload') && (
+              <input
+                ref={fileInputRef}
+                className={styles.fileInput}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png"
+                onChange={handleFileChange}
+              />
+            )}
           </div>
         </div>
-      )}
+
+        {(error || uploadError) && (
+          <div className={styles.alertStack}>
+            {error && <Alert variant="error">{error}</Alert>}
+            {uploadError && <Alert variant="error">{uploadError}</Alert>}
+          </div>
+        )}
+
+        <div className={styles.tableWrap}>
+          {isLoading ? (
+            <Spinner label="Cargando historias clínicas digitalizadas..." />
+          ) : data.length === 0 ? (
+            <EmptyState
+              icon="document"
+              title={statusFilter ? 'Sin archivos con ese estado' : 'Sin historias clínicas digitalizadas'}
+              description={
+                statusFilter
+                  ? 'Prueba con otro filtro o sube un nuevo PDF o imagen.'
+                  : 'Sube una historia clínica física en PDF o imagen para iniciar la digitalización.'
+              }
+            />
+          ) : (
+            <table className={styles.table}>
+              <caption className={styles.srOnly}>Historias clínicas digitalizadas</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Historia clínica subida</th>
+                  <th scope="col">Formato</th>
+                  <th scope="col">Tamaño</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Subida</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((doc) => {
+                  const documentHref = `/patients/${patientId}/documents/${doc.id}`;
+
+                  return (
+                    <tr key={doc.id} onClick={() => router.push(documentHref)}>
+                      <td data-label="Historia clínica">
+                        <Link
+                          href={documentHref}
+                          className={styles.fileLink}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <span className={styles.fileIcon} aria-hidden="true">
+                            <Icon name="document" size={20} />
+                          </span>
+                          <span className={styles.fileIdentity}>
+                            <span className={styles.fileName}>{doc.originalName}</span>
+                            <span className={styles.fileMeta}>Abrir revisión y corrección</span>
+                          </span>
+                          <span className={styles.rowArrow} aria-hidden="true">
+                            <Icon name="chevron-right" size={18} />
+                          </span>
+                        </Link>
+                      </td>
+                      <td data-label="Formato">
+                        <span className={styles.formatBadge}>{mimeExt(doc.mimeType)}</span>
+                      </td>
+                      <td data-label="Tamaño" className={styles.metaCell}>{formatSize(doc.sizeBytes)}</td>
+                      <td data-label="Estado">
+                        <StatusBadge status={doc.status} label={STATUS_LABEL[doc.status]} dot />
+                      </td>
+                      <td data-label="Subida" className={styles.metaCell}>{formatDate(doc.createdAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {!isLoading && total > 0 && (
+          <nav className={styles.pagination} aria-label="Paginación de documentos">
+            <span>
+              {total} archivo{total !== 1 ? 's' : ''} - página {page} de {totalPages}
+            </span>
+            <div className={styles.paginationBtns}>
+              <button
+                type="button"
+                className={styles.pageBtn}
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+              >
+                <Icon name="chevron-right" size={16} className={styles.previousIcon} />
+                Anterior
+              </button>
+              <button
+                type="button"
+                className={styles.pageBtn}
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+              >
+                Siguiente
+                <Icon name="chevron-right" size={16} />
+              </button>
+            </div>
+          </nav>
+        )}
+      </section>
     </div>
   );
 }
