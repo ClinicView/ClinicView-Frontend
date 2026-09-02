@@ -1,5 +1,11 @@
 import { apiBlob, apiGet, apiPatch, apiPost, apiUpload } from '@/shared/services/api-client';
-import type { CorrectedEntity, DocumentStatus, DocumentsPage, MedicalDocument } from '../types/document';
+import type {
+  DocumentCorrectionInput,
+  DocumentStatus,
+  DocumentsPage,
+  FinalizeDocumentReviewInput,
+  MedicalDocument,
+} from '../types/document';
 
 export function listDocuments(
   patientId: string,
@@ -27,14 +33,18 @@ export function processDocument(patientId: string, docId: string): Promise<Medic
   return apiPost<MedicalDocument>(`/patients/${patientId}/documents/${docId}/process`);
 }
 
-export function validateDocument(patientId: string, docId: string): Promise<MedicalDocument> {
-  return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/validate`);
+export function validateDocument(
+  patientId: string,
+  docId: string,
+  data: FinalizeDocumentReviewInput & { expectedVersion: number },
+): Promise<MedicalDocument> {
+  return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/validate`, data);
 }
 
 export function saveDocumentCorrection(
   patientId: string,
   docId: string,
-  data: { correctedText?: string; correctedEntities?: CorrectedEntity[] },
+  data: DocumentCorrectionInput & { expectedVersion: number },
 ): Promise<MedicalDocument> {
   return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/correction`, data);
 }

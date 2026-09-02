@@ -1,9 +1,10 @@
 'use client';
 
+import type { ValidationChecklistId } from '../types/document';
 import styles from './correction-view.module.css';
 
 export interface ChecklistItem {
-  id: string;
+  id: ValidationChecklistId;
   title: string;
   hint: string;
 }
@@ -32,13 +33,14 @@ export const VALIDATION_CHECKLIST: ChecklistItem[] = [
 ];
 
 interface ValidationPanelProps {
-  checked: Set<string>;
+  checked: Set<ValidationChecklistId>;
   canValidate: boolean;
   canReject: boolean;
   isActing: boolean;
+  hasUnsavedChanges: boolean;
   showRejectForm: boolean;
   rejectReason: string;
-  onToggle: (id: string) => void;
+  onToggle: (id: ValidationChecklistId) => void;
   onValidate: () => void;
   onToggleRejectForm: () => void;
   onRejectReasonChange: (value: string) => void;
@@ -50,6 +52,7 @@ export function ValidationPanel({
   canValidate,
   canReject,
   isActing,
+  hasUnsavedChanges,
   showRejectForm,
   rejectReason,
   onToggle,
@@ -87,6 +90,14 @@ export function ValidationPanel({
       </div>
 
       {canValidate && (
+        <p className={styles.atomicValidationHint}>
+          {hasUnsavedChanges
+            ? 'Tus cambios actuales se guardarán junto con la validación en una sola operación.'
+            : 'Se validará exactamente la versión guardada que estás revisando.'}
+        </p>
+      )}
+
+      {canValidate && (
         <button
           className={`${styles.btn} ${styles.btnSuccess}`}
           type="button"
@@ -94,7 +105,7 @@ export function ValidationPanel({
           disabled={isActing || !allChecked}
           title={allChecked ? undefined : 'Completa el checklist para validar'}
         >
-          {isActing ? 'Validando…' : 'Validar versión final'}
+          {isActing ? 'Guardando y validando…' : 'Guardar y validar versión final'}
         </button>
       )}
       {!allChecked && canValidate && (

@@ -20,6 +20,20 @@ export interface CorrectedEntity {
   normalizedValue?: string | null;
 }
 
+export type ValidationChecklistId = 'text' | 'entities' | 'sections' | 'phi';
+
+export interface DocumentCorrectionInput {
+  correctedText?: string;
+  correctedEntities?: CorrectedEntity[];
+}
+
+export interface FinalizeDocumentReviewInput {
+  correctedText: string;
+  correctedEntities: CorrectedEntity[];
+  checklistItems: ValidationChecklistId[];
+  attested: true;
+}
+
 /**
  * Métricas de calidad OCR/NER calculadas por el servicio IA v2.
  * cer/wer/charAccuracy en [0,1]. estimated=true cuando no hubo texto de
@@ -56,7 +70,11 @@ export interface MedicalDocument {
   processedAt: string | null;
   reviewedAt: string | null;
   reviewedBy: string | null;
+  validationChecklist: ValidationChecklistId[] | null;
+  validationAttested: boolean;
+  validationAttestedAt: string | null;
   updatedAt: string;
+  version: number;
   /** Opcionales — los expone el backend cuando el servicio IA v2 los devuelve. */
   metrics?: OcrMetrics | null;
   ocrConfidence?: number | null;

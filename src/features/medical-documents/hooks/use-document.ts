@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { CorrectedEntity, MedicalDocument } from '../types/document';
+import { ApiError } from '@/shared/services/api-client';
+import type {
+  DocumentCorrectionInput,
+  FinalizeDocumentReviewInput,
+  MedicalDocument,
+} from '../types/document';
 import {
   getDocument,
   processDocument,
@@ -15,11 +20,14 @@ export function useDocument(patientId: string, docId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionErrorStatus, setActionErrorStatus] = useState<number | null>(null);
   const [isActing, setIsActing] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setActionError(null);
+    setActionErrorStatus(null);
     try {
       const doc = await getDocument(patientId, docId);
       setDocument(doc);
@@ -52,14 +60,18 @@ export function useDocument(patientId: string, docId: string) {
     return () => clearInterval(interval);
   }, [document?.status, patientId, docId]);
 
-  async function act(fn: () => Promise<MedicalDocument>): Promise<void> {
+  async function act(fn: () => Promise<MedicalDocument>): Promise<MedicalDocument | null> {
     setIsActing(true);
     setActionError(null);
+    setActionErrorStatus(null);
     try {
       const updated = await fn();
       setDocument(updated);
+      return updated;
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Error al ejecutar la acción.');
+      setActionErrorStatus(err instanceof ApiError ? err.status : null);
+      return null;
     } finally {
       setIsActing(false);
     }
@@ -70,11 +82,23 @@ export function useDocument(patientId: string, docId: string) {
     isLoading,
     error,
     actionError,
+    actionErrorStatus,
     isActing,
     process: () => act(() => processDocument(patientId, docId)),
-    saveCorrection: (data: { correctedText?: string; correctedEntities?: CorrectedEntity[] }) =>
-      act(() => saveDocumentCorrection(patientId, docId, data)),
-    validate: () => act(() => validateDocument(patientId, docId)),
+    saveCorrection: (data: DocumentCorrectionInput) =>
+      document
+        ? act(() => saveDocumentCorrection(patientId, docId, {
+            ...data,
+            expectedVersion: document.version,
+          }))
+        : Promise.resolve(null),
+    validate: (data: FinalizeDocumentReviewInput) =>
+      document
+        ? act(() => validateDocument(patientId, docId, {
+            ...data,
+            expectedVersion: document.version,
+          }))
+        : Promise.resolve(null),
     reject: (reason: string) => act(() => rejectDocument(patientId, docId, reason)),
     reload: load,
   };

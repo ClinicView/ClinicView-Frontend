@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/features/auth';
 import { usePatient } from '@/features/patients';
+import { ageFromDateOnly, formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Alert, Icon, Spinner } from '@/shared/ui';
 import { useDocument } from '../hooks/use-document';
-import type { CorrectedEntity, DocumentStatus, NerEntity } from '../types/document';
+import type {
+  CorrectedEntity,
+  DocumentStatus,
+  NerEntity,
+  ValidationChecklistId,
+} from '../types/document';
 import { DocumentPreview } from './document-preview';
 import { DocumentStepper } from './document-stepper';
 import { EntitiesPanel } from './entities-panel';
@@ -27,8 +33,7 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
 const SUGGESTION_CONFIDENCE_THRESHOLD = 0.8;
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('es-PE', {
+  return formatInstant(iso, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -48,15 +53,6 @@ function fileKind(mimeType: string): string {
   if (mimeType === 'image/jpeg') return 'JPG';
   if (mimeType === 'image/png') return 'PNG';
   return 'DOC';
-}
-
-function computeAge(dateOfBirth: string): number {
-  const birth = new Date(dateOfBirth);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const monthDiff = now.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
-  return age;
 }
 
 function toCorrectedEntities(entities: Array<NerEntity | CorrectedEntity> | null): CorrectedEntity[] {
@@ -81,11 +77,13 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     isLoading,
     error,
     actionError,
+    actionErrorStatus,
     isActing,
     process,
     saveCorrection,
     validate,
     reject,
+    reload,
   } = useDocument(patientId, docId);
   const { user } = useSession();
   const { patient } = usePatient(patientId);
@@ -93,7 +91,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const [activeTab, setActiveTab] = useState<TabId>('text');
   const [correctedText, setCorrectedText] = useState('');
   const [correctedEntities, setCorrectedEntities] = useState<CorrectedEntity[]>([]);
-  const [checkedValidation, setCheckedValidation] = useState<Set<string>>(new Set());
+  const [checkedValidation, setCheckedValidation] = useState<Set<ValidationChecklistId>>(
+    new Set(),
+  );
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -106,6 +106,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         ? toCorrectedEntities(document.correctedEntities)
         : toCorrectedEntities(document.nerEntities),
     );
+    setCheckedValidation(new Set());
   }, [document]);
 
   const suggestions = useMemo<OcrSuggestion[]>(() => {
@@ -144,22 +145,35 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const isDirty =
     correctedText !== savedText || JSON.stringify(correctedEntities) !== savedEntities;
 
+  function normalizedEntities(): CorrectedEntity[] {
+    return correctedEntities
+      .map((entity) => ({
+        type: entity.type,
+        value: entity.value.trim(),
+        normalizedValue: entity.normalizedValue?.trim() || null,
+      }))
+      .filter((entity) => entity.value.length > 0);
+  }
+
   async function handleSave() {
-    await saveCorrection({
+    return saveCorrection({
       correctedText,
-      correctedEntities: correctedEntities
-        .map((entity) => ({
-          type: entity.type,
-          value: entity.value.trim(),
-          normalizedValue: entity.normalizedValue?.trim() || null,
-        }))
-        .filter((entity) => entity.value.length > 0),
+      correctedEntities: normalizedEntities(),
     });
   }
 
   async function handleMarkReviewed() {
-    await handleSave();
-    setActiveTab('validation');
+    const updated = await handleSave();
+    if (updated) setActiveTab('validation');
+  }
+
+  async function handleValidate() {
+    await validate({
+      correctedText,
+      correctedEntities: normalizedEntities(),
+      checklistItems: Array.from(checkedValidation),
+      attested: true,
+    });
   }
 
   async function handleReject() {
@@ -171,16 +185,23 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }
 
   function updateEntity(index: number, patch: Partial<CorrectedEntity>) {
+    setCheckedValidation(new Set());
     setCorrectedEntities((prev) =>
       prev.map((entity, i) => (i === index ? { ...entity, ...patch } : entity)),
     );
   }
 
   function removeEntity(index: number) {
+    setCheckedValidation(new Set());
     setCorrectedEntities((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function toggleValidationItem(id: string) {
+  function handleCorrectedTextChange(value: string) {
+    setCheckedValidation(new Set());
+    setCorrectedText(value);
+  }
+
+  function toggleValidationItem(id: ValidationChecklistId) {
     setCheckedValidation((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -192,8 +213,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const patientLine = patient
     ? `${patient.lastName}, ${patient.firstName}`
     : 'Cargando…';
+  const patientAge = ageFromDateOnly(patient?.dateOfBirth);
   const patientSub = patient
-    ? `${patient.documentNumber} · ${patient.sex === 'M' ? 'Masculino' : patient.sex === 'F' ? 'Femenino' : 'Otro'} · ${computeAge(patient.dateOfBirth)} años`
+    ? `${patient.documentNumber} · ${patient.sex === 'M' ? 'Masculino' : patient.sex === 'F' ? 'Femenino' : 'Otro'}${patientAge === null ? '' : ` · ${patientAge} años`}`
     : '';
 
   return (
@@ -366,7 +388,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 text={correctedText}
                 disabled={!canCorrect || isActing || !hasOcr}
                 suggestions={suggestions}
-                onChange={setCorrectedText}
+                onChange={handleCorrectedTextChange}
                 onDismissSuggestion={(id) =>
                   setDismissedSuggestions((prev) => new Set(prev).add(id))
                 }
@@ -390,10 +412,11 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 canValidate={canValidate}
                 canReject={canReject}
                 isActing={isActing}
+                hasUnsavedChanges={isDirty}
                 showRejectForm={showRejectForm}
                 rejectReason={rejectReason}
                 onToggle={toggleValidationItem}
-                onValidate={() => void validate()}
+                onValidate={() => void handleValidate()}
                 onToggleRejectForm={() => setShowRejectForm((value) => !value)}
                 onRejectReasonChange={setRejectReason}
                 onReject={() => void handleReject()}
@@ -414,7 +437,21 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
             <Icon name={isDirty ? 'edit' : 'check'} size={15} />
             {isDirty ? 'Cambios sin guardar' : 'Cambios guardados'}
           </span>
-          {actionError && <span className={styles.actionError}>{actionError}</span>}
+          {actionError && (
+            <div className={styles.actionErrorGroup} role="alert">
+              <span className={styles.actionError}>{actionError}</span>
+              {actionErrorStatus === 409 && (
+                <button
+                  className={`${styles.btn} ${styles.retryButton}`}
+                  type="button"
+                  onClick={() => void reload()}
+                  disabled={isActing}
+                >
+                  Recargar versión actual
+                </button>
+              )}
+            </div>
+          )}
 
           <div className={styles.actionButtons}>
             {canCorrect && (
