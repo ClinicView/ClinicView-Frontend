@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No tests yet — add Jest/Vitest when first test is written\"",
     "gen-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/shared/types/api.generated.ts"
