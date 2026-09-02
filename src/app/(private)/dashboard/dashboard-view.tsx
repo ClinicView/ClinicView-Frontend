@@ -64,23 +64,33 @@ function StatCard({
   isLoading,
   hintTone = 'neutral',
 }: StatCardProps) {
+  const labelId = `stat-${tone}-label`;
+
   return (
-    <article className={`${styles.statCard} ${styles[`statCard_${tone}`]}`}>
+    <article
+      className={`${styles.statCard} ${styles[`statCard_${tone}`]}`}
+      aria-labelledby={labelId}
+    >
       <div className={styles.statTopline}>
         <span className={`${styles.statIcon} ${styles[`statIcon_${tone}`]}`} aria-hidden="true">
           <Icon name={icon} size={20} />
         </span>
-        <span className={styles.statLabel}>{label}</span>
+        <span id={labelId} className={styles.statLabel}>{label}</span>
       </div>
 
       <div className={styles.statBottomline}>
         {isLoading ? (
-          <span className={styles.statSkeleton} aria-label={`Cargando ${label}`} />
+          <span className={styles.statSkeleton} aria-hidden="true" />
         ) : (
           <span className={styles.statValue}>{value ?? '—'}</span>
         )}
         {hint && (
-          <span className={`${styles.statHint} ${styles[`statHint_${hintTone}`]}`}>{hint}</span>
+          <span
+            className={`${styles.statHint} ${styles[`statHint_${hintTone}`]}`}
+            aria-label={hint.replace('↑', 'Aumento de').replace('↓', 'Disminución de')}
+          >
+            {hint}
+          </span>
         )}
       </div>
     </article>
@@ -145,7 +155,7 @@ export function DashboardView() {
           <p className={styles.headerCopy}>Todo lo importante de tu jornada clínica, en un solo lugar.</p>
         </div>
 
-        <div className={styles.datePill}>
+        <div className={styles.datePill} aria-label={`Fecha actual: ${formatToday()}`}>
           <Icon name="calendar" size={16} />
           <span>{formatToday()}</span>
         </div>
@@ -191,11 +201,11 @@ export function DashboardView() {
             )}
           </div>
 
-          <div className={styles.heroSignals} aria-label="Características de la plataforma">
-            <span><Icon name="check" size={14} /> OCR asistido</span>
-            <span><Icon name="check" size={14} /> Versionado clínico</span>
-            <span><Icon name="check" size={14} /> Acceso por roles</span>
-          </div>
+          <ul className={styles.heroSignals} aria-label="Características de la plataforma">
+            <li><Icon name="check" size={14} /> OCR asistido</li>
+            <li><Icon name="check" size={14} /> Versionado clínico</li>
+            <li><Icon name="check" size={14} /> Acceso por roles</li>
+          </ul>
         </div>
 
         <div className={styles.heroVisual} aria-hidden="true">
@@ -237,7 +247,14 @@ export function DashboardView() {
         </div>
       </section>
 
-      <section className={styles.statsGrid} aria-label="Indicadores del día">
+      <section
+        className={styles.statsGrid}
+        aria-label="Indicadores del día"
+        aria-busy={isLoading}
+      >
+        <span className="screenReaderOnly" role="status" aria-live="polite">
+          {isLoading ? 'Cargando indicadores del día' : 'Indicadores del día actualizados'}
+        </span>
         <StatCard
           icon="users"
           tone="blue"
@@ -303,7 +320,11 @@ export function DashboardView() {
           </ol>
         </section>
 
-        <section className={`${styles.panel} ${styles.activityPanel}`} aria-labelledby="activity-title">
+        <section
+          className={`${styles.panel} ${styles.activityPanel}`}
+          aria-labelledby="activity-title"
+          aria-busy={isLoading}
+        >
           <div className={styles.panelHeader}>
             <div>
               <span className={styles.panelEyebrow}>En tiempo reciente</span>
@@ -342,7 +363,9 @@ export function DashboardView() {
                       </span>
                     </span>
                     <span className={styles.activityRight}>
-                      <span className={styles.activityTime}>{formatTime(item.occurredAt)}</span>
+                      <time className={styles.activityTime} dateTime={item.occurredAt}>
+                        {formatTime(item.occurredAt)}
+                      </time>
                       <span className={`${styles.activityBadge} ${styles[`badge_${meta.tone}`]}`}>
                         {meta.badge}
                       </span>
@@ -362,7 +385,11 @@ export function DashboardView() {
               })}
             </ul>
           ) : (
-            <div className={styles.activityEmpty}>
+            <div
+              className={styles.activityEmpty}
+              role={isLoading ? 'status' : undefined}
+              aria-live={isLoading ? 'polite' : undefined}
+            >
               <span><Icon name={isLoading ? 'clock' : 'sparkle'} size={20} /></span>
               <strong>{isLoading ? 'Cargando actividad' : 'Tu actividad aparecerá aquí'}</strong>
               <p>

@@ -60,7 +60,7 @@
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
   --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
+  --gray-400: #627287;
   --gray-500: #596983;
   --gray-600: #475569;
   --gray-700: #334155;
@@ -76,6 +76,7 @@
   --color-muted: var(--color-brand-ice);
   --color-muted-foreground: #52627c;
   --color-border: #d6e2f0;
+  --color-control-border: #7b8ba1;
   --border-clinical: #dbe4f0;
   --surface-subtle: #f8faff;
   --surface-tint: #eef6ff;
@@ -122,6 +123,7 @@
 
 html {
   font-size: 16px;
+  scroll-padding-top: calc(var(--header-height) + 1rem);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -129,6 +131,7 @@ html {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   background:
     radial-gradient(circle at 8% -10%, rgba(0, 199, 255, 0.08), transparent 28rem),
@@ -150,6 +153,7 @@ select {
 button,
 [role='button'] {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 ::selection {
@@ -158,9 +162,37 @@ button,
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 3px solid var(--color-primary);
   outline-offset: 3px;
   border-radius: 4px;
+}
+
+:target {
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
+:where(a, button, input, textarea, select, [tabindex]):focus {
+  scroll-margin-block: calc(var(--header-height) + 1rem) 1rem;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.screenReaderOnly {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  white-space: nowrap !important;
 }
 
 a {
@@ -211,6 +243,14 @@ a:hover {
   scrollbar-width: thin;
 }
 
+@media (max-width: 860px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  textarea,
+  select {
+    font-size: max(1rem, 16px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -219,9 +259,22 @@ a:hover {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: #8796aa;
+    --border-clinical: #8796aa;
+    --color-muted-foreground: #334155;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
   }
 }

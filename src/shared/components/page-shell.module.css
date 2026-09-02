@@ -2,6 +2,7 @@
   --sidebar-width: 276px;
   --sidebar-collapsed-width: 86px;
   min-height: 100vh;
+  min-height: 100dvh;
   background: transparent;
   color: var(--gray-800);
   isolation: isolate;
@@ -71,6 +72,7 @@
   inset: 12px auto 12px 12px;
   z-index: 120;
   width: var(--sidebar-width);
+  max-height: calc(100dvh - 24px);
   display: flex;
   flex-direction: column;
   overflow: visible;
@@ -129,11 +131,11 @@
 
 .collapseBtn {
   position: absolute;
-  top: 27px;
-  right: -14px;
+  top: 21px;
+  right: -22px;
   z-index: 3;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -146,15 +148,41 @@
   transition: color var(--transition-fast), transform var(--transition-base), box-shadow var(--transition-fast);
 }
 
+.mobileCloseBtn {
+  width: 44px;
+  height: 44px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 199, 255, 0.2);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.mobileCloseBtn:hover {
+  border-color: rgba(0, 199, 255, 0.42);
+  background: rgba(255, 255, 255, 0.13);
+}
+
 .collapseBtn:hover {
   box-shadow: var(--shadow-md);
+  color: var(--color-primary-dark);
+}
+
+.collapseBtn:active,
+.mobileMenuBtn:active {
+  background: var(--color-primary-light);
   color: var(--color-primary-dark);
 }
 
 .navEyebrow {
   margin: 0.6rem 1.4rem 0.45rem;
   color: #8ea6ce;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -166,6 +194,9 @@
   flex: 1;
   flex-direction: column;
   gap: 0.35rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.45rem 0.75rem 1rem;
 }
 
@@ -195,6 +226,18 @@
   color: var(--sidebar-item-hover);
   text-decoration: none;
   transform: translateX(2px);
+}
+
+.navLink:active,
+.logoutBtn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar .navLink:focus-visible,
+.sidebar .logoutBtn:focus-visible,
+.sidebar .mobileCloseBtn:focus-visible {
+  outline-color: var(--color-brand-cyan);
+  box-shadow: 0 0 0 2px var(--color-navy-950), 0 0 0 5px var(--color-brand-cyan);
 }
 
 .navLinkActive {
@@ -275,14 +318,14 @@
 
 .securityCopy strong {
   color: #d8f7f0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
 .securityCopy small {
   margin-top: 0.1rem;
   color: #7899a5;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -293,6 +336,11 @@
   text-align: left;
 }
 
+.logoutBtn:disabled {
+  opacity: 0.62;
+  cursor: wait;
+}
+
 .logoutBtn:hover {
   border-color: rgba(248, 113, 113, 0.1);
   background: rgba(185, 28, 28, 0.12);
@@ -301,6 +349,7 @@
 
 .mainArea {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   padding-left: calc(var(--sidebar-width) + 24px);
@@ -311,14 +360,14 @@
   position: sticky;
   top: 0;
   z-index: 80;
-  height: var(--header-height);
+  min-height: var(--header-height);
   display: flex;
   align-items: center;
   gap: 1.25rem;
   border-bottom: 1px solid rgba(203, 213, 225, 0.72);
   background: rgba(244, 247, 251, 0.84);
   backdrop-filter: blur(18px) saturate(140%);
-  padding: 0 2rem;
+  padding: 0.65rem 2rem;
 }
 
 .routeContext {
@@ -330,7 +379,7 @@
 
 .routeEyebrow {
   color: var(--gray-400);
-  font-size: 0.61rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   line-height: 1;
@@ -341,7 +390,7 @@
   margin-top: 0.2rem;
   color: var(--gray-900);
   font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
-  font-size: 0.92rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.15;
@@ -351,6 +400,7 @@
   position: relative;
   display: flex;
   flex: 1;
+  min-width: 0;
   align-items: center;
   max-width: 500px;
   margin: 0 auto;
@@ -365,13 +415,14 @@
 }
 
 .searchInput {
+  min-width: 0;
   width: 100%;
-  height: 44px;
-  border: 1px solid var(--border-clinical);
+  min-height: 44px;
+  border: 1px solid var(--color-control-border);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--shadow-xs);
-  padding: 0 4.5rem 0 2.7rem;
+  padding: 0.65rem 4.5rem 0.65rem 2.7rem;
   color: var(--gray-800);
   font-size: 0.875rem;
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -388,6 +439,11 @@
   box-shadow: 0 0 0 4px var(--color-focus-ring), var(--shadow-sm);
 }
 
+.searchInput:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .searchKbd {
   position: absolute;
   right: 0.65rem;
@@ -399,7 +455,7 @@
   padding: 0.18rem 0.42rem;
   color: var(--gray-500);
   font-family: var(--font-figtree), Arial, sans-serif;
-  font-size: 0.64rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   pointer-events: none;
 }
@@ -412,6 +468,7 @@
 }
 
 .identity {
+  min-height: 44px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -426,6 +483,10 @@
 .identity:hover {
   background: rgba(255, 255, 255, 0.72);
   text-decoration: none;
+}
+
+.identity:active {
+  background: var(--color-primary-light);
 }
 
 .avatar {
@@ -453,7 +514,7 @@
   max-width: 190px;
   overflow: hidden;
   color: var(--gray-800);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -463,7 +524,7 @@
 .identityRole {
   margin-top: 0.1rem;
   color: var(--gray-500);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   line-height: 1.2;
 }
 
@@ -499,10 +560,18 @@
 
 .content {
   flex: 1;
+  min-width: 0;
   width: 100%;
   max-width: var(--content-max-width);
   margin: 0 auto;
   padding: 1.75rem 2rem 3.5rem;
+  overflow-wrap: anywhere;
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
+.content:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: -3px;
 }
 
 .shellCollapsed .sidebar {
@@ -558,12 +627,25 @@
 @media (max-width: 860px) {
   .sidebar {
     inset: 8px auto 8px 8px;
+    top: max(8px, env(safe-area-inset-top));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
     width: min(286px, calc(100vw - 24px));
+    max-height: calc(100dvh - 16px);
+    visibility: hidden;
+    pointer-events: none;
     transform: translateX(calc(-100% - 20px));
+    transition:
+      width var(--transition-base),
+      transform var(--transition-base),
+      visibility 0s linear 240ms;
   }
 
   .shellMobileOpen .sidebar {
+    visibility: visible;
+    pointer-events: auto;
     transform: translateX(0);
+    transition-delay: 0s;
   }
 
   .mainArea,
@@ -573,7 +655,11 @@
 
   .topbar {
     gap: 0.75rem;
-    padding: 0 1rem;
+    padding:
+      max(0.65rem, env(safe-area-inset-top))
+      max(1rem, env(safe-area-inset-right))
+      0.65rem
+      max(1rem, env(safe-area-inset-left));
   }
 
   .searchForm {
@@ -596,8 +682,16 @@
     display: none;
   }
 
+  .mobileCloseBtn {
+    display: inline-flex;
+  }
+
   .content {
-    padding: 1.25rem 1rem 2.5rem;
+    padding:
+      1.25rem
+      max(1rem, env(safe-area-inset-right))
+      calc(2.5rem + env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
   }
 
   .mobileBackdrop {
@@ -650,9 +744,11 @@
 
 @media (max-width: 560px) {
   .topbar {
-    height: 66px;
+    min-height: 66px;
     gap: 0.55rem;
-    padding-inline: 0.75rem;
+    padding-inline:
+      max(0.75rem, env(safe-area-inset-left))
+      max(0.75rem, env(safe-area-inset-right));
   }
 
   .searchInput {
@@ -672,6 +768,56 @@
   }
 
   .content {
-    padding: 1rem 0.75rem 2rem;
+    padding:
+      1rem
+      max(0.75rem, env(safe-area-inset-right))
+      calc(2rem + env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar {
+    gap: 0.4rem;
+    padding-inline:
+      max(0.5rem, env(safe-area-inset-left))
+      max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .searchInput {
+    padding-left: 2.35rem;
+  }
+
+  .searchIcon {
+    left: 0.75rem;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 520px) {
+  .brandBlock {
+    min-height: 68px;
+    padding-block: 0.65rem;
+  }
+
+  .navLink,
+  .logoutBtn,
+  .securityStatus {
+    min-height: 44px;
+  }
+
+  .navList {
+    padding-block: 0.25rem 0.5rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .mobileBackdrop {
+    background: CanvasText;
+  }
+
+  .navLinkActive,
+  .searchInput:focus,
+  .mobileCloseBtn {
+    border-color: Highlight;
   }
 }

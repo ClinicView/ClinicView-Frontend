@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, type IconName } from '@/shared/ui';
 import { useNotifications } from '../hooks/use-notifications';
@@ -27,42 +27,104 @@ function formatWhen(iso: string): string {
 
 export function NotificationsBell() {
   const router = useRouter();
-  const { notifications, unreadCount, refresh, markRead, markAllRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isRefreshing,
+    error,
+    refresh,
+    markRead,
+    markAllRead,
+  } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const panelRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const closePanel = useCallback((restoreFocus: boolean) => {
+    if (panelRef.current?.open) panelRef.current.close();
+    setIsOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
 
   // Cerrar al hacer clic fuera o presionar Escape.
   useEffect(() => {
     if (!isOpen) return;
 
-    function onPointerDown(event: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    if (panelRef.current && !panelRef.current.open) {
+      panelRef.current.showModal();
     }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setIsOpen(false);
-        triggerRef.current?.focus();
+        event.preventDefault();
+        closePanel(true);
+        return;
+      }
+
+      if (event.key === 'Tab' && panelRef.current) {
+        const focusableElements = Array.from(
+          panelRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((element) => element.getClientRects().length > 0);
+
+        if (focusableElements.length === 0) {
+          event.preventDefault();
+          titleRef.current?.focus();
+          return;
+        }
+
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        const activeElement = document.activeElement;
+
+        if (
+          event.shiftKey
+          && (activeElement === first
+            || activeElement === titleRef.current
+            || !panelRef.current.contains(activeElement))
+        ) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     }
-    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', onKeyDown);
     };
+  }, [closePanel, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const animationFrame = window.requestAnimationFrame(() => titleRef.current?.focus());
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [isOpen]);
 
   function handleOpen() {
-    setIsOpen((open) => !open);
-    if (!isOpen) void refresh();
+    setIsOpen((open) => {
+      const nextOpen = !open;
+      if (nextOpen) void refresh();
+      return nextOpen;
+    });
   }
 
   function handleClick(notification: AppNotification) {
     if (!notification.readAt) void markRead(notification.id);
-    setIsOpen(false);
+    const hasDestination = Boolean(notification.patientId);
+    closePanel(!hasDestination);
     if (notification.patientId && notification.documentId) {
       router.push(`/patients/${notification.patientId}/documents/${notification.documentId}`);
     } else if (notification.patientId) {
@@ -70,8 +132,31 @@ export function NotificationsBell() {
     }
   }
 
+  function handleDialogPointerDown(event: React.PointerEvent<HTMLDialogElement>) {
+    if (event.target !== event.currentTarget) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const isOnBackdrop =
+      event.clientX < bounds.left
+      || event.clientX > bounds.right
+      || event.clientY < bounds.top
+      || event.clientY > bounds.bottom;
+
+    if (isOnBackdrop) closePanel(true);
+  }
+
+  async function handleMarkAllRead() {
+    setIsMarkingAll(true);
+    try {
+      await markAllRead();
+    } finally {
+      closeButtonRef.current?.focus();
+      setIsMarkingAll(false);
+    }
+  }
+
   return (
-    <div className={styles.wrapper} ref={panelRef}>
+    <div className={styles.wrapper}>
       <button
         ref={triggerRef}
         className={styles.bellBtn}
@@ -92,35 +177,91 @@ export function NotificationsBell() {
         )}
       </button>
 
+      <span className="screenReaderOnly" role="status" aria-live="polite" aria-atomic="true">
+        {unreadCount > 0
+          ? `${unreadCount} ${unreadCount === 1 ? 'notificación sin leer' : 'notificaciones sin leer'}`
+          : 'No hay notificaciones sin leer'}
+      </span>
+
       {isOpen && (
-        <div
+        <dialog
+          ref={panelRef}
           id="notifications-panel"
           className={styles.panel}
-          role="dialog"
           aria-labelledby="notifications-title"
+          aria-busy={isRefreshing}
+          onCancel={(event) => {
+            event.preventDefault();
+            closePanel(true);
+          }}
+          onPointerDown={handleDialogPointerDown}
         >
+          {isRefreshing && (
+            <span className="screenReaderOnly" role="status" aria-live="polite">
+              Actualizando notificaciones
+            </span>
+          )}
           <div className={styles.panelHeader}>
             <div>
               <span className={styles.panelEyebrow}>Centro de actividad</span>
-              <h2 id="notifications-title" className={styles.panelTitle}>Notificaciones</h2>
+              <h2
+                id="notifications-title"
+                ref={titleRef}
+                className={styles.panelTitle}
+                tabIndex={-1}
+              >
+                Notificaciones
+              </h2>
             </div>
-            {unreadCount > 0 && (
-              <button className={styles.markAll} type="button" onClick={() => void markAllRead()}>
-                Marcar todas como leídas
+            <div className={styles.panelActions}>
+              {(unreadCount > 0 || isMarkingAll) && (
+                <button
+                  className={styles.markAll}
+                  type="button"
+                  onClick={() => void handleMarkAllRead()}
+                  disabled={isMarkingAll}
+                >
+                  {isMarkingAll ? 'Marcando…' : 'Marcar todas como leídas'}
+                </button>
+              )}
+              <button
+                ref={closeButtonRef}
+                className={styles.closeBtn}
+                type="button"
+                onClick={() => closePanel(true)}
+                aria-label="Cerrar notificaciones"
+              >
+                <Icon name="close" size={19} />
               </button>
-            )}
+            </div>
           </div>
 
-          {notifications.length === 0 ? (
-            <div className={styles.empty}>
-              <span className={styles.emptyIcon} aria-hidden="true">
-                <Icon name="bell" size={22} />
-              </span>
-              <p>Sin notificaciones por ahora.</p>
-              <p className={styles.emptyHint}>
-                Te avisaremos aquí cuando una digitalización termine de procesarse.
-              </p>
+          {error && (
+            <div className={styles.loadError} role="alert">
+              <Icon name="warning" size={18} />
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? 'Reintentando…' : 'Reintentar'}
+              </button>
             </div>
+          )}
+
+          {notifications.length === 0 ? (
+            !error && (
+              <div className={styles.empty}>
+                <span className={styles.emptyIcon} aria-hidden="true">
+                  <Icon name="bell" size={22} />
+                </span>
+                <p>Sin notificaciones por ahora.</p>
+                <p className={styles.emptyHint}>
+                  Te avisaremos aquí cuando una digitalización termine de procesarse.
+                </p>
+              </div>
+            )
           ) : (
             <ul className={styles.list}>
               {notifications.map((notification) => {
@@ -136,11 +277,16 @@ export function NotificationsBell() {
                         <Icon name={meta.icon} size={15} />
                       </span>
                       <span className={styles.itemBody}>
+                        {!notification.readAt && (
+                          <span className="screenReaderOnly">Sin leer. </span>
+                        )}
                         <span className={styles.itemTitle}>{notification.title}</span>
                         {notification.body && (
                           <span className={styles.itemText}>{notification.body}</span>
                         )}
-                        <span className={styles.itemWhen}>{formatWhen(notification.createdAt)}</span>
+                        <time className={styles.itemWhen} dateTime={notification.createdAt}>
+                          {formatWhen(notification.createdAt)}
+                        </time>
                       </span>
                       {!notification.readAt && <span className={styles.unreadDot} aria-hidden="true" />}
                     </button>
@@ -149,7 +295,7 @@ export function NotificationsBell() {
               })}
             </ul>
           )}
-        </div>
+        </dialog>
       )}
     </div>
   );

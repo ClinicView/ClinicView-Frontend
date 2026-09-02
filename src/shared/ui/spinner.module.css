@@ -1,5 +1,6 @@
 .fullPage {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,8 +31,17 @@
 .label {
   font-size: 0.875rem;
   color: var(--gray-500);
+  line-height: 1.5;
+  text-align: center;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+    border-top-color: var(--color-primary);
+  }
 }

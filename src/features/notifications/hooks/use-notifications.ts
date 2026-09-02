@@ -18,14 +18,20 @@ const POLL_INTERVAL_MS = 25_000;
 export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const result = await listNotifications();
       setNotifications(result.data);
       setUnreadCount(result.unreadCount);
+      setError(null);
     } catch {
-      // Sin red o backend caído: se reintenta en el próximo ciclo.
+      setError('No pudimos actualizar las notificaciones. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -73,5 +79,13 @@ export function useNotifications() {
     }
   }, [refresh]);
 
-  return { notifications, unreadCount, refresh, markRead, markAllRead };
+  return {
+    notifications,
+    unreadCount,
+    isRefreshing,
+    error,
+    refresh,
+    markRead,
+    markAllRead,
+  };
 }

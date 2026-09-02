@@ -9,9 +9,9 @@ interface SpinnerProps {
 export function Spinner({ label = 'Cargando…', size = 'md', fullPage }: SpinnerProps) {
   if (fullPage) {
     return (
-      <div className={styles.fullPage} role="status" aria-label={label}>
+      <div className={styles.fullPage} role="status" aria-label={label} aria-atomic="true">
         <div className={styles.wrapper}>
-          <div className={`${styles.ring} ${styles[size]}`} />
+          <div className={`${styles.ring} ${styles[size]}`} aria-hidden="true" />
           {label && <span className={styles.label}>{label}</span>}
         </div>
       </div>
@@ -19,8 +19,8 @@ export function Spinner({ label = 'Cargando…', size = 'md', fullPage }: Spinne
   }
 
   return (
-    <div className={styles.wrapper} role="status" aria-label={label}>
-      <div className={`${styles.ring} ${styles[size]}`} />
+    <div className={styles.wrapper} role="status" aria-label={label} aria-atomic="true">
+      <div className={`${styles.ring} ${styles[size]}`} aria-hidden="true" />
       {label && <span className={styles.label}>{label}</span>}
     </div>
   );

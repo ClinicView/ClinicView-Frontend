@@ -52,35 +52,134 @@ export function PageShell({ children }: PageShellProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
+  const restoreMenuFocusRef = useRef(false);
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
+    restoreMenuFocusRef.current = false;
     setIsMobileOpen(false);
+
+    let animationFrame: number | undefined;
+    if (previousPathnameRef.current !== pathname) {
+      previousPathnameRef.current = pathname;
+      animationFrame = window.requestAnimationFrame(() => {
+        contentRef.current?.focus({ preventScroll: true });
+      });
+    }
+
+    return () => {
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
+    };
   }, [pathname]);
 
   useEffect(() => {
     const desktopViewport = window.matchMedia('(min-width: 861px)');
 
-    function closeMobileMenu(event: MediaQueryListEvent) {
-      if (event.matches) setIsMobileOpen(false);
+    function syncViewport(matchesDesktop: boolean) {
+      setIsMobileViewport(!matchesDesktop);
+      if (matchesDesktop) {
+        restoreMenuFocusRef.current = false;
+        setIsMobileOpen(false);
+      }
     }
 
-    desktopViewport.addEventListener('change', closeMobileMenu);
-    return () => desktopViewport.removeEventListener('change', closeMobileMenu);
+    function onViewportChange(event: MediaQueryListEvent) {
+      syncViewport(event.matches);
+    }
+
+    syncViewport(desktopViewport.matches);
+    desktopViewport.addEventListener('change', onViewportChange);
+    return () => desktopViewport.removeEventListener('change', onViewportChange);
   }, []);
 
   useEffect(() => {
+    if (!isMobileViewport || !isMobileOpen) return;
+
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const mobileMenuButton = mobileMenuButtonRef.current;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+
+    const getFocusableElements = () =>
+      Array.from(sidebar.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.getClientRects().length > 0,
+      );
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      sidebar.querySelector<HTMLElement>('[data-drawer-initial-focus]')?.focus();
+    });
+
+    function onDrawerKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        restoreMenuFocusRef.current = true;
+        setIsMobileOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey && activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', onDrawerKeyDown);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onDrawerKeyDown);
+
+      if (restoreMenuFocusRef.current) {
+        window.requestAnimationFrame(() => mobileMenuButton?.focus());
+      }
+    };
+  }, [isMobileOpen, isMobileViewport]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      if (
+        (event.ctrlKey || event.metaKey)
+        && event.key.toLowerCase() === 'k'
+        && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')
+      ) {
         event.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
       }
 
-      if (event.key === 'Escape') {
-        setIsMobileOpen(false);
-      }
     }
 
     window.addEventListener('keydown', onKeyDown);
@@ -88,6 +187,8 @@ export function PageShell({ children }: PageShellProps) {
   }, []);
 
   async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     if (session) {
       await logoutRequest(session.accessToken, session.refreshToken);
     }
@@ -100,6 +201,16 @@ export function PageShell({ children }: PageShellProps) {
     const query = searchQuery.trim();
     if (!query) return;
     router.push(`/patients?q=${encodeURIComponent(query)}`);
+  }
+
+  function openMobileMenu() {
+    restoreMenuFocusRef.current = true;
+    setIsMobileOpen(true);
+  }
+
+  function closeMobileMenu() {
+    restoreMenuFocusRef.current = true;
+    setIsMobileOpen(false);
   }
 
   const navItems = useMemo<NavItem[]>(() => {
@@ -180,14 +291,21 @@ export function PageShell({ children }: PageShellProps) {
 
       <div className={styles.ambient} aria-hidden="true" />
 
-      <button
+      <div
         className={styles.mobileBackdrop}
-        type="button"
-        aria-label="Cerrar menú"
-        onClick={() => setIsMobileOpen(false)}
+        aria-hidden="true"
+        onPointerDown={closeMobileMenu}
       />
 
-      <aside className={styles.sidebar} aria-label="Navegación principal">
+      <aside
+        id="primary-navigation"
+        ref={sidebarRef}
+        className={styles.sidebar}
+        aria-label="Navegación principal"
+        aria-hidden={isMobileViewport && !isMobileOpen ? true : undefined}
+        aria-modal={isMobileViewport && isMobileOpen ? true : undefined}
+        role={isMobileViewport ? 'dialog' : undefined}
+      >
         <div className={styles.brandBlock}>
           <Link href="/dashboard" className={styles.brand} aria-label="ClinicView, ir al dashboard">
             {isCollapsed && !isMobileOpen ? (
@@ -203,8 +321,19 @@ export function PageShell({ children }: PageShellProps) {
             onClick={() => setIsCollapsed((value) => !value)}
             aria-label={isCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
             aria-expanded={!isCollapsed}
+            aria-controls="primary-navigation"
           >
             <Icon name="collapse" size={17} />
+          </button>
+
+          <button
+            className={styles.mobileCloseBtn}
+            type="button"
+            onClick={closeMobileMenu}
+            aria-label="Cerrar menú de navegación"
+            data-drawer-initial-focus
+          >
+            <Icon name="close" size={20} />
           </button>
         </div>
 
@@ -217,6 +346,7 @@ export function PageShell({ children }: PageShellProps) {
               href={item.href}
               className={`${styles.navLink} ${item.isActive ? styles.navLinkActive : ''}`}
               aria-current={item.isActive ? 'page' : undefined}
+              aria-label={item.label}
               title={isCollapsed ? item.label : undefined}
             >
               <span className={styles.navIcon} aria-hidden="true">
@@ -241,24 +371,34 @@ export function PageShell({ children }: PageShellProps) {
             className={styles.logoutBtn}
             type="button"
             onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+            aria-busy={isLoggingOut}
+            aria-label="Cerrar sesión"
             title={isCollapsed ? 'Cerrar sesión' : undefined}
           >
             <span className={styles.navIcon} aria-hidden="true">
               <Icon name="logout" size={18} />
             </span>
-            <span className={styles.navLabel}>Cerrar sesión</span>
+            <span className={styles.navLabel}>
+              {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+            </span>
           </button>
         </div>
       </aside>
 
-      <div className={styles.mainArea}>
+      <div
+        className={styles.mainArea}
+        inert={isMobileViewport && isMobileOpen ? true : undefined}
+      >
         <header className={styles.topbar}>
           <button
+            ref={mobileMenuButtonRef}
             className={styles.mobileMenuBtn}
             type="button"
-            onClick={() => setIsMobileOpen(true)}
+            onClick={openMobileMenu}
             aria-label="Abrir menú"
             aria-expanded={isMobileOpen}
+            aria-controls="primary-navigation"
           >
             <Icon name="menu" size={20} />
           </button>
@@ -284,6 +424,7 @@ export function PageShell({ children }: PageShellProps) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Búsqueda global"
+              aria-keyshortcuts="Control+K Meta+K"
             />
             <kbd className={styles.searchKbd} aria-hidden="true">Ctrl K</kbd>
           </form>
@@ -291,7 +432,12 @@ export function PageShell({ children }: PageShellProps) {
           <div className={styles.topbarRight}>
             <NotificationsBell />
 
-            <Link href="/profile" className={styles.identity} aria-label="Abrir mi perfil">
+            <Link
+              href="/profile"
+              className={styles.identity}
+              aria-label={`Abrir mi perfil de ${user.email}`}
+              title={user.email}
+            >
               <span className={styles.avatar} aria-hidden="true">{getInitials(user.email)}</span>
               <span className={styles.identityText}>
                 <span className={styles.identityEmail}>{user.email}</span>
@@ -301,7 +447,9 @@ export function PageShell({ children }: PageShellProps) {
           </div>
         </header>
 
-        <main id="main-content" className={styles.content}>{children}</main>
+        <main ref={contentRef} id="main-content" className={styles.content} tabIndex={-1}>
+          {children}
+        </main>
       </div>
     </div>
   );

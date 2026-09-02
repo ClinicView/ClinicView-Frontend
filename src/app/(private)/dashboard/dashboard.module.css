@@ -7,13 +7,20 @@
   animation: reveal 480ms var(--ease-out) both;
 }
 
+.pageHeader > div:first-child,
+.heroContent,
+.panelHeader > div,
+.sectionHeading > div {
+  min-width: 0;
+}
+
 .pageEyebrow,
 .panelEyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   color: var(--color-primary-dark);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.13em;
   line-height: 1;
@@ -36,7 +43,8 @@
   font-size: clamp(1.8rem, 3vw, 2.35rem);
   font-weight: 500;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 .greeting strong {
@@ -50,7 +58,7 @@
 }
 
 .datePill {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
@@ -61,7 +69,7 @@
   box-shadow: var(--shadow-xs);
   padding: 0.55rem 0.9rem;
   color: var(--gray-600);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
@@ -128,7 +136,7 @@
   background: rgba(0, 199, 255, 0.09);
   padding: 0.42rem 0.72rem;
   color: #b8edff;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.035em;
 }
@@ -141,8 +149,9 @@
   font-size: clamp(2rem, 4vw, 3.35rem);
   font-weight: 600;
   letter-spacing: -0.055em;
-  line-height: 0.99;
+  line-height: 1.08;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .heroText {
@@ -201,17 +210,33 @@
   transform: translateY(-1px);
 }
 
+.btnPrimary:active {
+  background: color-mix(in srgb, var(--color-brand-cyan) 65%, white);
+}
+
+.btnSecondary:active {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.btnPrimary:focus-visible,
+.btnSecondary:focus-visible {
+  outline-color: var(--color-brand-cyan);
+  box-shadow: 0 0 0 3px var(--color-navy-950), 0 0 0 6px var(--color-brand-cyan);
+}
+
 .heroSignals {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem 1.2rem;
   margin-top: 1.65rem;
   color: #b3c6e5;
-  font-size: 0.72rem;
+  padding: 0;
+  font-size: 0.8125rem;
   font-weight: 700;
+  list-style: none;
 }
 
-.heroSignals span {
+.heroSignals li {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -499,7 +524,7 @@
 
 .statLabel {
   color: var(--gray-600);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
@@ -510,6 +535,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .statValue {
@@ -519,6 +545,7 @@
   font-weight: 650;
   letter-spacing: -0.055em;
   line-height: 0.9;
+  font-variant-numeric: tabular-nums;
 }
 
 .statSkeleton {
@@ -533,7 +560,7 @@
 
 .statHint {
   max-width: 125px;
-  font-size: 0.67rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
   text-align: right;
@@ -582,6 +609,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.15rem;
 }
 
@@ -601,7 +629,7 @@
   background: var(--surface-subtle);
   padding: 0.32rem 0.58rem;
   color: var(--gray-500);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -613,7 +641,7 @@
   border-radius: 9px;
   padding: 0.28rem 0.42rem;
   color: var(--color-primary-dark);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-decoration: none;
   transition: background var(--transition-fast), color var(--transition-fast);
@@ -647,7 +675,7 @@
   margin-bottom: 0.35rem;
   color: var(--gray-400);
   font-family: var(--font-figtree), Arial, sans-serif;
-  font-size: 0.58rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -670,7 +698,7 @@
 
 .flowTitle {
   color: var(--gray-800);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -679,7 +707,7 @@
   max-width: 110px;
   margin-top: 0.25rem;
   color: var(--gray-500);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
@@ -730,6 +758,10 @@ a.activityItem:hover {
   text-decoration: none;
 }
 
+a.activityItem:active {
+  background: var(--color-primary-light);
+}
+
 .activityIcon {
   width: 34px;
   height: 34px;
@@ -754,22 +786,17 @@ a.activityItem:hover {
   gap: 0.13rem;
 }
 
-.activityTitle,
-.activityMeta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .activityTitle {
+  overflow-wrap: anywhere;
   color: var(--gray-800);
-  font-size: 0.74rem;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
 .activityMeta {
+  overflow-wrap: anywhere;
   color: var(--gray-500);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 
 .activityRight {
@@ -782,14 +809,15 @@ a.activityItem:hover {
 
 .activityTime {
   color: var(--gray-400);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .activityBadge {
   border-radius: 999px;
   padding: 0.18rem 0.42rem;
-  font-size: 0.59rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -826,14 +854,14 @@ a.activityItem:hover {
 .activityEmpty strong {
   margin-top: 0.75rem;
   color: var(--gray-800);
-  font-size: 0.82rem;
+  font-size: 0.875rem;
 }
 
 .activityEmpty p {
   max-width: 260px;
   margin-top: 0.3rem;
   color: var(--gray-500);
-  font-size: 0.7rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
@@ -864,6 +892,10 @@ a.activityItem:hover {
   box-shadow: var(--shadow-sm);
   text-decoration: none;
   transform: translateY(-2px);
+}
+
+.quickCard:active {
+  background: var(--color-primary-light);
 }
 
 .quickTopline {
@@ -911,7 +943,7 @@ a.activityItem:hover {
 .quickTitle {
   color: var(--gray-900);
   font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
-  font-size: 0.86rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -920,8 +952,9 @@ a.activityItem:hover {
   max-width: 250px;
   margin-top: 0.3rem;
   color: var(--gray-500);
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 @keyframes reveal {
@@ -1021,7 +1054,7 @@ a.activityItem:hover {
   }
 
   .heroTitle {
-    font-size: 2rem;
+    font-size: clamp(1.65rem, 9vw, 2rem);
   }
 
   .heroSignals {
@@ -1134,5 +1167,32 @@ a.activityItem:hover {
     align-items: center;
     justify-content: space-between;
     padding-left: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .documentCard,
+  .statCard:hover,
+  .quickCard:hover,
+  .btnPrimary:hover,
+  .btnSecondary:hover,
+  .quickCard:hover .quickArrow {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .hero,
+  .panel,
+  .quickSection,
+  .statCard,
+  .quickCard,
+  .activityItem {
+    border-color: CanvasText;
+  }
+
+  .liveDot,
+  .activityBadge {
+    border: 1px solid CanvasText;
   }
 }

@@ -7,12 +7,17 @@
   font-size: 0.875rem;
   line-height: 1.5;
   border: 1px solid transparent;
+  overflow-wrap: anywhere;
 }
 
 .icon {
+  display: inline-flex;
   flex-shrink: 0;
-  font-size: 1rem;
   margin-top: 0.05em;
+}
+
+.content {
+  min-width: 0;
 }
 
 .error {

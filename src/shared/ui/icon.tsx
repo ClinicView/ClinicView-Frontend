@@ -39,7 +39,8 @@ export type IconName =
   | 'external'
   | 'sparkle'
   | 'eye'
-  | 'eye-off';
+  | 'eye-off'
+  | 'info';
 
 interface IconProps {
   name: IconName;
@@ -316,6 +317,12 @@ export function Icon({ name, className, size = 20 }: IconProps) {
         <>
           <path {...common} d="M3.5 12S6.5 6 12 6c1.2 0 2.3.28 3.3.72M20.5 12s-3 6-8.5 6c-1.2 0-2.3-.28-3.3-.72" />
           <path {...common} d="m5 5 14 14" />
+        </>
+      )}
+      {name === 'info' && (
+        <>
+          <circle {...common} cx="12" cy="12" r="8.5" />
+          <path {...common} d="M12 10.5V16M12 7.8h.01" />
         </>
       )}
     </svg>

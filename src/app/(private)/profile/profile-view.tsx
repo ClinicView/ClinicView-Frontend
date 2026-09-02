@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { PageShell } from '@/shared/components/page-shell';
 import { useSession } from '@/features/auth';
 import { useProfile } from '@/features/profile';
@@ -80,10 +81,13 @@ export function ProfileView() {
   const { user, session, isAuthenticated, clearSession } = useSession();
   const { profile, isLoading, error } = useProfile();
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (!user) return null;
 
   async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     if (session) {
       await logoutRequest(session.accessToken, session.refreshToken);
     }
@@ -112,11 +116,11 @@ export function ProfileView() {
   return (
     <PageShell>
       {/* Header */}
-      <section className={styles.headerCard}>
+      <section className={styles.headerCard} aria-labelledby="profile-title">
         <span className={styles.avatar} aria-hidden="true">{getInitials(displayName)}</span>
         <div className={styles.headerInfo}>
           <div className={styles.nameRow}>
-            <h1 className={styles.name}>{displayName}</h1>
+            <h1 id="profile-title" className={styles.name}>{displayName}</h1>
             <span className={styles.roleBadge}>
               <Icon name="check" size={13} /> {roleLabel}
             </span>
@@ -141,15 +145,25 @@ export function ProfileView() {
               <div>
                 <span className={styles.headerMetaLabel}>Último acceso</span>
                 <span className={styles.headerMetaValue}>
-                  {formatLastLogin(profile?.lastLoginAt ?? null)}
+                  {profile?.lastLoginAt ? (
+                    <time dateTime={profile.lastLoginAt}>{formatLastLogin(profile.lastLoginAt)}</time>
+                  ) : (
+                    formatLastLogin(null)
+                  )}
                 </span>
               </div>
             </div>
           </div>
         </div>
-        <button className={styles.logoutBtn} type="button" onClick={() => void handleLogout()}>
+        <button
+          className={styles.logoutBtn}
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={isLoggingOut}
+          aria-busy={isLoggingOut}
+        >
           <Icon name="logout" size={15} />
-          Cerrar sesión
+          {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
         </button>
       </section>
 
@@ -157,79 +171,79 @@ export function ProfileView() {
         <div className={styles.mainColumn}>
           {/* Datos principales */}
           <section className={styles.card} aria-labelledby="main-data-title">
-            <p id="main-data-title" className={styles.cardTitle}>
+            <h2 id="main-data-title" className={styles.cardTitle}>
               <Icon name="profile" size={17} /> Datos principales
-            </p>
-            {isLoading && <p className={styles.emptyText}>Cargando ficha profesional…</p>}
-            {error && <p className={styles.softError}>{error}</p>}
-            <div className={styles.detailsGrid}>
+            </h2>
+            {isLoading && <p className={styles.emptyText} role="status">Cargando ficha profesional…</p>}
+            {error && <p className={styles.softError} role="alert">{error}</p>}
+            <dl className={styles.detailsGrid}>
               <div className={styles.detailItem}>
-                <Icon name="patient" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Identificador</span>
-                  <span className={styles.detailValue}>
-                    {profile?.username ? `@${profile.username}` : user.email}
-                  </span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="patient" size={16} />
+                  <span>Identificador</span>
+                </dt>
+                <dd className={styles.detailValue}>
+                  {profile?.username ? `@${profile.username}` : user.email}
+                </dd>
               </div>
               <div className={styles.detailItem}>
-                <Icon name="folder" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Profesión o cargo</span>
-                  <span className={profile?.profession ? styles.detailValue : styles.detailValueMuted}>
-                    {profile?.profession ?? 'No registrado'}
-                  </span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="folder" size={16} />
+                  <span>Profesión o cargo</span>
+                </dt>
+                <dd className={profile?.profession ? styles.detailValue : styles.detailValueMuted}>
+                  {profile?.profession ?? 'No registrado'}
+                </dd>
               </div>
               <div className={styles.detailItem}>
-                <Icon name="mail" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Correo</span>
-                  <span className={styles.detailValue}>{user.email}</span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="mail" size={16} />
+                  <span>Correo</span>
+                </dt>
+                <dd className={styles.detailValue}>{user.email}</dd>
               </div>
               <div className={styles.detailItem}>
-                <Icon name="shield" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Rol principal</span>
-                  <span className={styles.detailValue}>{roleLabel}</span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="shield" size={16} />
+                  <span>Rol principal</span>
+                </dt>
+                <dd className={styles.detailValue}>{roleLabel}</dd>
               </div>
               <div className={styles.detailItem}>
-                <Icon name="records" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Documento</span>
-                  <span
-                    className={
-                      profile?.documentType && profile.documentNumber
-                        ? styles.detailValue
-                        : styles.detailValueMuted
-                    }
-                  >
-                    {profile?.documentType && profile.documentNumber
-                      ? `${profile.documentType} ${profile.documentNumber}`
-                      : 'No registrado'}
-                  </span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="records" size={16} />
+                  <span>Documento</span>
+                </dt>
+                <dd
+                  className={
+                    profile?.documentType && profile.documentNumber
+                      ? styles.detailValue
+                      : styles.detailValueMuted
+                  }
+                >
+                  {profile?.documentType && profile.documentNumber
+                    ? `${profile.documentType} ${profile.documentNumber}`
+                    : 'No registrado'}
+                </dd>
               </div>
               <div className={styles.detailItem}>
-                <Icon name="clock" size={16} />
-                <div>
-                  <span className={styles.detailLabel}>Estado de sesión</span>
-                  <span className={styles.sessionDot}>
-                    {isAuthenticated ? 'Activa' : 'No activa'}
-                  </span>
-                </div>
+                <dt className={styles.detailLabel}>
+                  <Icon name="clock" size={16} />
+                  <span>Estado de sesión</span>
+                </dt>
+                <dd className={styles.sessionDot}>
+                  {isAuthenticated ? 'Activa' : 'No activa'}
+                </dd>
               </div>
-            </div>
+            </dl>
           </section>
 
           {/* Accesos principales */}
           <section className={styles.card} aria-labelledby="access-title">
-            <p id="access-title" className={styles.cardTitle}>
+            <h2 id="access-title" className={styles.cardTitle}>
               <Icon name="sparkle" size={17} /> Accesos principales
-            </p>
-            <div className={styles.accessGrid}>
+            </h2>
+            <nav className={styles.accessGrid} aria-label="Accesos principales del perfil">
               {accessLinks.map((item) => (
                 <Link key={item.label} href={item.href} className={styles.accessCard}>
                   <span className={styles.accessIcon} aria-hidden="true">
@@ -238,38 +252,44 @@ export function ProfileView() {
                   {item.label}
                 </Link>
               ))}
-            </div>
+            </nav>
           </section>
 
           {/* Permisos técnicos */}
           <section className={styles.card} aria-labelledby="perms-title">
-            <p id="perms-title" className={styles.cardTitle}>
+            <h2 id="perms-title" className={styles.cardTitle}>
               <Icon name="shield" size={17} /> Permisos técnicos
-            </p>
+            </h2>
             <div className={styles.permGroups}>
-              {permissionGroups.map((group) => (
-                <div key={group.title} className={styles.permGroup}>
-                  <p className={styles.permGroupTitle}>
+              {permissionGroups.map((group, index) => (
+                <section
+                  key={group.title}
+                  className={styles.permGroup}
+                  aria-labelledby={`permission-group-${index}`}
+                >
+                  <h3 id={`permission-group-${index}`} className={styles.permGroupTitle}>
                     <Icon name={group.icon} size={15} /> {group.title}
-                  </p>
-                  {group.items.map((permission) => (
-                    <p key={permission} className={styles.permItem}>
-                      <Icon name="check" size={13} />
-                      {PERMISSION_LABELS[permission] ?? permission}
-                    </p>
-                  ))}
-                </div>
+                  </h3>
+                  <ul className={styles.permList}>
+                    {group.items.map((permission) => (
+                      <li key={permission} className={styles.permItem}>
+                        <Icon name="check" size={13} />
+                        {PERMISSION_LABELS[permission] ?? permission}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
             </div>
           </section>
         </div>
 
         {/* Sidebar de preferencias */}
-        <aside>
+        <aside aria-label="Preferencias de la cuenta">
           <section className={styles.sideCard} aria-labelledby="prefs-title">
-            <p id="prefs-title" className={styles.cardTitle}>
+            <h2 id="prefs-title" className={styles.cardTitle}>
               <Icon name="admin" size={17} /> Preferencias
-            </p>
+            </h2>
             <div className={styles.prefRow}>
               <span className={styles.prefIcon} aria-hidden="true">
                 <Icon name="bell" size={17} />

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Atkinson_Hyperlegible, Figtree } from 'next/font/google';
 import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
 import { Providers } from './providers';
@@ -36,6 +36,12 @@ export const metadata: Metadata = {
       sizes: `${CLINICVIEW_BRAND_ASSETS.appleTouchIcon.width}x${CLINICVIEW_BRAND_ASSETS.appleTouchIcon.height}`,
     }],
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#f4f7fb',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
