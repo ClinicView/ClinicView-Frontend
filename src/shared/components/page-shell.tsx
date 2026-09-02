@@ -35,6 +35,17 @@ function getInitials(email: string): string {
   return name.slice(0, 2).toUpperCase() || 'US';
 }
 
+function getRouteLabel(pathname: string): string {
+  if (pathname === '/dashboard') return 'Centro operativo';
+  if (pathname.startsWith('/review')) return 'Revisión digital';
+  if (pathname.startsWith('/admin')) return 'Administración';
+  if (pathname.startsWith('/profile')) return 'Mi perfil';
+  if (pathname.includes('/documents')) return 'Documentos clínicos';
+  if (pathname.includes('/records')) return 'Historias clínicas';
+  if (pathname.startsWith('/patients')) return 'Pacientes';
+  return 'Espacio clínico';
+}
+
 export function PageShell({ children }: PageShellProps) {
   const { user, session, clearSession } = useSession();
   const router = useRouter();
@@ -48,7 +59,6 @@ export function PageShell({ children }: PageShellProps) {
     setIsMobileOpen(false);
   }, [pathname]);
 
-  // Búsqueda global: Ctrl+K / Cmd+K enfoca el buscador del topbar.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -56,7 +66,12 @@ export function PageShell({ children }: PageShellProps) {
         searchRef.current?.focus();
         searchRef.current?.select();
       }
+
+      if (event.key === 'Escape') {
+        setIsMobileOpen(false);
+      }
     }
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
@@ -148,6 +163,12 @@ export function PageShell({ children }: PageShellProps) {
 
   return (
     <div className={shellClass}>
+      <a className={styles.skipLink} href="#main-content">
+        Saltar al contenido
+      </a>
+
+      <div className={styles.ambient} aria-hidden="true" />
+
       <button
         className={styles.mobileBackdrop}
         type="button"
@@ -157,19 +178,28 @@ export function PageShell({ children }: PageShellProps) {
 
       <aside className={styles.sidebar} aria-label="Navegación principal">
         <div className={styles.brandBlock}>
-          <Link href="/dashboard" className={styles.brand} aria-label="Ir al dashboard">
-            <span className={styles.brandMark} aria-hidden="true">PC</span>
-            <span className={styles.brandText}>Plataforma Clínica</span>
+          <Link href="/dashboard" className={styles.brand} aria-label="ClinicView, ir al dashboard">
+            <span className={styles.brandMark} aria-hidden="true">
+              <span className={styles.brandCross} />
+            </span>
+            <span className={styles.brandCopy}>
+              <span className={styles.brandName}>ClinicView</span>
+              <span className={styles.brandDescriptor}>Registro clínico</span>
+            </span>
           </Link>
+
           <button
             className={styles.collapseBtn}
             type="button"
             onClick={() => setIsCollapsed((value) => !value)}
             aria-label={isCollapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'}
+            aria-expanded={!isCollapsed}
           >
             <Icon name="collapse" size={17} />
           </button>
         </div>
+
+        <span className={styles.navEyebrow}>Espacio de trabajo</span>
 
         <nav className={styles.navList}>
           {navItems.map((item) => (
@@ -180,20 +210,33 @@ export function PageShell({ children }: PageShellProps) {
               aria-current={item.isActive ? 'page' : undefined}
               title={isCollapsed ? item.label : undefined}
             >
-              <Icon name={item.icon} size={19} />
+              <span className={styles.navIcon} aria-hidden="true">
+                <Icon name={item.icon} size={19} />
+              </span>
               <span className={styles.navLabel}>{item.label}</span>
+              {item.isActive && <span className={styles.activeDot} aria-hidden="true" />}
             </Link>
           ))}
         </nav>
 
         <div className={styles.sidebarFooter}>
+          <div className={styles.securityStatus} title={isCollapsed ? 'Sesión protegida' : undefined}>
+            <span className={styles.securityDot} aria-hidden="true" />
+            <span className={styles.securityCopy}>
+              <strong>Sesión protegida</strong>
+              <small>Acceso institucional</small>
+            </span>
+          </div>
+
           <button
             className={styles.logoutBtn}
             type="button"
             onClick={() => void handleLogout()}
             title={isCollapsed ? 'Cerrar sesión' : undefined}
           >
-            <Icon name="logout" size={18} />
+            <span className={styles.navIcon} aria-hidden="true">
+              <Icon name="logout" size={18} />
+            </span>
             <span className={styles.navLabel}>Cerrar sesión</span>
           </button>
         </div>
@@ -206,9 +249,15 @@ export function PageShell({ children }: PageShellProps) {
             type="button"
             onClick={() => setIsMobileOpen(true)}
             aria-label="Abrir menú"
+            aria-expanded={isMobileOpen}
           >
             <Icon name="menu" size={20} />
           </button>
+
+          <div className={styles.routeContext}>
+            <span className={styles.routeEyebrow}>Workspace</span>
+            <span className={styles.routeTitle}>{getRouteLabel(pathname)}</span>
+          </div>
 
           <form className={styles.searchForm} role="search" onSubmit={handleSearchSubmit}>
             <span className={styles.searchIcon} aria-hidden="true">
@@ -218,28 +267,28 @@ export function PageShell({ children }: PageShellProps) {
               ref={searchRef}
               className={styles.searchInput}
               type="search"
-              placeholder="Buscar pacientes, documentos…"
+              placeholder="Buscar pacientes o documentos"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               aria-label="Búsqueda global"
             />
-            <kbd className={styles.searchKbd} aria-hidden="true">Ctrl + K</kbd>
+            <kbd className={styles.searchKbd} aria-hidden="true">Ctrl K</kbd>
           </form>
 
           <div className={styles.topbarRight}>
             <NotificationsBell />
 
-            <div className={styles.identity}>
+            <Link href="/profile" className={styles.identity} aria-label="Abrir mi perfil">
               <span className={styles.avatar} aria-hidden="true">{getInitials(user.email)}</span>
               <span className={styles.identityText}>
                 <span className={styles.identityEmail}>{user.email}</span>
                 <span className={styles.identityRole}>{roleLabel}</span>
               </span>
-            </div>
+            </Link>
           </div>
         </header>
 
-        <main className={styles.content}>{children}</main>
+        <main id="main-content" className={styles.content}>{children}</main>
       </div>
     </div>
   );
