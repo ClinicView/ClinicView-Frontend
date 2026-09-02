@@ -10,7 +10,9 @@ export const authService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) throw new Error('login_failed');
+    if (!res.ok) {
+      throw new Error(res.status === 401 || res.status === 403 ? 'login_failed' : 'server_error');
+    }
     return res.json() as Promise<TokenResponse>;
   },
 

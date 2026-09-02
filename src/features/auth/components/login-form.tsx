@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { BrandLogo, Icon } from '@/shared/ui';
 import { useLogin } from '../hooks/use-login';
 import styles from './login-form.module.css';
@@ -11,12 +11,49 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const validationSummaryRef = useRef<HTMLDivElement>(null);
   const { login, isLoading, error } = useLogin();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    const nextErrors: { email?: string; password?: string } = {};
+    if (!email.trim()) {
+      nextErrors.email = 'Ingresa tu correo electrónico.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      nextErrors.email = 'Ingresa un correo electrónico válido.';
+    }
+    if (!password) nextErrors.password = 'Ingresa tu contraseña.';
+
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      requestAnimationFrame(() => validationSummaryRef.current?.focus());
+      return;
+    }
+
     await login(email, password);
   }
+
+  function clearFieldError(field: 'email' | 'password') {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  const hasValidationErrors = Object.keys(fieldErrors).length > 0;
+  const credentialsRejected = error === 'login_failed';
+  const emailDescription = [
+    fieldErrors.email ? 'email-error' : null,
+    credentialsRejected ? 'login-error' : null,
+  ].filter(Boolean).join(' ') || undefined;
+  const passwordDescription = [
+    fieldErrors.password ? 'password-error' : null,
+    credentialsRejected ? 'login-error' : null,
+  ].filter(Boolean).join(' ') || undefined;
 
   return (
     <main className={styles.wrapper}>
@@ -86,6 +123,27 @@ export function LoginForm() {
           </div>
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate aria-busy={isLoading}>
+            {hasValidationErrors && (
+              <div
+                ref={validationSummaryRef}
+                className={styles.validationSummary}
+                role="alert"
+                tabIndex={-1}
+                aria-labelledby="login-validation-title"
+              >
+                <Icon name="alert" size={18} />
+                <div>
+                  <p id="login-validation-title" className={styles.validationTitle}>
+                    Revisa los datos de acceso
+                  </p>
+                  <ul className={styles.validationList}>
+                    {fieldErrors.email && <li><a href="#email">{fieldErrors.email}</a></li>}
+                    {fieldErrors.password && <li><a href="#password">{fieldErrors.password}</a></li>}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div className={styles.field}>
               <label htmlFor="email" className={styles.label}>
                 Correo electrónico
@@ -99,16 +157,23 @@ export function LoginForm() {
                   type="email"
                   className={styles.input}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError('email');
+                  }}
                   autoComplete="email"
-                  autoFocus
                   disabled={isLoading}
                   required
                   placeholder="usuario@hospital.org"
-                  aria-invalid={error === 'login_failed' ? true : undefined}
-                  aria-describedby={error === 'login_failed' ? 'login-error' : undefined}
+                  aria-invalid={fieldErrors.email || credentialsRejected ? true : undefined}
+                  aria-describedby={emailDescription}
                 />
               </div>
+              {fieldErrors.email && (
+                <p id="email-error" className={styles.fieldError}>
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -124,13 +189,16 @@ export function LoginForm() {
                   type={showPassword ? 'text' : 'password'}
                   className={`${styles.input} ${styles.inputPassword}`}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearFieldError('password');
+                  }}
                   autoComplete="current-password"
                   disabled={isLoading}
                   required
                   placeholder="••••••••••"
-                  aria-invalid={error === 'login_failed' ? true : undefined}
-                  aria-describedby={error === 'login_failed' ? 'login-error' : undefined}
+                  aria-invalid={fieldErrors.password || credentialsRejected ? true : undefined}
+                  aria-describedby={passwordDescription}
                 />
                 <button
                   type="button"
@@ -143,6 +211,11 @@ export function LoginForm() {
                   <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} />
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p id="password-error" className={styles.fieldError}>
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <label className={styles.remember}>
