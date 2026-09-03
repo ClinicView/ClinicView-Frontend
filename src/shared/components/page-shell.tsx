@@ -22,7 +22,9 @@ interface NavItem {
 }
 
 function getSessionRole(permissions: string[]): string {
-  if (canAny(permissions, ['admin.users.manage', 'admin.roles.manage'])) return 'Administración';
+  if (canAny(permissions, ['admin.users.manage', 'admin.roles.manage', 'admin.audit.read'])) {
+    return 'Administración';
+  }
   if (can(permissions, 'documents.validate')) return 'Revisor clínico';
   if (can(permissions, 'patients.read')) return 'Profesional clínico';
   return 'Usuario';
@@ -38,6 +40,7 @@ function getInitials(email: string): string {
 function getRouteLabel(pathname: string): string {
   if (pathname === '/dashboard') return 'Centro operativo';
   if (pathname.startsWith('/review')) return 'Revisión digital';
+  if (pathname.startsWith('/admin/audit')) return 'Auditoría';
   if (pathname.startsWith('/admin')) return 'Administración';
   if (pathname.startsWith('/profile')) return 'Mi perfil';
   if (pathname.includes('/documents')) return 'Documentos clínicos';
@@ -259,10 +262,19 @@ export function PageShell({ children }: PageShellProps) {
 
     if (can(permissions, 'users.read')) {
       items.push({
-        href: '/admin',
+        href: '/admin/users',
         label: 'Administración',
         icon: 'admin',
-        isActive: pathname.startsWith('/admin'),
+        isActive: pathname === '/admin' || pathname.startsWith('/admin/users'),
+      });
+    }
+
+    if (can(permissions, 'admin.audit.read')) {
+      items.push({
+        href: '/admin/audit',
+        label: 'Auditoría',
+        icon: 'shield',
+        isActive: pathname.startsWith('/admin/audit'),
       });
     }
 

@@ -60,5 +60,6 @@ test('elige una ruta inicial que el rol realmente puede abrir', () => {
   assert.equal(getLandingPath(['patients.read']), '/patients');
   assert.equal(getLandingPath(['review.read']), '/review');
   assert.equal(getLandingPath(['users.read']), '/admin/users');
+  assert.equal(getLandingPath(['admin.audit.read']), '/admin/audit');
   assert.equal(getLandingPath([]), '/profile');
 });

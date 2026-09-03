@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar eventos técnicos de auditoría append-only */
+        get: operations["AuditController_findMany"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users": {
         parameters: {
             query?: never;
@@ -134,7 +151,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Iniciar sesión — obtener access token y refresh token */
+        /** Iniciar sesión y establecer un refresh token HttpOnly */
         post: operations["AuthController_login"];
         delete?: never;
         options?: never;
@@ -151,7 +168,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Renovar access token usando el refresh token */
+        /** Rotar la cookie HttpOnly y renovar el access token */
         post: operations["AuthController_refresh"];
         delete?: never;
         options?: never;
@@ -168,7 +185,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cerrar sesión — revocar el refresh token activo */
+        /** Revocar la sesión actual y borrar la cookie HttpOnly */
         post: operations["AuthController_logout"];
         delete?: never;
         options?: never;
@@ -223,6 +240,25 @@ export interface paths {
         /** Registrar nuevo paciente */
         post: operations["PatientsController_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/draft/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener el borrador privado vigente del alta de paciente */
+        get: operations["PatientsController_getCurrentRegistrationDraft"];
+        /** Crear o reemplazar mediante CAS el borrador privado del alta */
+        put: operations["PatientsController_upsertCurrentRegistrationDraft"];
+        post?: never;
+        /** Eliminar mediante CAS el borrador privado del alta */
+        delete: operations["PatientsController_deleteCurrentRegistrationDraft"];
         options?: never;
         head?: never;
         patch?: never;
@@ -464,7 +500,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Indicadores del panel: pacientes hoy, cola, listos para validar, errores OCR y actividad reciente */
+        /**
+         * Indicadores del panel: pacientes hoy, cola, listos para validar, errores OCR y actividad reciente
+         * @description Incluye datos identificables de pacientes y actividad documental. Requiere simultáneamente patients.read y documents.read.
+         */
         get: operations["DashboardController_getStats"];
         put?: never;
         post?: never;
@@ -683,6 +722,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AuditEventResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            occurredAt: string;
+            action: string;
+            /** @enum {string} */
+            outcome: "SUCCESS" | "DENIED" | "FAILED";
+            /** Format: uuid */
+            actorId?: string | null;
+            /** Format: uuid */
+            patientId?: string | null;
+            resourceType?: string | null;
+            /** Format: uuid */
+            resourceId?: string | null;
+            /** Format: uuid */
+            requestId: string;
+            method: string;
+            route: string;
+            statusCode: number;
+            durationMs: number;
+            ipHash?: string | null;
+            userAgentHash?: string | null;
+        };
+        AuditEventsPageDto: {
+            data: components["schemas"]["AuditEventResponseDto"][];
+            /** Format: uuid */
+            nextCursor?: string | null;
+        };
         CreateUserDto: {
             /**
              * @description Nombres del profesional.
@@ -810,18 +878,21 @@ export interface components {
             /** @example admin@hospital.org */
             email: string;
             password: string;
+            /**
+             * @description Mantiene la cookie de sesión después de cerrar el navegador.
+             * @default false
+             */
+            rememberMe: boolean;
         };
         TokenResponseDto: {
             access_token: string;
-            refresh_token: string;
             /** @default Bearer */
             token_type: string;
-        };
-        RefreshDto: {
-            refresh_token: string;
-        };
-        LogoutDto: {
-            refresh_token: string;
+            /**
+             * @description Vigencia del access token en segundos.
+             * @example 900
+             */
+            expires_in: number;
         };
         PermissionResponseDto: {
             id: string;
@@ -866,6 +937,13 @@ export interface components {
             email?: string;
             /** @example Av. Principal 123, Lima */
             address?: string;
+            /**
+             * Format: uuid
+             * @description Borrador privado que se consumirá atómicamente con el alta.
+             */
+            draftId?: string;
+            /** @description Versión observada del borrador que se consumirá. */
+            expectedDraftVersion?: number;
         };
         PatientResponseDto: {
             id: string;
@@ -889,6 +967,42 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        PatientRegistrationDraftPayloadDto: {
+            /** @enum {string} */
+            documentType?: "DNI" | "CE" | "PAS" | "OTHER";
+            documentNumber?: string;
+            firstName?: string;
+            lastName?: string;
+            /** Format: date */
+            dateOfBirth?: string;
+            /** @enum {string} */
+            sex?: "M" | "F" | "OTHER";
+            phone?: string;
+            email?: string;
+            address?: string;
+        };
+        PatientRegistrationDraftResponseDto: {
+            /** Format: uuid */
+            id: string;
+            payload: components["schemas"]["PatientRegistrationDraftPayloadDto"];
+            version: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpsertPatientRegistrationDraftDto: {
+            /**
+             * Format: uuid
+             * @description Identidad del borrador al actualizar. Se omite al crearlo.
+             */
+            expectedId?: string;
+            /** @description Versión observada del borrador. Se omite al crearlo. */
+            expectedVersion?: number;
+            payload: components["schemas"]["PatientRegistrationDraftPayloadDto"];
         };
         ClinicalHistoryExportPatientDto: {
             id: string;
@@ -1043,6 +1157,13 @@ export interface components {
             email?: string;
             /** @example Av. Principal 123, Lima */
             address?: string;
+            /**
+             * Format: uuid
+             * @description Borrador privado que se consumirá atómicamente con el alta.
+             */
+            draftId?: string;
+            /** @description Versión observada del borrador que se consumirá. */
+            expectedDraftVersion?: number;
         };
         ClinicalDiagnosisDto: {
             description: string;
@@ -1484,6 +1605,51 @@ export interface operations {
             };
         };
     };
+    AuditController_findMany: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+                action?: string;
+                outcome?: "SUCCESS" | "DENIED" | "FAILED";
+                actorId?: string;
+                patientId?: string;
+                resourceType?: string;
+                resourceId?: string;
+                requestId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventsPageDto"];
+                };
+            };
+            /** @description Token de acceso ausente, inválido o revocado. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requiere admin.audit.read. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     UsersController_findAll: {
         parameters: {
             query?: never;
@@ -1690,7 +1856,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
-            /** @description Access token inválido. */
+            /** @description Access token inválido o revocado. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1714,6 +1880,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description clinicview_refresh_token HttpOnly */
+                    "Set-Cookie"?: unknown;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1736,14 +1904,12 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RefreshDto"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
+                    /** @description clinicview_refresh_token HttpOnly rotada */
+                    "Set-Cookie"?: unknown;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1766,21 +1932,10 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogoutDto"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Sesión cerrada. */
+            /** @description Sesión cerrada de forma idempotente. */
             204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Access token inválido. */
-            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1881,6 +2036,89 @@ export interface operations {
                 };
             };
             /** @description Ya existe un paciente con ese tipo y número de documento. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_getCurrentRegistrationDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientRegistrationDraftResponseDto"];
+                };
+            };
+            /** @description No existe un borrador vigente. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_upsertCurrentRegistrationDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertPatientRegistrationDraftDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientRegistrationDraftResponseDto"];
+                };
+            };
+            /** @description El borrador cambió, expiró o fue reemplazado. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_deleteCurrentRegistrationDraft: {
+        parameters: {
+            query: {
+                draftId: string;
+                expectedVersion: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El borrador cambió o fue reemplazado. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2391,7 +2629,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
+            /** @description Token de acceso ausente o inválido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requiere patients.read y documents.read; no se entrega una respuesta parcial. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

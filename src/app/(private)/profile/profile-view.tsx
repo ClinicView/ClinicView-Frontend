@@ -6,13 +6,13 @@ import { useState } from 'react';
 import { PageShell } from '@/shared/components/page-shell';
 import { useSession } from '@/features/auth';
 import { useProfile } from '@/features/profile';
-import { can, canAny } from '@/shared/permissions/can';
+import { can } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './profile.module.css';
 
 function getSessionRole(permissions: string[]): string {
-  if (permissions.some((p) => ['admin.users.manage', 'admin.roles.manage'].includes(p))) {
+  if (permissions.some((p) => ['admin.users.manage', 'admin.roles.manage', 'admin.audit.read'].includes(p))) {
     return 'Administrador del sistema';
   }
   if (permissions.some((p) => ['documents.validate', 'review.read'].includes(p))) {
@@ -61,6 +61,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   'roles.manage': 'Gestionar roles',
   'admin.users.manage': 'Gestionar usuarios',
   'admin.roles.manage': 'Gestionar roles',
+  'admin.audit.read': 'Consultar auditoría',
   'patients.read': 'Ver pacientes',
   'patients.create': 'Registrar pacientes',
   'patients.update': 'Editar datos básicos',
@@ -108,7 +109,8 @@ export function ProfileView() {
     { label: 'Digitalización de historias', icon: 'scan', href: '/patients', show: can(permissions, 'documents.read') },
     { label: 'Revisión y validación', icon: 'review', href: '/review', show: can(permissions, 'review.read') },
     { label: 'Registro manual de atención', icon: 'records', href: '/patients', show: can(permissions, 'records.create') },
-    { label: 'Administración del sistema', icon: 'admin', href: '/admin', show: canAny(permissions, ['admin.users.manage', 'admin.roles.manage']) },
+    { label: 'Administración de usuarios', icon: 'admin', href: '/admin/users', show: can(permissions, 'users.read') },
+    { label: 'Auditoría del sistema', icon: 'shield', href: '/admin/audit', show: can(permissions, 'admin.audit.read') },
   ];
   const accessLinks = allAccessLinks.filter((item) => item.show);
 

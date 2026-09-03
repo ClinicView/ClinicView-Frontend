@@ -129,7 +129,9 @@ export function DashboardView() {
     can(permissions, 'documents.read') &&
     can(permissions, 'documents.upload');
   const canReview = can(permissions, 'review.read');
-  const canAdmin = can(permissions, 'users.read');
+  const canManageUsers = can(permissions, 'users.read');
+  const canAdmin = canManageUsers || can(permissions, 'admin.audit.read');
+  const adminHref = canManageUsers ? '/admin/users' : '/admin/audit';
 
   function deltaHint(pct: number | null | undefined): {
     hint: string | null;
@@ -483,13 +485,17 @@ export function DashboardView() {
               </Link>
             )}
             {canAdmin && (
-              <Link href="/admin" className={`${styles.quickCard} ${styles.quick_slate}`}>
+              <Link href={adminHref} className={`${styles.quickCard} ${styles.quick_slate}`}>
                 <span className={styles.quickTopline}>
                   <span className={styles.quickIcon}><Icon name="admin" size={20} /></span>
                   <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
                 </span>
                 <span className={styles.quickTitle}>Administración</span>
-                <span className={styles.quickText}>Gestiona usuarios, roles y accesos.</span>
+                <span className={styles.quickText}>
+                  {canManageUsers
+                    ? 'Gestiona usuarios, roles y accesos.'
+                    : 'Consulta la trazabilidad técnica del sistema.'}
+                </span>
               </Link>
             )}
           </div>
