@@ -85,14 +85,13 @@ export function ProfileView() {
 
   if (!user) return null;
 
-  async function handleLogout() {
+  function handleLogout() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
-    if (session) {
-      await logoutRequest(session.accessToken, session.refreshToken);
-    }
+    const request = session ? logoutRequest() : Promise.resolve(true);
     clearSession();
     router.replace('/login');
+    void request;
   }
 
   const permissions = user.permissions;

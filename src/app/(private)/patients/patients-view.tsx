@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth';
 import { PatientList, getPatientStats, type PatientStats } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
+import { can } from '@/shared/permissions/can';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './patients-view.module.css';
 
@@ -65,28 +66,30 @@ function PatientsContent() {
         </p>
       </header>
 
-      <section className={styles.digitizationGuide} aria-labelledby="digitization-guide-title">
-        <div className={styles.guideIcon} aria-hidden="true">
-          <Icon name="scan" size={22} />
-        </div>
-        <div className={styles.guideContent}>
-          <span className={styles.guideKicker}>Punto de partida</span>
-          <h2 id="digitization-guide-title" className={styles.guideTitle}>
-            Toda digitalización comienza en la ficha del paciente
-          </h2>
-          <p className={styles.guideText}>
-            Selecciona una persona registrada o crea una nueva ficha para cargar PDF e imágenes,
-            procesarlas y revisar la transcripción clínica.
-          </p>
-        </div>
-        <div className={styles.guideFlow} aria-hidden="true">
-          <span><Icon name="patient" size={16} /></span>
-          <i />
-          <span><Icon name="upload" size={16} /></span>
-          <i />
-          <span><Icon name="check" size={16} /></span>
-        </div>
-      </section>
+      {can(user.permissions, 'documents.read') && (
+        <section className={styles.digitizationGuide} aria-labelledby="digitization-guide-title">
+          <div className={styles.guideIcon} aria-hidden="true">
+            <Icon name="scan" size={22} />
+          </div>
+          <div className={styles.guideContent}>
+            <span className={styles.guideKicker}>Punto de partida</span>
+            <h2 id="digitization-guide-title" className={styles.guideTitle}>
+              Toda digitalización comienza en la ficha del paciente
+            </h2>
+            <p className={styles.guideText}>
+              Selecciona una persona registrada para consultar sus documentos
+              {can(user.permissions, 'documents.upload') ? ' o cargar nuevos archivos clínicos.' : '.'}
+            </p>
+          </div>
+          <div className={styles.guideFlow} aria-hidden="true">
+            <span><Icon name="patient" size={16} /></span>
+            <i />
+            <span><Icon name="upload" size={16} /></span>
+            <i />
+            <span><Icon name="check" size={16} /></span>
+          </div>
+        </section>
+      )}
 
       <section className={styles.statsGrid} aria-label="Indicadores de pacientes">
         <StatCard

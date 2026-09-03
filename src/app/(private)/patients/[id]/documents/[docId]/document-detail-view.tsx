@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
 import { DocumentDetail } from '@/features/medical-documents';
 import { PageShell } from '@/shared/components/page-shell';
+import { can } from '@/shared/permissions/can';
 import { Icon } from '@/shared/ui';
 import styles from '@/features/medical-documents/components/correction-view.module.css';
 
@@ -38,10 +39,12 @@ export function DocumentDetailView({ patientId, docId }: DocumentDetailViewProps
             <Icon name="chevron-right" size={15} className={styles.previousIcon} />
             Volver
           </button>
-          <Link href={`/patients/${patientId}`} className={`${styles.btn} ${styles.btnLink}`}>
-            <Icon name="patient" size={15} />
-            Ver perfil del paciente
-          </Link>
+          {can(user.permissions, 'patients.read') && (
+            <Link href={`/patients/${patientId}`} className={`${styles.btn} ${styles.btnLink}`}>
+              <Icon name="patient" size={15} />
+              Ver perfil del paciente
+            </Link>
+          )}
         </div>
       </header>
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession } from '@/features/auth';
 import { RecordList } from '@/features/clinical-records';
 import { PageShell } from '@/shared/components/page-shell';
+import { can } from '@/shared/permissions/can';
 
 interface RecordsViewProps {
   patientId: string;
@@ -16,9 +17,11 @@ export function RecordsView({ patientId }: RecordsViewProps) {
 
   return (
     <PageShell>
-      <Link href={`/patients/${patientId}`} className="viewBack">
-        ← Volver al paciente
-      </Link>
+      {can(user.permissions, 'patients.read') && (
+        <Link href={`/patients/${patientId}`} className="viewBack">
+          ← Volver al paciente
+        </Link>
+      )}
       <h1 className="viewHeading">Registro manual de atención clínica</h1>
       <p className="viewSubheading">
         Consulta o registra historias clínicas estructuradas. Para subir PDF o imágenes de historias físicas, usa Digitalización.

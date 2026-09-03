@@ -1,4 +1,5 @@
 import { DocumentsView } from './documents-view';
+import { RequirePermissions } from '@/shared/guards/require-permissions';
 
 export default async function DocumentsPage({
   params,
@@ -6,5 +7,9 @@ export default async function DocumentsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <DocumentsView patientId={id} />;
+  return (
+    <RequirePermissions allOf={['documents.read']}>
+      <DocumentsView patientId={id} />
+    </RequirePermissions>
+  );
 }

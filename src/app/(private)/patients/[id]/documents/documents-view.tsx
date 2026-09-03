@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSession } from '@/features/auth';
 import { DocumentList } from '@/features/medical-documents';
 import { PageShell } from '@/shared/components/page-shell';
+import { can } from '@/shared/permissions/can';
 import { Icon } from '@/shared/ui';
 import styles from './documents-view.module.css';
 
@@ -18,20 +19,26 @@ export function DocumentsView({ patientId }: DocumentsViewProps) {
 
   return (
     <PageShell>
-      <Link href={`/patients/${patientId}`} className={`viewBack ${styles.backLink}`}>
-        <Icon name="chevron-right" size={16} className={styles.previousIcon} />
-        Volver al paciente
-      </Link>
+      {can(user.permissions, 'patients.read') && (
+        <Link href={`/patients/${patientId}`} className={`viewBack ${styles.backLink}`}>
+          <Icon name="chevron-right" size={16} className={styles.previousIcon} />
+          Volver al paciente
+        </Link>
+      )}
       <h1 className="viewHeading">Digitalización de historias clínicas</h1>
       <p className="viewSubheading">
-        Sube PDF o imágenes de historias clínicas físicas, procesa el archivo, corrige el OCR y valida la versión final.
+        {can(user.permissions, 'documents.upload')
+          ? 'Sube PDF o imágenes de historias clínicas físicas y consulta su avance.'
+          : 'Consulta las historias clínicas digitalizadas y su estado de procesamiento.'}
       </p>
-      <section className={styles.patientNotice} aria-label="Información sobre la carga de documentos">
-        <Icon name="patient" size={20} />
-        <p>
-          Actualmente debes seleccionar un paciente antes de subir una historia clínica. En una versión posterior, el sistema podrá sugerir el paciente automáticamente a partir del documento digitalizado.
-        </p>
-      </section>
+      {can(user.permissions, 'documents.upload') && (
+        <section className={styles.patientNotice} aria-label="Información sobre la carga de documentos">
+          <Icon name="patient" size={20} />
+          <p>
+            Los nuevos archivos quedarán asociados a la ficha del paciente seleccionada.
+          </p>
+        </section>
+      )}
       <DocumentList patientId={patientId} permissions={user.permissions} />
     </PageShell>
   );

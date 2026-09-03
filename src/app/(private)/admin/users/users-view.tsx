@@ -6,6 +6,7 @@ import { useSession } from '@/features/auth';
 import { useAdminUsers } from '@/features/admin/hooks/use-admin-users';
 import type { AdminUser } from '@/features/admin';
 import { PageShell } from '@/shared/components/page-shell';
+import { can } from '@/shared/permissions/can';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './admin-users.module.css';
 
@@ -54,7 +55,21 @@ function StatCard({ icon, tone, label, value, hint, hintPositive }: StatCardProp
 export function UsersView() {
   const { user } = useSession();
   const router = useRouter();
-  const { users, roles, isLoading, error, actionError, deactivate, assignRole } = useAdminUsers();
+  const permissions = user?.permissions ?? [];
+  const canReadRoles = can(permissions, 'roles.read');
+  const canCreateUsers = can(permissions, 'users.create') && canReadRoles;
+  const canDeactivateUsers = can(permissions, 'users.deactivate');
+  const canAssignRoles = can(permissions, 'admin.users.manage') && canReadRoles;
+  const {
+    users,
+    roles,
+    isLoading,
+    error,
+    rolesError,
+    actionError,
+    deactivate,
+    assignRole,
+  } = useAdminUsers({ loadRoles: canReadRoles });
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -101,6 +116,7 @@ export function UsersView() {
   if (!user) return null;
 
   async function handleDeactivate(id: string) {
+    if (!canDeactivateUsers) return;
     setActingId(id);
     await deactivate(id);
     setActingId(null);
@@ -122,7 +138,7 @@ export function UsersView() {
   }
 
   async function handleRoleChange(userId: string, roleKey: string) {
-    if (!roleKey) return;
+    if (!roleKey || !canAssignRoles) return;
     setActingId(userId);
     await assignRole(userId, roleKey);
     setActingId(null);
@@ -146,7 +162,7 @@ export function UsersView() {
           {u.documentType && u.documentNumber ? `${u.documentType} ${u.documentNumber}` : '—'}
         </td>
         <td data-label="Rol">
-          {u.isActive ? (
+          {u.isActive && canAssignRoles ? (
             <select
               className={styles.roleSelect}
               value={u.roles[0]?.key ?? ''}
@@ -173,7 +189,7 @@ export function UsersView() {
         </td>
         <td data-label="Acciones">
           <div className={styles.actions} role="group" aria-label={`Acciones para ${u.fullName}`}>
-            {u.isActive && !isSelf && pendingDeactivate !== u.id && (
+            {canDeactivateUsers && u.isActive && !isSelf && pendingDeactivate !== u.id && (
               <button
                 id={`deactivate-${u.id}`}
                 className={styles.iconBtn}
@@ -220,10 +236,12 @@ export function UsersView() {
           <h1 className={styles.title}>Gestión de usuarios</h1>
           <p className={styles.subtitle}>Administra accesos, roles y estado del personal del sistema.</p>
         </div>
-        <button className={styles.newBtn} type="button" onClick={() => router.push('/admin/users/new')}>
-          <Icon name="patient" size={16} />
-          Nuevo usuario
-        </button>
+        {canCreateUsers && (
+          <button className={styles.newBtn} type="button" onClick={() => router.push('/admin/users/new')}>
+            <Icon name="patient" size={16} />
+            Nuevo usuario
+          </button>
+        )}
       </div>
 
       <section className={styles.statsGrid} aria-label="Indicadores de usuarios">
@@ -304,7 +322,11 @@ export function UsersView() {
             </div>
           </div>
 
-          {(error || actionError) && <p className={styles.error} role="alert">{error ?? actionError}</p>}
+          {(error || rolesError || actionError) && (
+            <p className={styles.error} role="alert">
+              {error ?? rolesError ?? actionError}
+            </p>
+          )}
 
           <div
             className={styles.tableRegion}

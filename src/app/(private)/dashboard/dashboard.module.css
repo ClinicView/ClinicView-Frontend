@@ -454,6 +454,70 @@
   margin: 1rem 0;
 }
 
+.dashboardError {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-light);
+  padding: 0.75rem 1rem;
+  color: var(--color-danger-dark);
+}
+
+.dashboardErrorIcon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.dashboardErrorBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboardErrorBody strong {
+  display: block;
+  color: var(--color-danger-dark);
+  font-size: 0.875rem;
+}
+
+.dashboardErrorBody p {
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.retryButton {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-danger);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.55rem 0.9rem;
+  color: var(--color-danger-dark);
+  font-size: 0.8125rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.retryButton:hover:not(:disabled) {
+  background: var(--color-danger-dark);
+  color: #fff;
+}
+
+.retryButton:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .statCard {
   position: relative;
   min-height: 142px;
@@ -1064,6 +1128,15 @@ a.activityItem:active {
   .statsGrid,
   .quickGrid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboardError {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .retryButton {
+    width: 100%;
   }
 
   .statCard {

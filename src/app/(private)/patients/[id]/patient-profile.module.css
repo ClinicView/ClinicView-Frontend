@@ -265,6 +265,48 @@
   outline-offset: 2px;
 }
 
+.overviewError {
+  margin-bottom: 1rem;
+}
+
+.overviewErrorContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.overviewErrorContent strong {
+  width: 100%;
+}
+
+.overviewErrorContent > span {
+  flex: 1 1 240px;
+}
+
+.inlineRetry {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0.5rem 0.8rem;
+  color: inherit;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.inlineRetry:hover:not(:disabled) {
+  background: var(--color-danger-dark);
+  color: #fff;
+}
+
+.inlineRetry:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 /* ─── Paneles ────────────────────────────────────────────────── */
 .panel {
   border: 1px solid var(--border-clinical);

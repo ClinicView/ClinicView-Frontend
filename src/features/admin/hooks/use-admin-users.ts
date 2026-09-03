@@ -4,26 +4,43 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AdminRole, AdminUser } from '../types/admin';
 import { assignRole, deactivateUser, listRoles, listUsers } from '../services/admin.service';
 
-export function useAdminUsers() {
+export function useAdminUsers({ loadRoles = true }: { loadRoles?: boolean } = {}) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rolesError, setRolesError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    try {
-      const [u, r] = await Promise.all([listUsers(), listRoles()]);
-      setUsers(u);
-      setRoles(r);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar usuarios.');
-    } finally {
-      setIsLoading(false);
+    setRolesError(null);
+    const [usersResult, rolesResult] = await Promise.allSettled([
+      listUsers(),
+      loadRoles ? listRoles() : Promise.resolve([]),
+    ]);
+
+    if (usersResult.status === 'fulfilled') {
+      setUsers(usersResult.value);
+    } else {
+      setUsers([]);
+      setError(
+        usersResult.reason instanceof Error
+          ? usersResult.reason.message
+          : 'Error al cargar usuarios.',
+      );
     }
-  }, []);
+
+    if (rolesResult.status === 'fulfilled') {
+      setRoles(rolesResult.value);
+    } else {
+      setRoles([]);
+      setRolesError('No se pudieron cargar los roles disponibles.');
+    }
+
+    setIsLoading(false);
+  }, [loadRoles]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -47,5 +64,15 @@ export function useAdminUsers() {
     }
   }
 
-  return { users, roles, isLoading, error, actionError, reload: load, deactivate: doDeactivate, assignRole: doAssignRole };
+  return {
+    users,
+    roles,
+    isLoading,
+    error,
+    rolesError,
+    actionError,
+    reload: load,
+    deactivate: doDeactivate,
+    assignRole: doAssignRole,
+  };
 }

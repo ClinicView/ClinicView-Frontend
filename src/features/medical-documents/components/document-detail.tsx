@@ -78,6 +78,7 @@ interface DocumentDetailProps {
 }
 
 export function DocumentDetail({ patientId, docId, permissions }: DocumentDetailProps) {
+  const canReadPatient = can(permissions, 'patients.read');
   const {
     document,
     isLoading,
@@ -92,7 +93,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     reload,
   } = useDocument(patientId, docId);
   const { user } = useSession();
-  const { patient } = usePatient(patientId);
+  const { patient, isLoading: isPatientLoading } = usePatient(patientId, {
+    enabled: canReadPatient,
+  });
 
   const [activeTab, setActiveTab] = useState<TabId>('text');
   const [correctedText, setCorrectedText] = useState('');
@@ -274,9 +277,13 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     activateTab(CORRECTION_TABS[nextIndex].id, true);
   }
 
-  const patientLine = patient
-    ? `${patient.lastName}, ${patient.firstName}`
-    : 'Cargando…';
+  const patientLine = !canReadPatient
+    ? 'Datos demográficos restringidos'
+    : patient
+      ? `${patient.lastName}, ${patient.firstName}`
+      : isPatientLoading
+        ? 'Cargando…'
+        : 'No disponible';
   const patientAge = ageFromDateOnly(patient?.dateOfBirth);
   const patientSub = patient
     ? `${patient.documentNumber} · ${patient.sex === 'M' ? 'Masculino' : patient.sex === 'F' ? 'Femenino' : 'Otro'}${patientAge === null ? '' : ` · ${patientAge} años`}`

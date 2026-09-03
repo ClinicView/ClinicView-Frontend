@@ -65,7 +65,7 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
         </select>
         </div>
 
-        {can(permissions, 'records.create') && (
+        {can(permissions, 'patients.read') && can(permissions, 'records.create') && (
           <button
             type="button"
             className={styles.newBtn}

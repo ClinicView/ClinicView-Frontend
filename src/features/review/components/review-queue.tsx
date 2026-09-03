@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { formatInstant } from '@/shared/lib/date-time';
+import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { useReviewQueue } from '../hooks/use-review-queue';
 import styles from './review-queue.module.css';
@@ -28,7 +29,11 @@ function getFileType(mimeType: string): string {
   return mimeType.split('/')[1]?.toUpperCase() || 'ARCHIVO';
 }
 
-export function ReviewQueue() {
+interface ReviewQueueProps {
+  permissions: string[];
+}
+
+export function ReviewQueue({ permissions }: ReviewQueueProps) {
   const { data, total, page, totalPages, isLoading, error, onPageChange, reload } = useReviewQueue();
   const listTitleRef = useRef<HTMLHeadingElement>(null);
   const previousPageRef = useRef(page);
@@ -42,6 +47,8 @@ export function ReviewQueue() {
   const queueLabel = total === 0
     ? 'Sin revisiones pendientes'
     : `${total} historia${total !== 1 ? 's' : ''} por revisar`;
+  const canOpenDocuments = can(permissions, 'documents.read');
+  const canValidateDocuments = can(permissions, 'documents.validate');
 
   return (
     <section className={styles.container} aria-labelledby="review-queue-title">
@@ -218,14 +225,21 @@ export function ReviewQueue() {
                           </span>
                         </td>
                         <td className={styles.actionCell}>
-                          <Link
-                            className={styles.actionBtn}
-                            href={`/patients/${item.patient.id}/documents/${item.id}`}
-                            aria-label={`Revisar digitalización ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
-                          >
-                            Revisar digitalización
-                            <Icon name="arrow-right" size={16} />
-                          </Link>
+                          {canOpenDocuments ? (
+                            <Link
+                              className={styles.actionBtn}
+                              href={`/patients/${item.patient.id}/documents/${item.id}`}
+                              aria-label={`${canValidateDocuments ? 'Revisar' : 'Ver'} digitalización ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
+                            >
+                              {canValidateDocuments ? 'Revisar digitalización' : 'Ver digitalización'}
+                              <Icon name="arrow-right" size={16} />
+                            </Link>
+                          ) : (
+                            <span className={styles.actionUnavailable}>
+                              <Icon name="lock" size={15} />
+                              Sin acceso al documento
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

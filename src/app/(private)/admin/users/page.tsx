@@ -1,5 +1,10 @@
 import { UsersView } from './users-view';
+import { RequirePermissions } from '@/shared/guards/require-permissions';
 
 export default function AdminUsersPage() {
-  return <UsersView />;
+  return (
+    <RequirePermissions allOf={['users.read']}>
+      <UsersView />
+    </RequirePermissions>
+  );
 }

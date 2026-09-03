@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { NotificationsBell } from '@/features/notifications';
 import { BrandLogo, Icon, type IconName } from '@/shared/ui';
-import { can, canAny } from '@/shared/permissions/can';
+import { can, canAll, canAny, getLandingPath } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
 import { useSession } from '@/shared/session/use-session';
 import styles from './page-shell.module.css';
@@ -47,7 +47,7 @@ function getRouteLabel(pathname: string): string {
 }
 
 export function PageShell({ children }: PageShellProps) {
-  const { user, session, clearSession } = useSession();
+  const { user, clearSession } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -173,6 +173,7 @@ export function PageShell({ children }: PageShellProps) {
       if (
         (event.ctrlKey || event.metaKey)
         && event.key.toLowerCase() === 'k'
+        && searchRef.current
         && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')
       ) {
         event.preventDefault();
@@ -186,14 +187,13 @@ export function PageShell({ children }: PageShellProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  async function handleLogout() {
+  function handleLogout() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
-    if (session) {
-      await logoutRequest(session.accessToken, session.refreshToken);
-    }
+    const request = logoutRequest();
     clearSession();
     router.replace('/login');
+    void request;
   }
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -219,14 +219,16 @@ export function PageShell({ children }: PageShellProps) {
     const permissions = user.permissions;
     const isPatientsArea = pathname.startsWith('/patients') && !pathname.includes('/documents');
     const isDigitizationArea = pathname.includes('/documents');
-    const items: NavItem[] = [
-      {
+    const items: NavItem[] = [];
+
+    if (canAll(permissions, ['patients.read', 'documents.read'])) {
+      items.push({
         href: '/dashboard',
         label: 'Dashboard',
         icon: 'dashboard',
         isActive: pathname === '/dashboard',
-      },
-    ];
+      });
+    }
 
     if (can(permissions, 'patients.read')) {
       items.push({
@@ -255,7 +257,7 @@ export function PageShell({ children }: PageShellProps) {
       });
     }
 
-    if (canAny(permissions, ['admin.users.manage', 'admin.roles.manage'])) {
+    if (can(permissions, 'users.read')) {
       items.push({
         href: '/admin',
         label: 'Administración',
@@ -277,6 +279,8 @@ export function PageShell({ children }: PageShellProps) {
   if (!user) return null;
 
   const roleLabel = getSessionRole(user.permissions);
+  const homeHref = getLandingPath(user.permissions);
+  const canSearchPatients = can(user.permissions, 'patients.read');
   const shellClass = [
     styles.shell,
     isCollapsed ? styles.shellCollapsed : '',
@@ -307,7 +311,7 @@ export function PageShell({ children }: PageShellProps) {
         role={isMobileViewport ? 'dialog' : undefined}
       >
         <div className={styles.brandBlock}>
-          <Link href="/dashboard" className={styles.brand} aria-label="ClinicView, ir al dashboard">
+          <Link href={homeHref} className={styles.brand} aria-label="ClinicView, ir al inicio">
             {isCollapsed && !isMobileOpen ? (
               <BrandLogo variant="mark" size="navigation" decorative />
             ) : (
@@ -403,7 +407,7 @@ export function PageShell({ children }: PageShellProps) {
             <Icon name="menu" size={20} />
           </button>
 
-          <Link href="/dashboard" className={styles.mobileBrand} aria-label="ClinicView, ir al dashboard">
+          <Link href={homeHref} className={styles.mobileBrand} aria-label="ClinicView, ir al inicio">
             <BrandLogo variant="mark" size="compact" decorative />
           </Link>
 
@@ -412,22 +416,24 @@ export function PageShell({ children }: PageShellProps) {
             <span className={styles.routeTitle}>{getRouteLabel(pathname)}</span>
           </div>
 
-          <form className={styles.searchForm} role="search" onSubmit={handleSearchSubmit}>
-            <span className={styles.searchIcon} aria-hidden="true">
-              <Icon name="search" size={17} />
-            </span>
-            <input
-              ref={searchRef}
-              className={styles.searchInput}
-              type="search"
-              placeholder="Buscar pacientes o documentos"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              aria-label="Búsqueda global"
-              aria-keyshortcuts="Control+K Meta+K"
-            />
-            <kbd className={styles.searchKbd} aria-hidden="true">Ctrl K</kbd>
-          </form>
+          {canSearchPatients && (
+            <form className={styles.searchForm} role="search" onSubmit={handleSearchSubmit}>
+              <span className={styles.searchIcon} aria-hidden="true">
+                <Icon name="search" size={17} />
+              </span>
+              <input
+                ref={searchRef}
+                className={styles.searchInput}
+                type="search"
+                placeholder="Buscar pacientes o documentos"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Búsqueda global"
+                aria-keyshortcuts="Control+K Meta+K"
+              />
+              <kbd className={styles.searchKbd} aria-hidden="true">Ctrl K</kbd>
+            </form>
+          )}
 
           <div className={styles.topbarRight}>
             <NotificationsBell />

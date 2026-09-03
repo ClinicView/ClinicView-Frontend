@@ -1,8 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { FormEvent, useRef, useState } from 'react';
-import { BrandLogo, Icon } from '@/shared/ui';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getLandingPath } from '@/shared/permissions/can';
+import { useSession } from '@/shared/session/use-session';
+import { BrandLogo, Icon, Spinner } from '@/shared/ui';
 import { useLogin } from '../hooks/use-login';
 import styles from './login-form.module.css';
 
@@ -13,7 +16,13 @@ export function LoginForm() {
   const [remember, setRemember] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const validationSummaryRef = useRef<HTMLDivElement>(null);
-  const { login, isLoading, error } = useLogin();
+  const router = useRouter();
+  const { user, isLoading: isSessionLoading } = useSession();
+  const { login, isLoading, error, clearError } = useLogin();
+
+  useEffect(() => {
+    if (user) router.replace(getLandingPath(user.permissions));
+  }, [router, user]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,10 +41,11 @@ export function LoginForm() {
       return;
     }
 
-    await login(email, password);
+    await login(email.trim(), password, remember);
   }
 
   function clearFieldError(field: 'email' | 'password') {
+    clearError();
     setFieldErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -54,6 +64,15 @@ export function LoginForm() {
     fieldErrors.password ? 'password-error' : null,
     credentialsRejected ? 'login-error' : null,
   ].filter(Boolean).join(' ') || undefined;
+
+  if (isSessionLoading || user) {
+    return (
+      <Spinner
+        fullPage
+        label={user ? 'Abriendo tu espacio de trabajo…' : 'Comprobando sesión segura…'}
+      />
+    );
+  }
 
   return (
     <main className={styles.wrapper}>
@@ -161,7 +180,7 @@ export function LoginForm() {
                     setEmail(e.target.value);
                     clearFieldError('email');
                   }}
-                  autoComplete="email"
+                  autoComplete="username"
                   disabled={isLoading}
                   required
                   placeholder="usuario@hospital.org"
@@ -218,16 +237,25 @@ export function LoginForm() {
               )}
             </div>
 
-            <label className={styles.remember}>
-              <input
-                type="checkbox"
-                className={styles.checkbox}
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                disabled={isLoading}
-              />
-              <span>Recordarme en este dispositivo</span>
-            </label>
+            <div className={styles.rememberGroup}>
+              <label className={styles.remember}>
+                <input
+                  type="checkbox"
+                  className={styles.checkbox}
+                  checked={remember}
+                  onChange={(e) => {
+                    setRemember(e.target.checked);
+                    clearError();
+                  }}
+                  disabled={isLoading}
+                  aria-describedby="remember-hint"
+                />
+                <span>Recordarme en este dispositivo</span>
+              </label>
+              <p id="remember-hint" className={styles.rememberHint}>
+                Mantiene la sesión hasta 7 días. No lo uses en un equipo compartido.
+              </p>
+            </div>
 
             {error && (
               <p id="login-error" role="alert" className={styles.error}>
@@ -235,7 +263,17 @@ export function LoginForm() {
                 <span>
                   {error === 'login_failed'
                     ? 'Correo o contraseña incorrectos. Verifica tus credenciales.'
-                    : 'No se pudo conectar al servidor. Inténtalo nuevamente.'}
+                    : error === 'rate_limited'
+                      ? 'Se realizaron demasiados intentos. Espera un minuto antes de volver a probar.'
+                      : error === 'auth_timeout'
+                        ? 'La verificación tardó demasiado. Comprueba tu conexión e inténtalo otra vez.'
+                        : error === 'invalid_session'
+                          ? 'El servidor devolvió una sesión no válida. Inténtalo nuevamente o contacta a soporte.'
+                          : error === 'auth_cancelled'
+                            ? 'El acceso se canceló porque la sesión cambió en otra pestaña. Inténtalo nuevamente.'
+                    : error === 'server_error'
+                      ? 'El servicio no está disponible temporalmente. Inténtalo nuevamente.'
+                      : 'No se pudo conectar al servidor. Revisa tu conexión e inténtalo nuevamente.'}
                 </span>
               </p>
             )}

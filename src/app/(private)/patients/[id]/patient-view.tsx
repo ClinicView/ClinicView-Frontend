@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
@@ -160,7 +160,13 @@ export function PatientView({ id }: PatientViewProps) {
   const { user } = useSession();
   const router = useRouter();
   const { patient, isLoading, error } = usePatient(id);
-  const overview = usePatientOverview(id);
+  const permissions = user?.permissions ?? [];
+  const canReadDocuments = can(permissions, 'documents.read');
+  const canReadRecords = can(permissions, 'records.read');
+  const overview = usePatientOverview(id, {
+    documents: canReadDocuments,
+    records: canReadRecords,
+  });
 
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,6 +174,28 @@ export function PatientView({ id }: PatientViewProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [isActivating, setIsActivating] = useState(false);
+
+  const tabs: Array<{ id: TabId; label: string }> = [
+    { id: 'resumen', label: 'Resumen' },
+    ...(canReadDocuments || canReadRecords
+      ? [{ id: 'historia' as const, label: 'Historia clínica' }]
+      : []),
+    ...(canReadDocuments
+      ? [
+          { id: 'documentos' as const, label: 'Documentos' },
+          { id: 'metricas' as const, label: 'Métricas' },
+        ]
+      : []),
+  ];
+
+  useEffect(() => {
+    if (activeTab === 'historia' && !canReadDocuments && !canReadRecords) {
+      setActiveTab('resumen');
+    }
+    if ((activeTab === 'documentos' || activeTab === 'metricas') && !canReadDocuments) {
+      setActiveTab('resumen');
+    }
+  }, [activeTab, canReadDocuments, canReadRecords]);
 
   const timeline = useMemo(
     () => buildTimeline(id, overview.documents, overview.records),
@@ -223,12 +251,20 @@ export function PatientView({ id }: PatientViewProps) {
     );
   }
 
-  const permissions = user.permissions;
   const patientAge = ageFromDateOnly(patient.dateOfBirth);
   const pendingDocs = overview.documents.filter(
     (doc) => doc.status !== 'VALIDATED' && doc.status !== 'REJECTED',
   ).length;
   const lastEntry = timeline[0] ?? null;
+  const visibleEntryCount = overview.isLoading
+    ? '—'
+    : overview.documents.length + overview.records.length;
+  const visibleDocumentCount = overview.isLoadingDocuments || overview.documentsError
+    ? '—'
+    : overview.documents.length;
+  const visiblePendingCount = overview.isLoadingDocuments || overview.documentsError
+    ? '—'
+    : pendingDocs;
 
   async function handleActivate() {
     setIsActivating(true);
@@ -367,13 +403,6 @@ export function PatientView({ id }: PatientViewProps) {
     );
   }
 
-  const TABS: Array<{ id: TabId; label: string }> = [
-    { id: 'resumen', label: 'Resumen' },
-    { id: 'historia', label: 'Historia clínica' },
-    { id: 'documentos', label: 'Documentos' },
-    { id: 'metricas', label: 'Métricas' },
-  ];
-
   function openTab(tabId: TabId, focusPanel = false) {
     setActiveTab(tabId);
     if (focusPanel) {
@@ -381,15 +410,22 @@ export function PatientView({ id }: PatientViewProps) {
     }
   }
 
+  async function reloadOverview() {
+    await overview.reload();
+    requestAnimationFrame(() => {
+      document.getElementById(`patient-panel-${activeTab}`)?.focus({ preventScroll: true });
+    });
+  }
+
   function handleTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
     let nextIndex: number | null = null;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % TABS.length;
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + TABS.length) % TABS.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
     if (event.key === 'Home') nextIndex = 0;
-    if (event.key === 'End') nextIndex = TABS.length - 1;
+    if (event.key === 'End') nextIndex = tabs.length - 1;
     if (nextIndex === null) return;
     event.preventDefault();
-    const nextTab = TABS[nextIndex];
+    const nextTab = tabs[nextIndex];
     if (!nextTab) return;
     setActiveTab(nextTab.id);
     requestAnimationFrame(() => document.getElementById(`patient-tab-${nextTab.id}`)?.focus());
@@ -486,55 +522,79 @@ export function PatientView({ id }: PatientViewProps) {
 
       {/* ─── Cards resumen ─── */}
       <section className={styles.summaryGrid} aria-label="Resumen del paciente">
-        <article className={styles.summaryCard}>
-          <span className={`${styles.summaryIcon} ${styles.sIcon_blue}`}>
-            <Icon name="calendar" size={20} />
-          </span>
-          <div>
-            <span className={styles.summaryLabel}>Última atención</span>
-            <span className={styles.summaryValue}>
-              {lastEntry ? formatDate(lastEntry.date) : '—'}
+        {overview.hasAnyAccess ? (
+          <>
+            <article className={styles.summaryCard}>
+              <span className={`${styles.summaryIcon} ${styles.sIcon_blue}`} aria-hidden="true">
+                <Icon name="calendar" size={20} />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>Última atención visible</span>
+                <span className={styles.summaryValue}>
+                  {lastEntry ? formatDate(lastEntry.date) : '—'}
+                </span>
+                <span className={styles.summaryHint}>
+                  {overview.isLoading ? 'Cargando…' : lastEntry?.title ?? 'Sin registros visibles'}
+                </span>
+              </div>
+            </article>
+            <article className={styles.summaryCard}>
+              <span className={`${styles.summaryIcon} ${styles.sIcon_green}`} aria-hidden="true">
+                <Icon name="folder" size={20} />
+              </span>
+              <div>
+                <span className={styles.summaryLabel}>Entradas disponibles</span>
+                <span className={styles.summaryValue}>{visibleEntryCount}</span>
+                <span className={styles.summaryHint}>
+                  {overview.documentsError || overview.recordsError
+                    ? 'Carga parcial; revisa el aviso inferior'
+                    : 'Según los permisos de tu rol'}
+                </span>
+              </div>
+            </article>
+            {canReadDocuments && (
+              <>
+                <article className={styles.summaryCard}>
+                  <span className={`${styles.summaryIcon} ${styles.sIcon_indigo}`} aria-hidden="true">
+                    <Icon name="scan" size={20} />
+                  </span>
+                  <div>
+                    <span className={styles.summaryLabel}>Digitalizaciones</span>
+                    <span className={styles.summaryValue}>{visibleDocumentCount}</span>
+                    <span className={styles.summaryHint}>Archivos digitalizados</span>
+                  </div>
+                </article>
+                <article className={styles.summaryCard}>
+                  <span className={`${styles.summaryIcon} ${styles.sIcon_amber}`} aria-hidden="true">
+                    <Icon name="clock" size={20} />
+                  </span>
+                  <div>
+                    <span className={styles.summaryLabel}>Pendientes</span>
+                    <span className={styles.summaryValue}>{visiblePendingCount}</span>
+                    <span className={styles.summaryHint}>Por revisar / completar</span>
+                  </div>
+                </article>
+              </>
+            )}
+          </>
+        ) : (
+          <article className={styles.summaryCard}>
+            <span className={`${styles.summaryIcon} ${styles.sIcon_indigo}`} aria-hidden="true">
+              <Icon name="shield" size={20} />
             </span>
-            <span className={styles.summaryHint}>{lastEntry?.title ?? 'Sin registros'}</span>
-          </div>
-        </article>
-        <article className={styles.summaryCard}>
-          <span className={`${styles.summaryIcon} ${styles.sIcon_green}`}>
-            <Icon name="folder" size={20} />
-          </span>
-          <div>
-            <span className={styles.summaryLabel}>Documentos clínicos</span>
-            <span className={styles.summaryValue}>
-              {overview.documents.length + overview.records.length}
-            </span>
-            <span className={styles.summaryHint}>Historias y documentos</span>
-          </div>
-        </article>
-        <article className={styles.summaryCard}>
-          <span className={`${styles.summaryIcon} ${styles.sIcon_indigo}`}>
-            <Icon name="scan" size={20} />
-          </span>
-          <div>
-            <span className={styles.summaryLabel}>Digitalizaciones</span>
-            <span className={styles.summaryValue}>{overview.documents.length}</span>
-            <span className={styles.summaryHint}>Archivos digitalizados</span>
-          </div>
-        </article>
-        <article className={styles.summaryCard}>
-          <span className={`${styles.summaryIcon} ${styles.sIcon_amber}`}>
-            <Icon name="clock" size={20} />
-          </span>
-          <div>
-            <span className={styles.summaryLabel}>Pendientes</span>
-            <span className={styles.summaryValue}>{pendingDocs}</span>
-            <span className={styles.summaryHint}>Por revisar / completar</span>
-          </div>
-        </article>
+            <div>
+              <span className={styles.summaryLabel}>Contenido clínico restringido</span>
+              <span className={styles.summaryHint}>
+                Tu rol permite consultar la ficha demográfica, pero no sus documentos o registros.
+              </span>
+            </div>
+          </article>
+        )}
       </section>
 
       {/* ─── Tabs ─── */}
       <div className={styles.tabs} role="tablist" aria-label="Secciones de la ficha del paciente">
-        {TABS.map((tab, index) => (
+        {tabs.map((tab, index) => (
           <button
             key={tab.id}
             id={`patient-tab-${tab.id}`}
@@ -552,7 +612,25 @@ export function PatientView({ id }: PatientViewProps) {
         ))}
       </div>
 
-      {overview.error && <Alert variant="error">{overview.error}</Alert>}
+      {(overview.documentsError || overview.recordsError) && (
+        <div className={styles.overviewError}>
+          <Alert variant="error">
+            <span className={styles.overviewErrorContent}>
+              <strong>Parte de la información no está disponible.</strong>
+              {overview.documentsError && <span>{overview.documentsError}</span>}
+              {overview.recordsError && <span>{overview.recordsError}</span>}
+              <button
+                className={styles.inlineRetry}
+                type="button"
+                onClick={() => void reloadOverview()}
+                disabled={overview.isLoading}
+              >
+                {overview.isLoading ? 'Reintentando…' : 'Reintentar carga'}
+              </button>
+            </span>
+          </Alert>
+        </div>
+      )}
       {exportError && <Alert variant="error">{exportError}</Alert>}
 
       {/* ─── Tab: Resumen ─── */}
@@ -567,11 +645,15 @@ export function PatientView({ id }: PatientViewProps) {
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <h2 className={styles.panelTitle}>Documentación clínica reciente</h2>
-              <button className={styles.panelLink} type="button" onClick={() => openTab('historia', true)}>
-                Ver todos <Icon name="chevron-right" size={13} />
-              </button>
+              {overview.hasAnyAccess && (
+                <button className={styles.panelLink} type="button" onClick={() => openTab('historia', true)}>
+                  Ver todos <Icon name="chevron-right" size={13} />
+                </button>
+              )}
             </div>
-            {overview.isLoading ? (
+            {!overview.hasAnyAccess ? (
+              <p className={styles.emptyHint}>No tienes acceso al contenido clínico de esta ficha.</p>
+            ) : overview.isLoading ? (
               <Spinner label="Cargando documentación…" />
             ) : timeline.length === 0 ? (
               <p className={styles.emptyHint}>Sin documentación clínica registrada todavía.</p>
@@ -628,13 +710,13 @@ export function PatientView({ id }: PatientViewProps) {
                       <Icon name="scan" size={18} />
                     </span>
                     <span>
-                      <span className={styles.quickActionTitle}>Nueva digitalización</span>
-                      <span className={styles.quickActionHint}>Digitaliza documentos</span>
+                      <span className={styles.quickActionTitle}>Ver digitalizaciones</span>
+                      <span className={styles.quickActionHint}>Consulta documentos clínicos</span>
                     </span>
                     <Icon name="chevron-right" size={15} />
                   </Link>
                 )}
-                {can(permissions, 'records.read') && (
+                {can(permissions, 'records.read') && can(permissions, 'records.create') && (
                   <Link href={`/patients/${id}/records/new`} className={styles.quickAction}>
                     <span className={`${styles.quickActionIcon} ${styles.sIcon_green}`}>
                       <Icon name="records" size={18} />
@@ -646,7 +728,7 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="chevron-right" size={15} />
                   </Link>
                 )}
-                {can(permissions, 'documents.upload') && (
+                {can(permissions, 'documents.read') && can(permissions, 'documents.upload') && (
                   <Link href={`/patients/${id}/documents`} className={styles.quickAction}>
                     <span className={`${styles.quickActionIcon} ${styles.sIcon_indigo}`}>
                       <Icon name="upload" size={18} />
@@ -658,20 +740,22 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="chevron-right" size={15} />
                   </Link>
                 )}
-                <button
-                  type="button"
-                  className={styles.quickAction}
-                  onClick={() => openTab('historia', true)}
-                >
-                  <span className={`${styles.quickActionIcon} ${styles.sIcon_amber}`}>
-                    <Icon name="folder" size={18} />
-                  </span>
-                  <span>
-                    <span className={styles.quickActionTitle}>Ver historia clínica</span>
-                    <span className={styles.quickActionHint}>Timeline completo</span>
-                  </span>
-                  <Icon name="chevron-right" size={15} />
-                </button>
+                {overview.hasAnyAccess && (
+                  <button
+                    type="button"
+                    className={styles.quickAction}
+                    onClick={() => openTab('historia', true)}
+                  >
+                    <span className={`${styles.quickActionIcon} ${styles.sIcon_amber}`}>
+                      <Icon name="folder" size={18} />
+                    </span>
+                    <span>
+                      <span className={styles.quickActionTitle}>Ver historia clínica</span>
+                      <span className={styles.quickActionHint}>Timeline disponible</span>
+                    </span>
+                    <Icon name="chevron-right" size={15} />
+                  </button>
+                )}
               </div>
             </section>
 
@@ -703,7 +787,7 @@ export function PatientView({ id }: PatientViewProps) {
       )}
 
       {/* ─── Tab: Historia clínica ─── */}
-      {activeTab === 'historia' && (
+      {activeTab === 'historia' && overview.hasAnyAccess && (
         <section
           id="patient-panel-historia"
           className={styles.panel}
@@ -717,7 +801,7 @@ export function PatientView({ id }: PatientViewProps) {
               <input
                 type="search"
                 className={styles.searchInput}
-                placeholder="Buscar por palabras clave en el texto de los documentos…"
+                placeholder="Buscar en la historia clínica…"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 aria-label="Buscar en la historia clínica"
@@ -846,7 +930,7 @@ export function PatientView({ id }: PatientViewProps) {
       )}
 
       {/* ─── Tab: Documentos ─── */}
-      {activeTab === 'documentos' && (
+      {activeTab === 'documentos' && canReadDocuments && (
         <section
           id="patient-panel-documentos"
           className={styles.panel}
@@ -888,7 +972,7 @@ export function PatientView({ id }: PatientViewProps) {
             </div>
           </div>
 
-          {overview.isLoading ? (
+          {overview.isLoadingDocuments ? (
             <Spinner label="Cargando documentos…" />
           ) : overview.documents.length === 0 ? (
             <p className={styles.emptyHint}>
@@ -956,7 +1040,7 @@ export function PatientView({ id }: PatientViewProps) {
       )}
 
       {/* ─── Tab: Métricas ─── */}
-      {activeTab === 'metricas' && (
+      {activeTab === 'metricas' && canReadDocuments && (
         <div
           id="patient-panel-metricas"
           className={styles.metricsGrid}

@@ -1,4 +1,5 @@
 import { RecordsView } from './records-view';
+import { RequirePermissions } from '@/shared/guards/require-permissions';
 
 export default async function RecordsPage({
   params,
@@ -6,5 +7,9 @@ export default async function RecordsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <RecordsView patientId={id} />;
+  return (
+    <RequirePermissions allOf={['records.read']}>
+      <RecordsView patientId={id} />
+    </RequirePermissions>
+  );
 }

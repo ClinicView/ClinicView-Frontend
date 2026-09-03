@@ -1,3 +1,12 @@
+import {
+  beginLogoutTransition,
+  getAuthEpoch,
+  isAuthEpochCurrent,
+  isSessionRestoreBlocked,
+  runExclusiveAuthOperation,
+} from '@/shared/session/auth-coordinator';
+import { sessionFromAccessToken } from '@/shared/session/session-token';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 export class ApiError extends Error {
@@ -10,118 +19,164 @@ export class ApiError extends Error {
   }
 }
 
-// ─── Module-level token state (memory-only, cleared on page reload) ──────────
+// El access token permanece solo en memoria. La sesión restaurable vive en una
+// cookie HttpOnly administrada exclusivamente por el backend.
+let accessToken: string | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+let onAccessTokenRefreshed: ((access: string) => void) | null = null;
+let onUnauthorized: (() => void) | null = null;
 
-let _accessToken: string | null = null;
-let _refreshToken: string | null = null;
-let _onTokensRefreshed: ((access: string, refresh: string) => void) | null = null;
-let _onUnauthorized: (() => void) | null = null;
-
-export function setApiTokens(access: string, refresh: string): void {
-  _accessToken = access;
-  _refreshToken = refresh;
+export function setApiAccessToken(access: string): void {
+  accessToken = access;
 }
 
-export function clearApiTokens(): void {
-  _accessToken = null;
-  _refreshToken = null;
+export function clearApiAccessToken(): void {
+  accessToken = null;
 }
 
 export function configureApiClientCallbacks(config: {
-  onTokensRefreshed: (access: string, refresh: string) => void;
+  onAccessTokenRefreshed: (access: string) => void;
   onUnauthorized: () => void;
 }): void {
-  _onTokensRefreshed = config.onTokensRefreshed;
-  _onUnauthorized = config.onUnauthorized;
+  onAccessTokenRefreshed = config.onAccessTokenRefreshed;
+  onUnauthorized = config.onUnauthorized;
 }
 
-// ─── Internal fetch with refresh logic ───────────────────────────────────────
+/**
+ * Restaura/rota la sesión una sola vez por pestaña. El coordinador serializa la
+ * rotación con login/logout, también entre pestañas compatibles con Web Locks.
+ */
+export function refreshApiSession(options: { notify?: boolean } = {}): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  if (isSessionRestoreBlocked()) return Promise.resolve(null);
 
-async function tryRefresh(): Promise<boolean> {
-  if (!_refreshToken) return false;
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
+  const epoch = getAuthEpoch();
+  refreshInFlight = runExclusiveAuthOperation(epoch, async (signal) => {
+    if (isSessionRestoreBlocked()) return null;
+
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: _refreshToken }),
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal,
     });
-    if (!res.ok) return false;
-    const tokens = await res.json() as { access_token: string; refresh_token: string };
-    setApiTokens(tokens.access_token, tokens.refresh_token);
-    _onTokensRefreshed?.(tokens.access_token, tokens.refresh_token);
-    return true;
-  } catch {
-    return false;
-  }
+    if (!response.ok) return null;
+
+    const body = await response.json() as { access_token?: unknown };
+    if (typeof body.access_token !== 'string') return null;
+    const restored = sessionFromAccessToken(body.access_token);
+    if (!restored || !isAuthEpochCurrent(epoch) || isSessionRestoreBlocked()) return null;
+
+    setApiAccessToken(restored.accessToken);
+    if (options.notify !== false) onAccessTokenRefreshed?.(restored.accessToken);
+    return restored.accessToken;
+  })
+    .catch(() => null)
+    .then((restoredAccessToken) => {
+      // Si no fue cancelado por un login/logout más reciente, el fallo deja la
+      // restauración bloqueada. Así una cookie que no pudo revocarse no reaparece.
+      if (
+        !restoredAccessToken
+        && isAuthEpochCurrent(epoch)
+        && !isSessionRestoreBlocked()
+      ) {
+        beginLogoutTransition();
+      }
+      return restoredAccessToken;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+
+  return refreshInFlight;
 }
 
 async function doFetch(path: string, init: RequestInit, isRetry = false): Promise<Response> {
   const headers = new Headers(init.headers as HeadersInit | undefined);
-  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  if (_accessToken) headers.set('Authorization', `Bearer ${_accessToken}`);
+  if (init.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
+    credentials: 'include',
+    ...init,
+    headers,
+  });
 
-  if (res.status === 401 && !isRetry) {
-    const refreshed = await tryRefresh();
-    if (refreshed) return doFetch(path, init, true);
-    clearApiTokens();
-    _onUnauthorized?.();
-    throw new ApiError(401, 'Sesión expirada. Vuelve a iniciar sesión.');
+  if (response.status === 401) {
+    if (!isRetry) {
+      const refreshedAccessToken = await refreshApiSession();
+      if (refreshedAccessToken) return doFetch(path, init, true);
+    }
+    expireLocalSession();
   }
 
-  return res;
+  return response;
 }
 
-async function parseResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let message = `Error ${res.status}`;
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    let message = `Error ${response.status}`;
     try {
-      const body = await res.json() as { message?: string | string[] };
+      const body = await response.json() as { message?: string | string[] };
       const raw = body.message;
       message = Array.isArray(raw) ? raw.join(', ') : (raw ?? message);
-    } catch { /* ignore */ }
-    throw new ApiError(res.status, message);
+    } catch {
+      // Una respuesta sin JSON conserva el mensaje HTTP neutral.
+    }
+    throw new ApiError(response.status, message);
   }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }
-
-// ─── Public helpers ───────────────────────────────────────────────────────────
 
 export async function apiGet<T>(path: string): Promise<T> {
   return parseResponse<T>(await doFetch(path, { method: 'GET' }));
 }
 
 export async function apiBlob(path: string): Promise<Blob> {
-  const res = await doFetch(path, { method: 'GET' });
-  if (!res.ok) {
-    let message = `Error ${res.status}`;
+  const response = await doFetch(path, { method: 'GET' });
+  if (!response.ok) {
+    let message = `Error ${response.status}`;
     try {
-      const body = await res.json() as { message?: string | string[] };
+      const body = await response.json() as { message?: string | string[] };
       const raw = body.message;
       message = Array.isArray(raw) ? raw.join(', ') : (raw ?? message);
-    } catch { /* ignore */ }
-    throw new ApiError(res.status, message);
+    } catch {
+      // Una respuesta binaria/de red conserva el mensaje HTTP neutral.
+    }
+    throw new ApiError(response.status, message);
   }
-  return res.blob();
+  return response.blob();
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return parseResponse<T>(
-    await doFetch(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    await doFetch(path, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   );
 }
 
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return parseResponse<T>(
-    await doFetch(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    await doFetch(path, {
+      method: 'PATCH',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   );
 }
 
 export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
   return parseResponse<T>(
-    await doFetch(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    await doFetch(path, {
+      method: 'PUT',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
   );
 }
 
@@ -130,15 +185,37 @@ export async function apiDelete<T>(path: string): Promise<T> {
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  return uploadWithRetry<T>(path, formData, false);
+}
+
+async function uploadWithRetry<T>(
+  path: string,
+  formData: FormData,
+  isRetry: boolean,
+): Promise<T> {
   const headers = new Headers();
-  if (_accessToken) headers.set('Authorization', `Bearer ${_accessToken}`);
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
-  if (res.status === 401) {
-    const refreshed = await tryRefresh();
-    if (refreshed) return apiUpload<T>(path, formData);
-    clearApiTokens();
-    _onUnauthorized?.();
-    throw new ApiError(401, 'Sesión expirada. Vuelve a iniciar sesión.');
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    cache: 'no-store',
+    credentials: 'include',
+  });
+
+  if (response.status === 401) {
+    if (!isRetry) {
+      const refreshedAccessToken = await refreshApiSession();
+      if (refreshedAccessToken) return uploadWithRetry<T>(path, formData, true);
+    }
+    expireLocalSession();
   }
-  return parseResponse<T>(res);
+  return parseResponse<T>(response);
+}
+
+function expireLocalSession(): never {
+  clearApiAccessToken();
+  if (!isSessionRestoreBlocked()) beginLogoutTransition();
+  onUnauthorized?.();
+  throw new ApiError(401, 'Sesión expirada. Vuelve a iniciar sesión.');
 }

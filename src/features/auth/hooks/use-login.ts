@@ -1,50 +1,59 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { getLandingPath } from '@/shared/permissions/can';
 import { useSessionContext } from '../context/session-context';
 import { authService } from '../services/auth.service';
-import type { Session } from '../types';
 
-function decodeJwtPayload<T>(token: string): T {
-  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(atob(base64)) as T;
-}
+export type LoginError =
+  | 'login_failed'
+  | 'rate_limited'
+  | 'server_error'
+  | 'invalid_session'
+  | 'auth_timeout'
+  | 'auth_cancelled'
+  | 'network_error';
 
 export interface UseLoginResult {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   isLoading: boolean;
-  error: string | null;
+  error: LoginError | null;
+  clearError: () => void;
 }
 
 export function useLogin(): UseLoginResult {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { setSession } = useSessionContext();
+  const [error, setError] = useState<LoginError | null>(null);
+  const { setSession, clearSession } = useSessionContext();
   const router = useRouter();
 
-  async function login(email: string, password: string): Promise<void> {
+  const clearError = useCallback(() => setError(null), []);
+
+  async function login(email: string, password: string, rememberMe: boolean): Promise<void> {
     setIsLoading(true);
     setError(null);
+    clearSession();
     try {
-      const tokens = await authService.login(email, password);
-      const payload = decodeJwtPayload<{ sub: string; email: string; permissions: string[] }>(
-        tokens.access_token,
-      );
-      const session: Session = {
-        user: { sub: payload.sub, email: payload.email, permissions: payload.permissions },
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-      };
+      const session = await authService.login(email, password, rememberMe);
       setSession(session);
-      router.replace('/dashboard');
+      router.replace(getLandingPath(session.user.permissions));
     } catch (caught) {
-      const isCredentialError = caught instanceof Error && caught.message === 'login_failed';
-      setError(isCredentialError ? 'login_failed' : 'network_error');
+      const reason = caught instanceof Error ? caught.message : 'network_error';
+      const knownErrors: LoginError[] = [
+        'login_failed',
+        'rate_limited',
+        'server_error',
+        'invalid_session',
+        'auth_timeout',
+        'auth_cancelled',
+        'network_error',
+      ];
+      setError(knownErrors.includes(reason as LoginError) ? reason as LoginError : 'network_error');
     } finally {
       setIsLoading(false);
     }
   }
 
-  return { login, isLoading, error };
+  return { login, isLoading, error, clearError };
 }

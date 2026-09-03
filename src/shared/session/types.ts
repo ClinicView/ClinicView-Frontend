@@ -7,5 +7,4 @@ export interface SessionUser {
 export interface Session {
   user: SessionUser;
   accessToken: string;
-  refreshToken: string;
 }

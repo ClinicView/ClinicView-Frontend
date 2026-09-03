@@ -119,14 +119,17 @@ const ACTIVITY_META: Record<
 export function DashboardView() {
   const { user } = useSession();
   const router = useRouter();
-  const { stats, isLoading } = useDashboardStats();
+  const { stats, isLoading, error, reload } = useDashboardStats();
 
   if (!user) return null;
 
   const permissions = user.permissions;
-  const canDigitize = can(permissions, 'patients.read') && can(permissions, 'documents.read');
+  const canDigitize =
+    can(permissions, 'patients.read') &&
+    can(permissions, 'documents.read') &&
+    can(permissions, 'documents.upload');
   const canReview = can(permissions, 'review.read');
-  const canAdmin = can(permissions, 'admin.users.manage');
+  const canAdmin = can(permissions, 'users.read');
 
   function deltaHint(pct: number | null | undefined): {
     hint: string | null;
@@ -140,6 +143,13 @@ export function DashboardView() {
   const patientsDelta = deltaHint(stats?.patientsTodayDeltaPct);
   const validateDelta = deltaHint(stats?.readyToValidateDeltaPct);
   const errorsDelta = deltaHint(stats?.ocrErrorsDeltaPct);
+
+  async function handleDashboardReload() {
+    await reload();
+    window.requestAnimationFrame(() => {
+      document.getElementById('dashboard-indicators')?.focus({ preventScroll: true });
+    });
+  }
 
   return (
     <PageShell>
@@ -247,10 +257,32 @@ export function DashboardView() {
         </div>
       </section>
 
+      {error && (
+        <div className={styles.dashboardError} role="alert" aria-atomic="true">
+          <span className={styles.dashboardErrorIcon} aria-hidden="true">
+            <Icon name="alert" size={20} />
+          </span>
+          <div className={styles.dashboardErrorBody}>
+            <strong>No se pudo cargar el resumen operativo</strong>
+            <p>{error} Puedes reintentar sin salir de esta página.</p>
+          </div>
+          <button
+            className={styles.retryButton}
+            type="button"
+            onClick={() => void handleDashboardReload()}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Reintentando…' : 'Reintentar'}
+          </button>
+        </div>
+      )}
+
       <section
+        id="dashboard-indicators"
         className={styles.statsGrid}
         aria-label="Indicadores del día"
         aria-busy={isLoading}
+        tabIndex={-1}
       >
         <span className="screenReaderOnly" role="status" aria-live="polite">
           {isLoading ? 'Cargando indicadores del día' : 'Indicadores del día actualizados'}
@@ -390,11 +422,19 @@ export function DashboardView() {
               role={isLoading ? 'status' : undefined}
               aria-live={isLoading ? 'polite' : undefined}
             >
-              <span><Icon name={isLoading ? 'clock' : 'sparkle'} size={20} /></span>
-              <strong>{isLoading ? 'Cargando actividad' : 'Tu actividad aparecerá aquí'}</strong>
+              <span><Icon name={isLoading ? 'clock' : error ? 'alert' : 'sparkle'} size={20} /></span>
+              <strong>
+                {isLoading
+                  ? 'Cargando actividad'
+                  : error
+                    ? 'Actividad no disponible'
+                    : 'Tu actividad aparecerá aquí'}
+              </strong>
               <p>
                 {isLoading
                   ? 'Estamos reuniendo las últimas acciones del equipo.'
+                  : error
+                    ? 'Reintenta la carga desde el aviso superior para recuperar esta información.'
                   : 'Aún no hay acciones recientes sobre documentos clínicos.'}
               </p>
             </div>
@@ -420,16 +460,18 @@ export function DashboardView() {
                 <span className={styles.quickText}>Busca fichas, registros y documentos clínicos.</span>
               </Link>
             )}
-            {can(permissions, 'records.read') && (
-              <Link href="/patients" className={`${styles.quickCard} ${styles.quick_amber}`}>
-                <span className={styles.quickTopline}>
-                  <span className={styles.quickIcon}><Icon name="records" size={20} /></span>
-                  <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
-                </span>
-                <span className={styles.quickTitle}>Registro manual</span>
-                <span className={styles.quickText}>Crea una atención clínica estructurada.</span>
-              </Link>
-            )}
+            {can(permissions, 'patients.read') &&
+              can(permissions, 'records.read') &&
+              can(permissions, 'records.create') && (
+                <Link href="/patients" className={`${styles.quickCard} ${styles.quick_amber}`}>
+                  <span className={styles.quickTopline}>
+                    <span className={styles.quickIcon}><Icon name="records" size={20} /></span>
+                    <span className={styles.quickArrow} aria-hidden="true"><Icon name="arrow-right" size={15} /></span>
+                  </span>
+                  <span className={styles.quickTitle}>Registro manual</span>
+                  <span className={styles.quickText}>Crea una atención clínica estructurada.</span>
+                </Link>
+              )}
             {canReview && (
               <Link href="/review" className={`${styles.quickCard} ${styles.quick_green}`}>
                 <span className={styles.quickTopline}>
