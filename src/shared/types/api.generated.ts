@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/professionals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar profesionales activos (nombre/profesión) — para selectores clínicos, sin datos sensibles */
+        get: operations["UsersController_searchProfessionals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{id}": {
         parameters: {
             query?: never;
@@ -211,6 +228,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/patients/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Indicadores de la lista de pacientes (total, activos, nuevos, con documentos) */
+        get: operations["PatientsController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{id}/clinical-history/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener la historia clínica completa para exportación
+         * @description Devuelve todos los registros, incluidos corregidos y anulados, y todos los documentos con su estado. El texto de documentos no validados se omite.
+         */
+        get: operations["PatientsController_exportClinicalHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/patients/{id}": {
         parameters: {
             query?: never;
@@ -246,6 +300,23 @@ export interface paths {
         patch: operations["PatientsController_deactivate"];
         trace?: never;
     };
+    "/api/patients/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reactivar paciente desactivado */
+        patch: operations["PatientsController_activate"];
+        trace?: never;
+    };
     "/api/patients/{patientId}/records": {
         parameters: {
             query?: never;
@@ -259,6 +330,25 @@ export interface paths {
         /** Crear historia clínica para un paciente */
         post: operations["ClinicalRecordsController_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/records/draft/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener el borrador clínico vigente del usuario para el paciente */
+        get: operations["ClinicalRecordsController_getCurrentDraft"];
+        /** Crear o reemplazar con CAS el borrador clínico vigente */
+        put: operations["ClinicalRecordsController_upsertCurrentDraft"];
+        post?: never;
+        /** Eliminar con CAS el borrador clínico vigente */
+        delete: operations["ClinicalRecordsController_deleteCurrentDraft"];
         options?: never;
         head?: never;
         patch?: never;
@@ -315,6 +405,75 @@ export interface paths {
         patch: operations["ClinicalRecordsController_void"];
         trace?: never;
     };
+    "/api/patients/{patientId}/record-media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subir y normalizar una imagen clínica temporal privada */
+        post: operations["ClinicalRecordMediaController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/record-media/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener metadata segura de una imagen clínica */
+        get: operations["ClinicalRecordMediaController_getMetadata"];
+        put?: never;
+        post?: never;
+        /** Eliminar con CAS una imagen temporal propia */
+        delete: operations["ClinicalRecordMediaController_deleteTemporary"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/record-media/{assetId}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Visualizar el contenido privado de una imagen clínica */
+        get: operations["ClinicalRecordMediaController_getContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Indicadores del panel: pacientes hoy, cola, listos para validar, errores OCR y actividad reciente */
+        get: operations["DashboardController_getStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/patients/{patientId}/documents": {
         parameters: {
             query?: never;
@@ -327,6 +486,23 @@ export interface paths {
         put?: never;
         /** Subir documento medico (PDF, JPEG, PNG; maximo configurable por UPLOAD_MAX_SIZE_MB) */
         post: operations["MedicalDocumentsController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar por palabra clave en el texto OCR/corregido de los documentos del paciente */
+        get: operations["MedicalDocumentsController_search"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -397,7 +573,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Validar documento procesado (revisiÃ³n clÃ­nica) */
+        /** Guardar la versión final y validar el documento atómicamente */
         patch: operations["MedicalDocumentsController_validate"];
         trace?: never;
     };
@@ -433,6 +609,57 @@ export interface paths {
         head?: never;
         /** Rechazar documento (con motivo) */
         patch: operations["MedicalDocumentsController_reject"];
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar mis notificaciones (últimas 20) con contador de no leídas */
+        get: operations["NotificationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Marcar todas mis notificaciones como leídas */
+        patch: operations["NotificationsController_markAllRead"];
+        trace?: never;
+    };
+    "/api/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Marcar una notificación como leída */
+        patch: operations["NotificationsController_markRead"];
         trace?: never;
     };
     "/api/review/queue": {
@@ -623,7 +850,8 @@ export interface components {
             /** @example García López */
             lastName: string;
             /**
-             * @description Fecha en formato YYYY-MM-DD
+             * Format: date
+             * @description Fecha civil en formato YYYY-MM-DD; no puede estar en el futuro en Lima
              * @example 1985-06-15
              */
             dateOfBirth: string;
@@ -646,7 +874,10 @@ export interface components {
             documentNumber: string;
             firstName: string;
             lastName: string;
-            /** Format: date-time */
+            /**
+             * Format: date
+             * @example 1985-06-15
+             */
             dateOfBirth: string;
             /** @enum {string} */
             sex: "M" | "F" | "OTHER";
@@ -659,13 +890,145 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ClinicalHistoryExportPatientDto: {
+            id: string;
+            /** @enum {string} */
+            documentType: "DNI" | "CE" | "PAS" | "OTHER";
+            documentNumber: string;
+            firstName: string;
+            lastName: string;
+            /**
+             * Format: date
+             * @example 1985-06-15
+             */
+            dateOfBirth: string;
+            /** @enum {string} */
+            sex: "M" | "F" | "OTHER";
+            phone?: string | null;
+            email?: string | null;
+            address?: string | null;
+        };
+        ClinicalMediaAssetResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            originalName: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png";
+            sizeBytes: number;
+            width: number;
+            height: number;
+            sha256: string;
+            /** @enum {string} */
+            status: "TEMPORARY" | "ATTACHED";
+            /** Format: date-time */
+            expiresAt?: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @example /patients/:patientId/record-media/:assetId/content */
+            contentUrl: string;
+        };
+        ClinicalRecordAttachmentResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            sectionKey?: string | null;
+            caption?: string | null;
+            altText?: string | null;
+            sortOrder: number;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            asset: components["schemas"]["ClinicalMediaAssetResponseDto"];
+        };
+        ClinicalHistoryExportRecordDto: {
+            id: string;
+            /** @enum {string} */
+            recordType: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
+            /** @enum {string} */
+            origin: "MANUAL" | "DIGITIZED";
+            /** @enum {string} */
+            status: "ACTIVE" | "CORRECTED" | "VOIDED";
+            /** Format: date-time */
+            attendedAt: string;
+            summary: string;
+            notes?: string | null;
+            /** @description Contenido clínico tipado según recordType y schemaVersion. */
+            details: Record<string, never>;
+            schemaVersion: number;
+            doctorName?: string | null;
+            /** Format: uuid */
+            professionalId?: string | null;
+            professionalNameSnapshot?: string | null;
+            professionalLicenseSnapshot?: string | null;
+            service?: string | null;
+            preliminaryDiagnosis?: string | null;
+            plan?: string | null;
+            /** @enum {string} */
+            priority: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
+            parentRecordId?: string | null;
+            voidReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy?: string | null;
+            version: number;
+            attachments: components["schemas"]["ClinicalRecordAttachmentResponseDto"][];
+        };
+        ClinicalHistoryExportDocumentDto: {
+            id: string;
+            originalName: string;
+            mimeType: string;
+            sizeBytes: number;
+            /** @enum {string} */
+            status: "PENDING" | "PROCESSING" | "PROCESSED" | "FAILED" | "VALIDATED" | "REJECTED";
+            /** @description Texto clínico consolidado. Solo se expone cuando el documento fue validado. */
+            clinicalText?: string | null;
+            /** @enum {string} */
+            textSource: "CORRECTED" | "OCR" | "NONE";
+            rejectReason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            processedAt?: string | null;
+            /** Format: date-time */
+            correctedAt?: string | null;
+            correctedById?: string | null;
+            /** Format: date-time */
+            reviewedAt?: string | null;
+            reviewedBy?: string | null;
+            validationChecklist?: Record<string, never> | null;
+            /** Format: date-time */
+            validationAttestedAt?: string | null;
+            createdBy?: string | null;
+            updatedBy?: string | null;
+        };
+        ClinicalHistoryExportResponseDto: {
+            patient: components["schemas"]["ClinicalHistoryExportPatientDto"];
+            records: components["schemas"]["ClinicalHistoryExportRecordDto"][];
+            documents: components["schemas"]["ClinicalHistoryExportDocumentDto"][];
+            /**
+             * Format: date-time
+             * @description Instante del servidor en que se generó la instantánea para la exportación.
+             */
+            generatedAt: string;
+        };
         UpdatePatientDto: {
             /** @example María */
             firstName?: string;
             /** @example García López */
             lastName?: string;
             /**
-             * @description Fecha en formato YYYY-MM-DD
+             * Format: date
+             * @description Fecha civil en formato YYYY-MM-DD; no puede estar en el futuro en Lima
              * @example 1985-06-15
              */
             dateOfBirth?: string;
@@ -681,18 +1044,176 @@ export interface components {
             /** @example Av. Principal 123, Lima */
             address?: string;
         };
+        ClinicalDiagnosisDto: {
+            description: string;
+            /** @description Código clínico, por ejemplo CIE-10. */
+            code?: string;
+            /** @description Sistema del código clínico. */
+            codeSystem?: string;
+            /** @enum {string} */
+            type?: "PRELIMINARY" | "CONFIRMED" | "RULED_OUT";
+        };
+        VitalSignsDto: {
+            systolicBloodPressure?: number;
+            diastolicBloodPressure?: number;
+            heartRate?: number;
+            respiratoryRate?: number;
+            temperatureCelsius?: number;
+            oxygenSaturation?: number;
+            weightKg?: number;
+            heightCm?: number;
+        };
+        ConsultationDetailsV1Dto: {
+            chiefComplaint: string;
+            presentIllness?: string;
+            relevantHistory?: string;
+            vitalSigns?: components["schemas"]["VitalSignsDto"];
+            physicalExam?: string;
+            diagnoses?: components["schemas"]["ClinicalDiagnosisDto"][];
+            followUp?: string;
+        };
+        EvolutionDetailsV1Dto: {
+            evolution: string;
+            subjective?: string;
+            objective?: string;
+            assessment?: string;
+            treatmentResponse?: string;
+            incidents?: string;
+            followUp?: string;
+        };
+        LabResultItemDto: {
+            analyte: string;
+            /** @description Resultado cuantitativo o cualitativo. */
+            value: string;
+            unit?: string;
+            referenceRange?: string;
+            /** @enum {string} */
+            flag?: "NORMAL" | "LOW" | "HIGH" | "CRITICAL" | "ABNORMAL";
+        };
+        LabResultDetailsV1Dto: {
+            studyName: string;
+            laboratoryName?: string;
+            specimen?: string;
+            /** Format: date-time */
+            collectedAt?: string;
+            /** Format: date-time */
+            issuedAt?: string;
+            results: components["schemas"]["LabResultItemDto"][];
+            interpretation?: string;
+        };
+        PrescriptionMedicationDto: {
+            name: string;
+            presentation?: string;
+            concentration?: string;
+            dose: string;
+            route: string;
+            frequency: string;
+            duration: string;
+            quantity?: string;
+            instructions?: string;
+        };
+        PrescriptionDetailsV1Dto: {
+            indication?: string;
+            medications: components["schemas"]["PrescriptionMedicationDto"][];
+            /** Format: date */
+            validFrom?: string;
+            /** Format: date */
+            validUntil?: string;
+            nonPharmacologicalInstructions?: string;
+        };
+        ProcedureDetailsV1Dto: {
+            procedureName: string;
+            indication?: string;
+            bodySite?: string;
+            /** @enum {string} */
+            laterality?: "LEFT" | "RIGHT" | "BILATERAL" | "NOT_APPLICABLE";
+            /** @enum {string} */
+            consentStatus?: "DOCUMENTED" | "NOT_REQUIRED" | "UNKNOWN";
+            technique: string;
+            anesthesia?: string;
+            findings?: string;
+            /** @description Registrar complicaciones o declarar que no hubo. */
+            complications: string;
+            outcome?: string;
+            postProcedureCare?: string;
+        };
+        TherapyMeasurementDto: {
+            name: string;
+            value: string;
+            unit?: string;
+        };
+        TherapyNoteDetailsV1Dto: {
+            discipline: string;
+            sessionNumber?: number;
+            goals?: string;
+            baselineStatus?: string;
+            interventions: string;
+            response: string;
+            measurements?: components["schemas"]["TherapyMeasurementDto"][];
+            homeInstructions?: string;
+            /** Format: date-time */
+            nextSessionAt?: string;
+        };
+        OtherDetailsV1Dto: {
+            title: string;
+            category: string;
+            context?: string;
+            content: string;
+        };
+        RecordAttachmentInputDto: {
+            /** Format: uuid */
+            assetId: string;
+            /** @example physicalExam */
+            sectionKey?: string;
+            caption?: string;
+            /** @description Descripción accesible de la imagen clínica. */
+            altText?: string;
+            sortOrder?: number;
+        };
         CreateRecordDto: {
             /** @enum {string} */
             recordType: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
             /**
-             * @default MANUAL
-             * @enum {string}
+             * Format: date-time
+             * @description Fecha y hora de la atención como instante ISO 8601 con zona horaria
+             * @example 2026-09-02T09:30:00-05:00
              */
-            origin: "MANUAL" | "DIGITIZED";
-            /** @description Fecha y hora de la atención (ISO 8601) */
             attendedAt: string;
             summary: string;
             notes?: string;
+            /**
+             * Format: uuid
+             * @description Usuario profesional seleccionado; el servidor conserva una instantánea de identidad.
+             */
+            professionalId?: string;
+            /** @description Colegiatura consignada para la instantánea del registro. */
+            professionalLicense?: string;
+            /** @description Médico o profesional responsable */
+            doctorName?: string;
+            /** @description Servicio o especialidad */
+            service?: string;
+            preliminaryDiagnosis?: string;
+            /** @description Indicaciones / plan de manejo */
+            plan?: string;
+            /**
+             * @default NORMAL
+             * @enum {string}
+             */
+            priority: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
+            /**
+             * @default 1
+             * @enum {number}
+             */
+            schemaVersion: 1;
+            /** @description El esquema concreto se discrimina mediante recordType; versión soportada: 1. */
+            details: components["schemas"]["ConsultationDetailsV1Dto"] | components["schemas"]["EvolutionDetailsV1Dto"] | components["schemas"]["LabResultDetailsV1Dto"] | components["schemas"]["PrescriptionDetailsV1Dto"] | components["schemas"]["ProcedureDetailsV1Dto"] | components["schemas"]["TherapyNoteDetailsV1Dto"] | components["schemas"]["OtherDetailsV1Dto"];
+            /** @default [] */
+            attachments: components["schemas"]["RecordAttachmentInputDto"][];
+            /**
+             * Format: uuid
+             * @description Borrador del actor que se consumirá atómicamente al crear el registro.
+             */
+            draftId?: string;
         };
         RecordResponseDto: {
             id: string;
@@ -707,6 +1228,19 @@ export interface components {
             attendedAt: string;
             summary: string;
             notes?: string | null;
+            /** @description Contenido tipado según recordType y schemaVersion. */
+            details: Record<string, never>;
+            schemaVersion: number;
+            doctorName?: string | null;
+            /** Format: uuid */
+            professionalId?: string | null;
+            professionalNameSnapshot?: string | null;
+            professionalLicenseSnapshot?: string | null;
+            service?: string | null;
+            preliminaryDiagnosis?: string | null;
+            plan?: string | null;
+            /** @enum {string} */
+            priority: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
             parentRecordId?: string | null;
             voidReason?: string | null;
             correctionsCount: number;
@@ -715,16 +1249,100 @@ export interface components {
             createdBy?: string | null;
             /** Format: date-time */
             updatedAt: string;
+            version: number;
+            attachments: components["schemas"]["ClinicalRecordAttachmentResponseDto"][];
+        };
+        RecordDraftResponseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            payload: Record<string, never>;
+            version: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RecordDraftPayloadDto: {
+            /** @enum {string} */
+            recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
+            /** Format: date-time */
+            attendedAt?: string;
+            summary?: string;
+            notes?: string;
+            /** Format: uuid */
+            professionalId?: string;
+            doctorName?: string;
+            professionalLicense?: string;
+            service?: string;
+            preliminaryDiagnosis?: string;
+            plan?: string;
+            /** @enum {string} */
+            priority?: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
+            /**
+             * @default 1
+             * @enum {number}
+             */
+            schemaVersion: 1;
+            /** @description El esquema concreto se discrimina mediante recordType; versión soportada: 1. */
+            details?: components["schemas"]["ConsultationDetailsV1Dto"] | components["schemas"]["EvolutionDetailsV1Dto"] | components["schemas"]["LabResultDetailsV1Dto"] | components["schemas"]["PrescriptionDetailsV1Dto"] | components["schemas"]["ProcedureDetailsV1Dto"] | components["schemas"]["TherapyNoteDetailsV1Dto"] | components["schemas"]["OtherDetailsV1Dto"];
+            /** @description Referencias a imágenes temporales privadas del actor. */
+            attachments?: components["schemas"]["RecordAttachmentInputDto"][];
+        };
+        UpsertRecordDraftDto: {
+            /** @description Obligatorio al actualizar un borrador existente; debe coincidir con su versión. */
+            expectedVersion?: number;
+            payload: components["schemas"]["RecordDraftPayloadDto"];
         };
         CorrectRecordDto: {
-            /** @description Nueva fecha de atención (hereda la original si se omite) */
+            /** @description Versión vigente del registro que se corrige. */
+            expectedVersion: number;
+            /** @enum {string} */
+            recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
+            /**
+             * Format: date-time
+             * @description Nuevo instante ISO 8601 con zona horaria; hereda el original si se omite
+             * @example 2026-09-02T09:30:00-05:00
+             */
             attendedAt?: string;
-            summary: string;
-            notes?: string;
+            summary?: string;
+            notes?: Record<string, never> | null;
+            /** Format: uuid */
+            professionalId?: string | null;
+            doctorName?: Record<string, never> | null;
+            professionalLicense?: Record<string, never> | null;
+            service?: Record<string, never> | null;
+            preliminaryDiagnosis?: Record<string, never> | null;
+            plan?: Record<string, never> | null;
+            /** @enum {string} */
+            priority?: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
+            /** @enum {number} */
+            schemaVersion?: 1;
+            /** @description El esquema concreto se discrimina mediante recordType; versión soportada: 1. */
+            details?: components["schemas"]["ConsultationDetailsV1Dto"] | components["schemas"]["EvolutionDetailsV1Dto"] | components["schemas"]["LabResultDetailsV1Dto"] | components["schemas"]["PrescriptionDetailsV1Dto"] | components["schemas"]["ProcedureDetailsV1Dto"] | components["schemas"]["TherapyNoteDetailsV1Dto"] | components["schemas"]["OtherDetailsV1Dto"];
+            /** @description Si se omite, hereda los adjuntos del registro original. */
+            attachments?: components["schemas"]["RecordAttachmentInputDto"][];
         };
         VoidRecordDto: {
+            /** @description Versión vigente del registro que se anula. */
+            expectedVersion: number;
             /** @description Motivo de anulación */
             reason: string;
+        };
+        ValidationChecklistSnapshotItemDto: {
+            id: string;
+            title: string;
+            statement: string;
+        };
+        ValidationChecklistSnapshotDto: {
+            /** @example 1 */
+            schemaVersion: number;
+            /** @example es-PE */
+            locale: string;
+            items: components["schemas"]["ValidationChecklistSnapshotItemDto"][];
         };
         DocumentResponseDto: {
             id: string;
@@ -757,14 +1375,32 @@ export interface components {
             correctedAt?: string | null;
             correctedById?: string | null;
             rejectReason?: string | null;
+            /** @description Métricas de calidad OCR/NER del servicio IA v2 */
+            metrics?: {
+                cer?: number | null;
+                wer?: number | null;
+                charAccuracy?: number | null;
+                nerPrecision?: number | null;
+                nerRecall?: number | null;
+                nerF1?: number | null;
+                estimated?: boolean;
+            } | null;
+            ocrConfidence?: number | null;
+            /** @enum {string|null} */
+            confidenceLevel?: "HIGH" | "MEDIUM" | "LOW" | null;
             /** Format: date-time */
             createdAt: string;
             createdBy?: string | null;
             processedAt?: string | null;
             reviewedAt?: string | null;
             reviewedBy?: string | null;
+            /** @description Copia versionada de las afirmaciones aceptadas al validar. */
+            validationChecklist?: components["schemas"]["ValidationChecklistSnapshotDto"] | null;
+            validationAttested: boolean;
+            validationAttestedAt?: string | null;
             /** Format: date-time */
             updatedAt: string;
+            version: number;
         };
         CorrectedEntityDto: {
             /** @enum {string} */
@@ -772,12 +1408,30 @@ export interface components {
             value?: string;
             normalizedValue?: Record<string, never> | null;
         };
+        ValidateDocumentDto: {
+            /** @description Versión leída por el cliente. La validación falla con 409 si cambió. */
+            expectedVersion: number;
+            /** @description Texto final revisado. Se guarda junto con la validación sin sobrescribir el OCR. */
+            correctedText: string;
+            correctedEntities: components["schemas"]["CorrectedEntityDto"][];
+            /** @description Identificadores de las confirmaciones clínicas aceptadas por el revisor. El servidor conserva una copia versionada de sus textos. */
+            checklistItems: ("text" | "entities" | "sections" | "phi")[];
+            /**
+             * @description Atestación explícita de que el revisor verificó todos los puntos.
+             * @example true
+             */
+            attested: boolean;
+        };
         CorrectDocumentDto: {
+            /** @description Versión leída por el cliente. Evita sobrescribir cambios de otro revisor. */
+            expectedVersion: number;
             /** @description Texto corregido por el revisor. No sobrescribe el OCR original. */
             correctedText?: string;
             correctedEntities?: components["schemas"]["CorrectedEntityDto"][];
         };
         RejectDocumentDto: {
+            /** @description Versión leída por el cliente. Evita rechazar una revisión que ya cambió. */
+            expectedVersion: number;
             /** @description Motivo del rechazo */
             reason: string;
         };
@@ -873,6 +1527,25 @@ export interface operations {
             };
             /** @description El email ya está registrado en el sistema. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UsersController_searchProfessionals: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1216,6 +1889,58 @@ export interface operations {
             };
         };
     };
+    PatientsController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientsController_exportClinicalHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalHistoryExportResponseDto"];
+                };
+            };
+            /** @description Requiere patients.read, records.read y documents.read. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Paciente no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PatientsController_findOne: {
         parameters: {
             query?: never;
@@ -1304,15 +2029,51 @@ export interface operations {
             };
         };
     };
+    PatientsController_activate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientResponseDto"];
+                };
+            };
+            /** @description Paciente no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ClinicalRecordsController_findAll: {
         parameters: {
             query?: {
                 recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
                 status?: "ACTIVE" | "CORRECTED" | "VOIDED";
                 origin?: "MANUAL" | "DIGITIZED";
-                /** @description Desde (ISO 8601, inclusivo) */
+                /**
+                 * @description Desde, inclusivo: YYYY-MM-DD (inicio del día en America/Lima) o ISO 8601 con zona
+                 * @example 2026-09-02
+                 * @example 2026-09-02T09:30:00-05:00
+                 */
                 from?: string;
-                /** @description Hasta (ISO 8601, inclusivo) */
+                /**
+                 * @description Hasta: YYYY-MM-DD incluye todo el día en America/Lima; un ISO 8601 con zona es inclusivo
+                 * @example 2026-09-02
+                 * @example 2026-09-02T18:00:00-05:00
+                 */
                 to?: string;
                 page?: number;
                 limit?: number;
@@ -1355,6 +2116,81 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RecordResponseDto"];
                 };
+            };
+        };
+    };
+    ClinicalRecordsController_getCurrentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Borrador vigente del usuario para el paciente. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDraftResponseDto"];
+                };
+            };
+            /** @description No existe un borrador vigente. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalRecordsController_upsertCurrentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertRecordDraftDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordDraftResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalRecordsController_deleteCurrentDraft: {
+        parameters: {
+            query: {
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1432,6 +2268,137 @@ export interface operations {
             };
         };
     };
+    ClinicalRecordMediaController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description JPEG o PNG real; máximo 10 MiB y 25 megapíxeles.
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalMediaAssetResponseDto"];
+                };
+            };
+            /** @description La imagen supera los límites permitidos. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalRecordMediaController_getMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalMediaAssetResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalRecordMediaController_deleteTemporary: {
+        parameters: {
+            query: {
+                /** @description Versión vigente del asset temporal. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Versión obsoleta o imagen ya adjunta. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalRecordMediaController_getContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    DashboardController_getStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     MedicalDocumentsController_findAll: {
         parameters: {
             query?: {
@@ -1480,6 +2447,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentResponseDto"];
                 };
+            };
+        };
+    };
+    MedicalDocumentsController_search: {
+        parameters: {
+            query: {
+                /** @description Palabra clave a buscar en el texto OCR/corregido */
+                q: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1557,7 +2548,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateDocumentDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -1566,6 +2561,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentResponseDto"];
                 };
+            };
+            /** @description El estado o la versión cambiaron durante la revisión. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1593,6 +2595,13 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentResponseDto"];
                 };
             };
+            /** @description El estado o la versión cambiaron durante la corrección. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     MedicalDocumentsController_reject: {
@@ -1618,6 +2627,66 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentResponseDto"];
                 };
+            };
+            /** @description El estado o la versión cambiaron durante la revisión. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationsController_markAllRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationsController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
