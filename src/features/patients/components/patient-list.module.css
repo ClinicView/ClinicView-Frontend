@@ -42,9 +42,21 @@
 }
 
 .search:focus {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
   border-color: var(--color-primary);
   background: #fff;
   box-shadow: 0 0 0 4px var(--color-focus-ring);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .newBtn {
@@ -122,23 +134,10 @@
   border-bottom: 0;
 }
 
-.table tbody tr {
-  position: relative;
-  cursor: pointer;
-  outline: none;
-  transition: background var(--transition-fast), box-shadow var(--transition-fast);
-}
+.table tbody tr { transition: background var(--transition-fast); }
 
 .table tbody tr:hover td {
   background: var(--surface-tint);
-}
-
-.table tbody tr:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--color-primary);
-}
-
-.table tbody tr:focus-visible td {
-  background: var(--color-primary-light);
 }
 
 .patientCell {
@@ -146,6 +145,24 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
+}
+
+.patientLink {
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.patientLink:hover { text-decoration: none; }
+
+.patientLink:focus-visible {
+  border-radius: 10px;
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
 }
 
 .patientAvatar {
@@ -171,14 +188,12 @@
 }
 
 .patientName {
-  overflow: hidden;
+  overflow-wrap: anywhere;
   color: var(--gray-900);
   font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .patientStatus {
@@ -245,7 +260,7 @@
 }
 
 .table tbody tr:hover .arrowCell span,
-.table tbody tr:focus-visible .arrowCell span {
+.table tbody tr:focus-within .arrowCell span {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: #fff;
@@ -270,7 +285,7 @@
 }
 
 .pageBtn {
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--border-clinical);
   border-radius: 11px;
   background: #fff;
@@ -365,6 +380,10 @@
     text-align: left !important;
   }
 
+  .patientLink {
+    width: 100%;
+  }
+
   .patientCell::before,
   .arrowCell::before {
     display: none;
@@ -382,13 +401,13 @@
     grid-column: 1 / 3;
   }
 
-  .patientName {
-    max-width: 210px;
-  }
-
   .documentNumber {
     margin-left: auto;
   }
+}
+
+@media (forced-colors: active) {
+  .patientLink:focus-visible { outline-color: Highlight; }
 }
 
 @media (max-width: 560px) {

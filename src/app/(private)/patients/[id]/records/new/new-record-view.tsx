@@ -97,6 +97,35 @@ function formatShortDate(iso: string): string {
   return formatInstant(iso, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+type FieldErrors = Partial<Record<'recordType' | 'attendedAt' | 'doctorName' | 'summary' | 'notes', string>>;
+
+const FIELD_LABELS: Record<keyof FieldErrors, string> = {
+  recordType: 'Tipo de registro',
+  attendedAt: 'Fecha y hora de atención',
+  doctorName: 'Médico o profesional',
+  summary: 'Resumen clínico',
+  notes: 'Notas adicionales',
+};
+
+function validateDraft(form: DraftState): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!form.recordType) errors.recordType = 'Selecciona un tipo de registro.';
+  if (!form.attendedAt) errors.attendedAt = 'Ingresa la fecha y hora de atención.';
+  else if (!dateTimeLocalToIso(form.attendedAt)) errors.attendedAt = 'Ingresa una fecha y hora válida.';
+  else if (isFutureDateTimeLocal(form.attendedAt)) {
+    errors.attendedAt = 'La fecha y hora de atención no puede estar en el futuro.';
+  }
+  if (!form.doctorName.trim()) errors.doctorName = 'Ingresa el médico o profesional responsable.';
+  if (!form.summary.trim()) errors.summary = 'Ingresa el resumen clínico.';
+  else if (form.summary.length > SUMMARY_MAX) {
+    errors.summary = `Reduce el resumen a ${SUMMARY_MAX} caracteres o menos.`;
+  }
+  if (form.notes.length > NOTES_MAX) {
+    errors.notes = `Reduce las notas a ${NOTES_MAX} caracteres o menos.`;
+  }
+  return errors;
+}
+
 /* ─── Vista ──────────────────────────────────────────────────── */
 
 interface NewRecordViewProps {
@@ -114,12 +143,17 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [submitted, setSubmitted] = useState(false);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // Combobox de médicos registrados en el sistema.
   const [doctorOptions, setDoctorOptions] = useState<Professional[]>([]);
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const [activeDoctorIndex, setActiveDoctorIndex] = useState(-1);
   const doctorSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doctorWrapRef = useRef<HTMLDivElement>(null);
 
@@ -139,6 +173,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       try {
         const results = await searchProfessionals(query);
         setDoctorOptions(results);
+        setActiveDoctorIndex(-1);
         setDoctorOpen(true);
       } catch {
         setDoctorOptions([]);
@@ -155,6 +190,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<DraftState>;
         setForm((prev) => ({ ...prev, ...saved }));
+        dirtyRef.current = true;
         setDraftNotice('Borrador restaurado');
       }
     } catch {
@@ -164,6 +200,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
 
   // Autosave con debounce mientras el usuario escribe.
   function update(patch: Partial<DraftState>) {
+    dirtyRef.current = true;
     setForm((prev) => {
       const next = { ...prev, ...patch };
       if (autosaveRef.current) clearTimeout(autosaveRef.current);
@@ -176,6 +213,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       }, 600);
       return next;
     });
+    if (submitted) setFieldErrors(validateDraft({ ...form, ...patch }));
   }
 
   function saveDraftNow() {
@@ -196,26 +234,56 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     }
   }
 
-  const canSubmit =
-    form.recordType !== '' &&
-    form.attendedAt !== '' &&
-    form.doctorName.trim().length > 0 &&
-    form.summary.trim().length > 0 &&
-    form.summary.length <= SUMMARY_MAX &&
-    form.notes.length <= NOTES_MAX;
+  function selectDoctor(professional: Professional) {
+    update({ doctorName: professional.fullName });
+    setDoctorOpen(false);
+    setActiveDoctorIndex(-1);
+  }
+
+  function cancelRegistration() {
+    if (
+      dirtyRef.current &&
+      !window.confirm('Se eliminará el borrador de esta atención. ¿Deseas cancelar el registro?')
+    ) {
+      return;
+    }
+    clearDraft();
+    router.push(`/patients/${patientId}/records`);
+  }
+
+  function handleDoctorKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape' && doctorOpen) {
+      event.preventDefault();
+      setDoctorOpen(false);
+      setActiveDoctorIndex(-1);
+      return;
+    }
+    if (!doctorOpen || doctorOptions.length === 0) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      setActiveDoctorIndex((current) => {
+        const start = current < 0 ? (direction > 0 ? -1 : 0) : current;
+        return (start + direction + doctorOptions.length) % doctorOptions.length;
+      });
+    } else if (event.key === 'Enter' && activeDoctorIndex >= 0) {
+      event.preventDefault();
+      const selected = doctorOptions[activeDoctorIndex];
+      if (selected) selectDoctor(selected);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit) return;
+    setSubmitted(true);
+    const validationErrors = validateDraft(form);
+    setFieldErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      requestAnimationFrame(() => errorSummaryRef.current?.focus());
+      return;
+    }
     const attendedAt = dateTimeLocalToIso(form.attendedAt);
-    if (!attendedAt) {
-      setError('La fecha y hora de atención no es válida.');
-      return;
-    }
-    if (isFutureDateTimeLocal(form.attendedAt)) {
-      setError('La fecha y hora de atención no puede estar en el futuro.');
-      return;
-    }
+    if (!attendedAt) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -349,6 +417,27 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
             </p>
           )}
 
+          {Object.keys(fieldErrors).length > 0 && (
+            <div
+              ref={errorSummaryRef}
+              className={styles.errorSummary}
+              role="alert"
+              tabIndex={-1}
+              aria-labelledby="record-create-errors-title"
+            >
+              <h3 id="record-create-errors-title">Revisa los campos indicados</h3>
+              <ul>
+                {Object.entries(fieldErrors).map(([field, message]) => (
+                  <li key={field}>
+                    <a href={`#${field}`}>
+                      {FIELD_LABELS[field as keyof FieldErrors]}: {message}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="recordType">
@@ -361,12 +450,17 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                 onChange={(e) => update({ recordType: e.target.value })}
                 disabled={isLoading}
                 required
+                aria-invalid={Boolean(fieldErrors.recordType)}
+                aria-describedby={fieldErrors.recordType ? 'recordType-error' : undefined}
               >
                 <option value="">Seleccionar tipo de registro</option>
                 {RECORD_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
+              {fieldErrors.recordType && (
+                <p id="recordType-error" className={styles.fieldError}>{fieldErrors.recordType}</p>
+              )}
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="attendedAt">
@@ -381,7 +475,12 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                 onChange={(e) => update({ attendedAt: e.target.value })}
                 disabled={isLoading}
                 required
+                aria-invalid={Boolean(fieldErrors.attendedAt)}
+                aria-describedby={fieldErrors.attendedAt ? 'attendedAt-error' : undefined}
               />
+              {fieldErrors.attendedAt && (
+                <p id="attendedAt-error" className={styles.fieldError}>{fieldErrors.attendedAt}</p>
+              )}
             </div>
           </div>
 
@@ -405,28 +504,36 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                       searchDoctors(e.target.value);
                     }}
                     onFocus={() => searchDoctors(form.doctorName)}
+                    onKeyDown={handleDoctorKeyDown}
                     maxLength={120}
                     disabled={isLoading}
                     autoComplete="off"
                     role="combobox"
                     aria-expanded={doctorOpen}
                     aria-controls="doctor-options"
+                    aria-autocomplete="list"
+                    aria-activedescendant={
+                      activeDoctorIndex >= 0 ? `doctor-option-${doctorOptions[activeDoctorIndex]?.id}` : undefined
+                    }
                     required
+                    aria-invalid={Boolean(fieldErrors.doctorName)}
+                    aria-describedby={fieldErrors.doctorName ? 'doctorName-error' : undefined}
                   />
                 </div>
                 {doctorOpen && doctorOptions.length > 0 && (
                   <ul id="doctor-options" className={styles.comboList} role="listbox">
-                    {doctorOptions.map((professional) => (
+                    {doctorOptions.map((professional, index) => (
                       <li key={professional.id}>
                         <button
+                          id={`doctor-option-${professional.id}`}
                           type="button"
                           role="option"
-                          aria-selected={form.doctorName === professional.fullName}
+                          aria-selected={
+                            form.doctorName === professional.fullName || activeDoctorIndex === index
+                          }
                           className={styles.comboOption}
-                          onClick={() => {
-                            update({ doctorName: professional.fullName });
-                            setDoctorOpen(false);
-                          }}
+                          onMouseEnter={() => setActiveDoctorIndex(index)}
+                          onClick={() => selectDoctor(professional)}
                         >
                           <span className={styles.comboName}>{professional.fullName}</span>
                           {professional.profession && (
@@ -445,6 +552,9 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                   </div>
                 )}
               </div>
+              {fieldErrors.doctorName && (
+                <p id="doctorName-error" className={styles.fieldError}>{fieldErrors.doctorName}</p>
+              )}
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="service">Servicio / especialidad</label>
@@ -477,8 +587,16 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
               maxLength={SUMMARY_MAX}
               disabled={isLoading}
               required
+              aria-invalid={Boolean(fieldErrors.summary)}
+              aria-describedby={[
+                'summary-counter',
+                fieldErrors.summary ? 'summary-error' : '',
+              ].filter(Boolean).join(' ')}
             />
-            <span className={`${styles.counter} ${form.summary.length >= SUMMARY_MAX ? styles.counterOver : ''}`}>
+            {fieldErrors.summary && (
+              <p id="summary-error" className={styles.fieldError}>{fieldErrors.summary}</p>
+            )}
+            <span id="summary-counter" className={`${styles.counter} ${form.summary.length >= SUMMARY_MAX ? styles.counterOver : ''}`}>
               {form.summary.length} / {SUMMARY_MAX} caracteres
             </span>
           </div>
@@ -494,8 +612,16 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
               onChange={(e) => update({ notes: e.target.value })}
               maxLength={NOTES_MAX}
               disabled={isLoading}
+              aria-invalid={Boolean(fieldErrors.notes)}
+              aria-describedby={[
+                'notes-counter',
+                fieldErrors.notes ? 'notes-error' : '',
+              ].filter(Boolean).join(' ')}
             />
-            <span className={`${styles.counter} ${form.notes.length >= NOTES_MAX ? styles.counterOver : ''}`}>
+            {fieldErrors.notes && (
+              <p id="notes-error" className={styles.fieldError}>{fieldErrors.notes}</p>
+            )}
+            <span id="notes-counter" className={`${styles.counter} ${form.notes.length >= NOTES_MAX ? styles.counterOver : ''}`}>
               {form.notes.length} / {NOTES_MAX} caracteres
             </span>
           </div>
@@ -530,17 +656,29 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                 disabled={isLoading}
               />
             </div>
-            <div className={styles.field}>
-              <span className={styles.label}>Estado / prioridad</span>
+            <fieldset className={`${styles.field} ${styles.priorityFieldset}`}>
+              <legend className={styles.label}>Estado / prioridad</legend>
               <div className={styles.chips} role="radiogroup" aria-label="Prioridad de la atención">
-                {PRIORITIES.map((priority) => (
+                {PRIORITIES.map((priority, index) => (
                   <button
                     key={priority.value}
                     type="button"
                     role="radio"
                     aria-checked={form.priority === priority.value}
+                    tabIndex={form.priority === priority.value ? 0 : -1}
                     className={`${styles.chip} ${styles[`chip_${priority.value}`]} ${form.priority === priority.value ? styles.chipActive : ''}`}
                     onClick={() => update({ priority: priority.value })}
+                    onKeyDown={(event) => {
+                      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+                      event.preventDefault();
+                      const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+                      const nextIndex = (index + direction + PRIORITIES.length) % PRIORITIES.length;
+                      const nextPriority = PRIORITIES[nextIndex];
+                      if (!nextPriority) return;
+                      update({ priority: nextPriority.value });
+                      const buttons = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+                      buttons?.[nextIndex]?.focus();
+                    }}
                     disabled={isLoading}
                   >
                     <Icon name={priority.icon} size={14} />
@@ -548,7 +686,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
           </div>
 
           <div className={styles.autosaveNote}>
@@ -570,10 +708,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
             <button
               className={styles.btn}
               type="button"
-              onClick={() => {
-                clearDraft();
-                router.push(`/patients/${patientId}/records`);
-              }}
+              onClick={cancelRegistration}
               disabled={isLoading}
             >
               Cancelar
@@ -589,7 +724,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               type="submit"
-              disabled={isLoading || !canSubmit}
+              disabled={isLoading}
             >
               <Icon name="records" size={16} />
               {isLoading ? 'Registrando…' : 'Registrar atención'}
@@ -600,10 +735,10 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
         {/* ─── Sidebar ─── */}
         <aside className={styles.sidebar}>
           <section className={styles.sideCard} aria-labelledby="tips-title">
-            <p id="tips-title" className={styles.sideTitle}>
+            <h2 id="tips-title" className={styles.sideTitle}>
               <Icon name="sparkle" size={16} />
               Sugerencias para completar
-            </p>
+            </h2>
             <div className={styles.tipList} style={{ marginTop: '0.875rem' }}>
               <p className={styles.tip}>
                 <Icon name="check" size={15} />
@@ -622,7 +757,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
 
           <section className={styles.sideCard} aria-labelledby="recent-title">
             <div className={styles.sideHeader}>
-              <p id="recent-title" className={styles.sideTitle}>Registros recientes del paciente</p>
+              <h2 id="recent-title" className={styles.sideTitle}>Registros recientes del paciente</h2>
               <Link href={`/patients/${patientId}/records`} className={styles.sideLink}>
                 Ver todos <Icon name="chevron-right" size={12} />
               </Link>
@@ -676,10 +811,10 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
           </section>
 
           <section className={styles.sideCard} aria-labelledby="info-title">
-            <p id="info-title" className={styles.sideTitle}>
+            <h2 id="info-title" className={styles.sideTitle}>
               <Icon name="shield" size={16} />
               Información útil
-            </p>
+            </h2>
             <p className={styles.infoText} style={{ marginTop: '0.625rem' }}>
               La información registrada aquí formará parte de la historia clínica del
               paciente y podrá ser consultada por el equipo de salud autorizado.

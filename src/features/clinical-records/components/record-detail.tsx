@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
@@ -43,6 +43,13 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
   const router = useRouter();
   const [showVoidForm, setShowVoidForm] = useState(false);
   const [voidReason, setVoidReason] = useState('');
+  const voidReasonRef = useRef<HTMLTextAreaElement>(null);
+  const voidTriggerRef = useRef<HTMLButtonElement>(null);
+  const statusRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (showVoidForm) requestAnimationFrame(() => voidReasonRef.current?.focus());
+  }, [showVoidForm]);
 
   if (isLoading) return <Spinner label="Cargando registro…" />;
   if (error) return <Alert variant="error">{error}</Alert>;
@@ -57,15 +64,23 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
     await doVoid(trimmed);
     setShowVoidForm(false);
     setVoidReason('');
+    requestAnimationFrame(() => statusRef.current?.focus());
+  }
+
+  function closeVoidForm() {
+    setShowVoidForm(false);
+    setVoidReason('');
+    requestAnimationFrame(() => voidTriggerRef.current?.focus());
   }
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <div>
-          <span className={styles.typeTag}>{TYPE_LABEL[record.recordType]}</span>
+          <h1 className={styles.typeTag}>{TYPE_LABEL[record.recordType]}</h1>
           {record.parentRecordId && (
             <button
+              type="button"
               className={styles.correctionLink}
               onClick={() =>
                 router.push(`/patients/${patientId}/records/${record.parentRecordId}`)
@@ -75,63 +90,68 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
             </button>
           )}
         </div>
-        <span className={`${styles.statusBadge} ${styles[record.status]}`}>
+        <span
+          ref={statusRef}
+          className={`${styles.statusBadge} ${styles[record.status]}`}
+          tabIndex={-1}
+          aria-live="polite"
+        >
           {record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado'}
         </span>
       </div>
 
-      <div className={styles.grid}>
+      <dl className={styles.grid}>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Fecha de atención</span>
-          <span className={styles.fieldValue}>{formatDateTime(record.attendedAt)}</span>
+          <dt className={styles.fieldLabel}>Fecha de atención</dt>
+          <dd className={styles.fieldValue}><time dateTime={record.attendedAt}>{formatDateTime(record.attendedAt)}</time></dd>
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Registrado</span>
-          <span className={styles.fieldValue}>{formatDateTime(record.createdAt)}</span>
+          <dt className={styles.fieldLabel}>Registrado</dt>
+          <dd className={styles.fieldValue}><time dateTime={record.createdAt}>{formatDateTime(record.createdAt)}</time></dd>
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Origen</span>
-          <span className={styles.fieldValue}>
+          <dt className={styles.fieldLabel}>Origen</dt>
+          <dd className={styles.fieldValue}>
             {record.origin === 'MANUAL' ? 'Entrada manual' : 'Digitalizado'}
-          </span>
+          </dd>
         </div>
         {record.doctorName && (
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Médico / profesional</span>
-            <span className={styles.fieldValue}>{record.doctorName}</span>
+            <dt className={styles.fieldLabel}>Médico / profesional</dt>
+            <dd className={styles.fieldValue}>{record.doctorName}</dd>
           </div>
         )}
         {record.service && (
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Servicio / especialidad</span>
-            <span className={styles.fieldValue}>{record.service}</span>
+            <dt className={styles.fieldLabel}>Servicio / especialidad</dt>
+            <dd className={styles.fieldValue}>{record.service}</dd>
           </div>
         )}
         {record.priority && record.priority !== 'NORMAL' && (
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Prioridad</span>
-            <span className={styles.fieldValue}>
+            <dt className={styles.fieldLabel}>Prioridad</dt>
+            <dd className={styles.fieldValue}>
               {record.priority === 'URGENT'
                 ? 'Urgente'
                 : record.priority === 'PRIORITY'
                   ? 'Prioritario'
                   : 'Electivo'}
-            </span>
+            </dd>
           </div>
         )}
         {record.correctionsCount > 0 && (
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Correcciones</span>
-            <span className={styles.fieldValue}>{record.correctionsCount}</span>
+            <dt className={styles.fieldLabel}>Correcciones</dt>
+            <dd className={styles.fieldValue}>{record.correctionsCount}</dd>
           </div>
         )}
-      </div>
+      </dl>
 
       {record.voidReason && (
         <>
           <hr className={styles.divider} />
           <div className={styles.section}>
-            <p className={styles.sectionTitle}>Motivo de anulación</p>
+            <h2 className={styles.sectionTitle}>Motivo de anulación</h2>
             <div className={styles.voidBox}>{record.voidReason}</div>
           </div>
         </>
@@ -140,27 +160,27 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
       <hr className={styles.divider} />
 
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>Resumen</p>
+        <h2 className={styles.sectionTitle}>Resumen</h2>
         <div className={styles.textBlock}>{record.summary}</div>
       </div>
 
       {record.notes && (
         <div className={styles.section}>
-          <p className={styles.sectionTitle}>Notas adicionales</p>
+          <h2 className={styles.sectionTitle}>Notas adicionales</h2>
           <div className={styles.textBlock}>{record.notes}</div>
         </div>
       )}
 
       {record.preliminaryDiagnosis && (
         <div className={styles.section}>
-          <p className={styles.sectionTitle}>Diagnóstico preliminar</p>
+          <h2 className={styles.sectionTitle}>Diagnóstico preliminar</h2>
           <div className={styles.textBlock}>{record.preliminaryDiagnosis}</div>
         </div>
       )}
 
       {record.plan && (
         <div className={styles.section}>
-          <p className={styles.sectionTitle}>Indicaciones / plan</p>
+          <h2 className={styles.sectionTitle}>Indicaciones / plan</h2>
           <div className={styles.textBlock}>{record.plan}</div>
         </div>
       )}
@@ -168,12 +188,13 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
       <hr className={styles.divider} />
 
       <div className={styles.actions}>
-        <button className={styles.btn} onClick={() => router.back()}>
+        <button type="button" className={styles.btn} onClick={() => router.back()}>
           Volver
         </button>
 
         {canCorrect && (
           <button
+            type="button"
             className={`${styles.btn} ${styles.btnPrimary}`}
             onClick={() =>
               router.push(`/patients/${patientId}/records/${recordId}/correct`)
@@ -185,9 +206,16 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
 
         {canVoid && (
           <button
+            ref={voidTriggerRef}
+            type="button"
             className={`${styles.btn} ${styles.btnDanger}`}
-            onClick={() => setShowVoidForm((v) => !v)}
+            onClick={() => {
+              if (showVoidForm) closeVoidForm();
+              else setShowVoidForm(true);
+            }}
             disabled={isActing}
+            aria-expanded={showVoidForm}
+            aria-controls="void-record-form"
           >
             Anular
           </button>
@@ -195,30 +223,52 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
       </div>
 
       {showVoidForm && (
-        <div className={styles.voidForm}>
+        <section
+          id="void-record-form"
+          className={styles.voidForm}
+          aria-labelledby="void-record-title"
+        >
+          <h2 id="void-record-title" className={styles.voidTitle}>Confirmar anulación</h2>
+          <label className={styles.voidLabel} htmlFor="void-reason">
+            Motivo de anulación <span aria-hidden="true">*</span>
+          </label>
           <textarea
+            ref={voidReasonRef}
+            id="void-reason"
             className={styles.voidTextarea}
             placeholder="Motivo de anulación (mínimo 10 caracteres)…"
             value={voidReason}
             onChange={(e) => setVoidReason(e.target.value)}
             rows={3}
+            minLength={10}
+            required
+            aria-invalid={voidReason.length > 0 && voidReason.trim().length < 10}
+            aria-describedby="void-reason-help"
           />
+          <p id="void-reason-help" className={styles.voidHelp}>
+            Explica el motivo con al menos 10 caracteres. El registro se conservará para trazabilidad.
+          </p>
           <div className={`${styles.actions} ${styles.actionsCompact}`}>
             <button
+              type="button"
               className={`${styles.btn} ${styles.btnDanger}`}
               onClick={() => void handleVoid()}
               disabled={isActing || voidReason.trim().length < 10}
             >
               {isActing ? 'Anulando…' : 'Confirmar anulación'}
             </button>
-            <button className={styles.btn} onClick={() => setShowVoidForm(false)}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={closeVoidForm}
+            >
               Cancelar
             </button>
           </div>
-        </div>
+        </section>
       )}
 
-      {actionError && <p className={styles.actionError}>{actionError}</p>}
+      {actionError && <p className={styles.actionError} role="alert">{actionError}</p>}
     </div>
   );
 }

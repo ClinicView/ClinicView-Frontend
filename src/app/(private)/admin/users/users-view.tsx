@@ -107,6 +107,20 @@ export function UsersView() {
     setPendingDeactivate(null);
   }
 
+  function requestDeactivate(id: string) {
+    setPendingDeactivate(id);
+    requestAnimationFrame(() => {
+      document.getElementById(`confirm-deactivate-${id}`)?.focus();
+    });
+  }
+
+  function cancelDeactivate(id: string) {
+    setPendingDeactivate(null);
+    requestAnimationFrame(() => {
+      document.getElementById(`deactivate-${id}`)?.focus();
+    });
+  }
+
   async function handleRoleChange(userId: string, roleKey: string) {
     if (!roleKey) return;
     setActingId(userId);
@@ -118,20 +132,20 @@ export function UsersView() {
     const isSelf = u.email === user?.email;
     return (
       <tr key={u.id}>
-        <td>
+        <td data-label="Usuario">
           <div className={styles.userCell}>
             <span className={styles.avatar} aria-hidden="true">{getInitials(u.fullName)}</span>
-            <div>
+            <div className={styles.userIdentity}>
               <p className={styles.userName}>{u.fullName}</p>
               <p className={styles.userEmail}>{u.email}</p>
             </div>
           </div>
         </td>
-        <td className={styles.cellMuted}>{u.profession ?? '—'}</td>
-        <td className={styles.cellMuted}>
+        <td className={styles.cellMuted} data-label="Profesión">{u.profession ?? '—'}</td>
+        <td className={styles.cellMuted} data-label="Documento">
           {u.documentType && u.documentNumber ? `${u.documentType} ${u.documentNumber}` : '—'}
         </td>
-        <td>
+        <td data-label="Rol">
           {u.isActive ? (
             <select
               className={styles.roleSelect}
@@ -149,21 +163,24 @@ export function UsersView() {
             <span className={styles.roleBadge}>{u.roles[0]?.name ?? 'Sin rol'}</span>
           )}
         </td>
-        <td className={styles.cellMuted}>{formatDateTime(u.lastLoginAt)}</td>
-        <td>
+        <td className={styles.cellMuted} data-label="Último acceso">
+          {u.lastLoginAt ? <time dateTime={u.lastLoginAt}>{formatDateTime(u.lastLoginAt)}</time> : '—'}
+        </td>
+        <td data-label="Estado">
           <span className={`${styles.stateBadge} ${u.isActive ? styles.state_active : styles.state_inactive}`}>
             {u.isActive ? 'Activo' : 'Inactivo'}
           </span>
         </td>
-        <td>
-          <div className={styles.actions}>
+        <td data-label="Acciones">
+          <div className={styles.actions} role="group" aria-label={`Acciones para ${u.fullName}`}>
             {u.isActive && !isSelf && pendingDeactivate !== u.id && (
               <button
+                id={`deactivate-${u.id}`}
                 className={styles.iconBtn}
                 type="button"
                 title="Desactivar usuario"
                 aria-label={`Desactivar a ${u.fullName}`}
-                onClick={() => setPendingDeactivate(u.id)}
+                onClick={() => requestDeactivate(u.id)}
                 disabled={actingId === u.id}
               >
                 <Icon name="close" size={15} />
@@ -172,6 +189,7 @@ export function UsersView() {
             {pendingDeactivate === u.id && (
               <>
                 <button
+                  id={`confirm-deactivate-${u.id}`}
                   className={styles.confirmBtn}
                   type="button"
                   onClick={() => void handleDeactivate(u.id)}
@@ -182,7 +200,7 @@ export function UsersView() {
                 <button
                   className={styles.cancelBtn}
                   type="button"
-                  onClick={() => setPendingDeactivate(null)}
+                  onClick={() => cancelDeactivate(u.id)}
                   disabled={actingId === u.id}
                 >
                   Cancelar
@@ -243,24 +261,27 @@ export function UsersView() {
       <div className={styles.layout}>
         <section className={styles.mainPanel}>
           <div className={styles.toolbar}>
+            <label className={styles.visuallyHidden} htmlFor="admin-user-search">
+              Buscar usuarios por nombre, correo o documento
+            </label>
             <div className={styles.searchWrap}>
               <Icon name="search" size={16} />
               <input
+                id="admin-user-search"
                 className={styles.searchInput}
                 type="search"
                 placeholder="Buscar por nombre, correo o documento…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                aria-label="Buscar usuarios"
               />
             </div>
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Rol</span>
+              <label className={styles.filterLabel} htmlFor="admin-role-filter">Rol</label>
               <select
+                id="admin-role-filter"
                 className={styles.filterSelect}
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                aria-label="Filtrar por rol"
               >
                 <option value="">Todos los roles</option>
                 {roles.map((role) => (
@@ -269,12 +290,12 @@ export function UsersView() {
               </select>
             </div>
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Estado</span>
+              <label className={styles.filterLabel} htmlFor="admin-state-filter">Estado</label>
               <select
+                id="admin-state-filter"
                 className={styles.filterSelect}
                 value={stateFilter}
                 onChange={(e) => setStateFilter(e.target.value)}
-                aria-label="Filtrar por estado"
               >
                 <option value="">Todos los estados</option>
                 <option value="active">Activos</option>
@@ -283,18 +304,25 @@ export function UsersView() {
             </div>
           </div>
 
-          {(error || actionError) && <p className={styles.error}>{error ?? actionError}</p>}
+          {(error || actionError) && <p className={styles.error} role="alert">{error ?? actionError}</p>}
 
+          <div
+            className={styles.tableRegion}
+            role="region"
+            aria-label="Listado de usuarios del sistema"
+            tabIndex={0}
+          >
           <table className={styles.table}>
+            <caption className={styles.visuallyHidden}>Usuarios, roles, estado y acciones disponibles</caption>
             <thead>
               <tr>
-                <th>Usuario</th>
-                <th>Profesión</th>
-                <th>Documento</th>
-                <th>Rol</th>
-                <th>Último acceso</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th scope="col">Usuario</th>
+                <th scope="col">Profesión</th>
+                <th scope="col">Documento</th>
+                <th scope="col">Rol</th>
+                <th scope="col">Último acceso</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -313,9 +341,10 @@ export function UsersView() {
               )}
             </tbody>
           </table>
+          </div>
 
           {!isLoading && filtered.length > 0 && (
-            <div className={styles.tableFooter}>
+            <div className={styles.tableFooter} aria-live="polite" aria-atomic="true">
               <span>
                 Mostrando {filtered.length} de {users.length} usuario{users.length !== 1 ? 's' : ''}
               </span>
@@ -325,9 +354,9 @@ export function UsersView() {
 
         <aside className={styles.sidebar}>
           <section className={styles.sideCard} aria-labelledby="roles-title">
-            <p id="roles-title" className={styles.sideTitle}>
+            <h2 id="roles-title" className={styles.sideTitle}>
               <Icon name="admin" size={16} /> Roles del sistema
-            </p>
+            </h2>
             {roleCounts.length === 0 ? (
               <p className={styles.sideText}>Sin datos de roles todavía.</p>
             ) : (
@@ -341,9 +370,9 @@ export function UsersView() {
           </section>
 
           <section className={styles.sideCard} aria-labelledby="reco-title">
-            <p id="reco-title" className={styles.sideTitle}>
+            <h2 id="reco-title" className={styles.sideTitle}>
               <Icon name="shield" size={16} /> Permisos y recomendaciones
-            </p>
+            </h2>
             <p className={styles.sideText}>
               Revisa periódicamente los accesos y roles para mantener la seguridad del
               sistema. Desactiva a los usuarios que ya no formen parte del personal:

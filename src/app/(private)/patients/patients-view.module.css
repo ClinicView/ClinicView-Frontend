@@ -42,6 +42,8 @@
   margin-top: 0.6rem;
   color: var(--gray-500);
   font-size: 0.925rem;
+  max-width: 75ch;
+  line-height: 1.6;
 }
 
 .digitizationGuide {
@@ -109,6 +111,7 @@
   color: var(--gray-600);
   font-size: 0.82rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .guideFlow {
@@ -325,4 +328,13 @@
     min-height: 108px;
     flex-direction: row;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pageHeader,
+  .digitizationGuide,
+  .statCard,
+  .directory { animation: none; }
+
+  .statCard { transition: none; }
 }

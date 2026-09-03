@@ -7,6 +7,8 @@
   margin-bottom: 1rem;
   color: var(--gray-500);
   font-size: 0.8125rem;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 
 .breadcrumb a {
@@ -50,6 +52,7 @@
   font-size: 1.375rem;
   font-weight: 800;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 .badgeRow {
@@ -121,6 +124,8 @@
   align-items: start;
 }
 
+.layout > * { min-width: 0; }
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -135,6 +140,7 @@
   background: var(--bg-surface);
   box-shadow: var(--shadow-xs);
   padding: 1.5rem 1.625rem;
+  min-width: 0;
 }
 
 .formHeader {
@@ -143,6 +149,8 @@
   gap: 0.875rem;
   margin-bottom: 1.5rem;
 }
+
+.formHeader > div { min-width: 0; }
 
 .formHeaderIcon {
   width: 44px;
@@ -167,6 +175,12 @@
   color: var(--gray-500);
   font-size: 0.8425rem;
 }
+
+.formTitle,
+.formSubtitle,
+.sideTitle,
+.tip,
+.infoText { overflow-wrap: anywhere; }
 
 .row {
   display: grid;
@@ -206,7 +220,7 @@
 
 .input,
 .select {
-  height: 44px;
+  min-height: 44px;
   width: 100%;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
@@ -256,12 +270,14 @@
   font-family: inherit;
   line-height: 1.55;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  min-height: 7rem;
 }
 
 .input:focus,
 .select:focus,
 .textarea:focus {
-  outline: none;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -275,6 +291,46 @@
 .counterOver {
   color: var(--color-danger);
   font-weight: 700;
+}
+
+.fieldError {
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 1px var(--color-danger-border);
+}
+
+.errorSummary {
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-danger-border);
+  border-left: 4px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-light);
+  padding: 0.875rem 1rem;
+  color: var(--gray-900);
+}
+
+.errorSummary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.errorSummary h3 { font-size: 0.9375rem; }
+
+.errorSummary ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+
+.errorSummary a {
+  color: var(--color-danger-dark);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
 }
 
 /* ─── Combobox de médicos ────────────────────────────────────── */
@@ -311,9 +367,11 @@
   text-align: left;
   cursor: pointer;
   transition: background var(--transition-fast);
+  min-height: 44px;
 }
 
-.comboOption:hover {
+.comboOption:hover,
+.comboOption[aria-selected='true'] {
   background: var(--color-primary-light);
 }
 
@@ -341,6 +399,12 @@
   gap: 0.5rem;
 }
 
+.priorityFieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -355,6 +419,7 @@
   font-family: inherit;
   cursor: pointer;
   transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  min-height: 44px;
 }
 
 .chip_URGENT.chipActive   { border-color: var(--color-danger);  background: var(--color-danger-light);  color: var(--color-danger); }
@@ -420,6 +485,7 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
+  min-height: 44px;
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -513,6 +579,8 @@
   color: var(--color-primary);
   font-size: 0.78125rem;
   font-weight: 600;
+  min-height: 44px;
+  align-items: center;
 }
 
 .tipList {
@@ -550,6 +618,7 @@
   align-items: center;
   gap: 0.625rem;
   padding: 0.625rem 0;
+  min-height: 44px;
 }
 
 .recentList > .recentItem + .recentItem {
@@ -584,11 +653,9 @@
 }
 
 .recentMeta {
-  overflow: hidden;
   color: var(--gray-500);
   font-size: 0.71875rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .recentBadge {
@@ -614,6 +681,7 @@
   color: var(--color-primary);
   font-size: 0.78125rem;
   font-weight: 700;
+  min-height: 44px;
 }
 
 .infoText {
@@ -646,4 +714,31 @@
   .actions {
     flex-wrap: wrap;
   }
+
+  .input,
+  .select,
+  .textarea { font-size: 1rem; }
+
+  .formCard,
+  .patientCard,
+  .sideCard { padding: 1.125rem; }
+
+  .actions .btn { flex: 1 1 10rem; justify-content: center; }
+}
+
+@media (max-width: 420px) {
+  .patientTop { align-items: flex-start; }
+  .avatar { width: 44px; height: 44px; font-size: 1rem; }
+  .patientName { font-size: 1.125rem; }
+  .formHeader { align-items: center; }
+  .actions { align-items: stretch; flex-direction: column-reverse; }
+  .actions .btn { width: 100%; flex-basis: auto; }
+  .recentItem { align-items: flex-start; flex-wrap: wrap; }
+  .recentBadge { margin-left: 2.625rem; }
+}
+
+@media (forced-colors: active) {
+  .input[aria-invalid='true'],
+  .select[aria-invalid='true'],
+  .textarea[aria-invalid='true'] { border-color: Mark; }
 }

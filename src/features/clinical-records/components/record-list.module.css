@@ -6,7 +6,20 @@
   margin-bottom: 1.25rem;
 }
 
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterLabel {
+  color: var(--gray-600);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 .select {
+  min-height: 44px;
   padding: 0.5rem 0.75rem;
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-sm);
@@ -18,9 +31,15 @@
   transition: border-color var(--transition-fast);
 }
 
-.select:focus { border-color: var(--color-primary); }
+.select:focus {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
 
 .newBtn {
+  min-height: 44px;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -55,6 +74,16 @@
   font-size: 0.875rem;
 }
 
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .table th {
   padding: 0.75rem 1rem;
   background: var(--gray-50);
@@ -75,24 +104,30 @@
   vertical-align: top;
 }
 
-.table tbody tr { cursor: pointer; transition: background var(--transition-fast); }
-.table tbody tr:hover td { background: var(--color-primary-light); }
 .table tbody tr:last-child td { border-bottom: none; }
 
-.recordType {
+.recordLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   font-weight: 600;
   color: var(--gray-800);
   font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.recordLink:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .summary {
   font-size: 0.8125rem;
   color: var(--gray-500);
   margin-top: 2px;
-  max-width: 340px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 42rem;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Badge (forward to shared/ui) ───────────────────────────── */
@@ -136,11 +171,13 @@
   margin-top: 1rem;
   font-size: 0.8125rem;
   color: var(--gray-500);
+  gap: 1rem;
 }
 
 .paginationBtns { display: flex; gap: 0.5rem; }
 
 .pageBtn {
+  min-height: 44px;
   padding: 0.375rem 0.75rem;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
@@ -153,3 +190,76 @@
 
 .pageBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 .pageBtn:hover:not(:disabled) { background: var(--gray-100); }
+
+@media (max-width: 760px) {
+  .toolbar,
+  .filterField,
+  .select,
+  .newBtn {
+    width: 100%;
+  }
+
+  .newBtn { margin-left: 0; justify-content: center; }
+
+  .tableWrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .table,
+  .table tbody { display: block; width: 100%; }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table tbody { display: grid; gap: 0.75rem; }
+
+  .table tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border-clinical);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .table td {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.75fr) minmax(0, 1.25fr);
+    align-items: start;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+    padding: 0.625rem 0.875rem;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    color: var(--gray-500);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .recordLink { min-height: 24px; }
+
+  .pagination { align-items: stretch; flex-direction: column; }
+  .paginationBtns { width: 100%; }
+  .pageBtn { flex: 1; }
+}
+
+@media (max-width: 380px) {
+  .table td { grid-template-columns: 1fr; gap: 0.25rem; }
+}
+
+@media (forced-colors: active) {
+  .recordLink:focus-visible { outline-color: Highlight; }
+}

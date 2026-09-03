@@ -353,6 +353,27 @@ export function PatientView({ id }: PatientViewProps) {
     { id: 'metricas', label: 'Métricas' },
   ];
 
+  function openTab(tabId: TabId, focusPanel = false) {
+    setActiveTab(tabId);
+    if (focusPanel) {
+      requestAnimationFrame(() => document.getElementById(`patient-panel-${tabId}`)?.focus());
+    }
+  }
+
+  function handleTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % TABS.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + TABS.length) % TABS.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = TABS.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = TABS[nextIndex];
+    if (!nextTab) return;
+    setActiveTab(nextTab.id);
+    requestAnimationFrame(() => document.getElementById(`patient-tab-${nextTab.id}`)?.focus());
+  }
+
   return (
     <PageShell>
       {/* ─── Header del paciente ─── */}
@@ -491,15 +512,19 @@ export function PatientView({ id }: PatientViewProps) {
       </section>
 
       {/* ─── Tabs ─── */}
-      <div className={styles.tabs} role="tablist">
-        {TABS.map((tab) => (
+      <div className={styles.tabs} role="tablist" aria-label="Secciones de la ficha del paciente">
+        {TABS.map((tab, index) => (
           <button
             key={tab.id}
+            id={`patient-tab-${tab.id}`}
             role="tab"
             type="button"
             aria-selected={activeTab === tab.id}
+            aria-controls={activeTab === tab.id ? `patient-panel-${tab.id}` : undefined}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => openTab(tab.id)}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
           >
             {tab.label}
           </button>
@@ -511,11 +536,17 @@ export function PatientView({ id }: PatientViewProps) {
 
       {/* ─── Tab: Resumen ─── */}
       {activeTab === 'resumen' && (
-        <div className={styles.resumenGrid}>
+        <div
+          id="patient-panel-resumen"
+          className={styles.resumenGrid}
+          role="tabpanel"
+          tabIndex={0}
+          aria-labelledby="patient-tab-resumen"
+        >
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <h2 className={styles.panelTitle}>Documentación clínica reciente</h2>
-              <button className={styles.panelLink} type="button" onClick={() => setActiveTab('historia')}>
+              <button className={styles.panelLink} type="button" onClick={() => openTab('historia', true)}>
                 Ver todos <Icon name="chevron-right" size={13} />
               </button>
             </div>
@@ -525,37 +556,39 @@ export function PatientView({ id }: PatientViewProps) {
               <p className={styles.emptyHint}>Sin documentación clínica registrada todavía.</p>
             ) : (
               <table className={styles.recentTable}>
+                <caption className={styles.visuallyHidden}>Documentación clínica reciente</caption>
                 <thead>
                   <tr>
-                    <th>Documento</th>
-                    <th>Fecha</th>
-                    <th>Servicio</th>
-                    <th>Estado</th>
-                    <th aria-label="Abrir" />
+                    <th scope="col">Documento</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Servicio</th>
+                    <th scope="col">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {timeline.slice(0, 6).map((entry) => (
-                    <tr
-                      key={entry.id}
-                      onClick={() => entry.href && router.push(entry.href)}
-                      className={entry.href ? styles.rowClickable : ''}
-                    >
-                      <td>
-                        <span className={styles.recentTitle}>{entry.title}</span>
+                    <tr key={entry.id}>
+                      <td data-label="Documento">
+                        {entry.href ? (
+                          <Link href={entry.href} className={styles.recentTitle}>
+                            <span>{entry.title}</span>
+                            <Icon name="chevron-right" size={15} />
+                          </Link>
+                        ) : (
+                          <span className={styles.recentTitle}>{entry.title}</span>
+                        )}
                         <span className={styles.recentCode}>
                           {entry.kind === 'document' ? 'DIG' : 'REG'}-{entry.id.slice(-8).toUpperCase()}
                         </span>
                       </td>
-                      <td className={styles.cellMuted}>{formatDate(entry.date)}</td>
-                      <td className={styles.cellMuted}>{entry.service}</td>
-                      <td>
+                      <td className={styles.cellMuted} data-label="Fecha">
+                        <time dateTime={entry.date}>{formatDate(entry.date)}</time>
+                      </td>
+                      <td className={styles.cellMuted} data-label="Servicio">{entry.service}</td>
+                      <td data-label="Estado">
                         <span className={`${styles.stateBadge} ${styles[`badge_${entry.statusTone}`]}`}>
                           {entry.statusLabel}
                         </span>
-                      </td>
-                      <td>
-                        <Icon name="chevron-right" size={15} />
                       </td>
                     </tr>
                   ))}
@@ -607,7 +640,7 @@ export function PatientView({ id }: PatientViewProps) {
                 <button
                   type="button"
                   className={styles.quickAction}
-                  onClick={() => setActiveTab('historia')}
+                  onClick={() => openTab('historia', true)}
                 >
                   <span className={`${styles.quickActionIcon} ${styles.sIcon_amber}`}>
                     <Icon name="folder" size={18} />
@@ -650,7 +683,13 @@ export function PatientView({ id }: PatientViewProps) {
 
       {/* ─── Tab: Historia clínica ─── */}
       {activeTab === 'historia' && (
-        <section className={styles.panel}>
+        <section
+          id="patient-panel-historia"
+          className={styles.panel}
+          role="tabpanel"
+          tabIndex={0}
+          aria-labelledby="patient-tab-historia"
+        >
           <div className={styles.historiaToolbar}>
             <div className={styles.searchWrap}>
               <Icon name="search" size={16} />
@@ -663,7 +702,7 @@ export function PatientView({ id }: PatientViewProps) {
                 aria-label="Buscar en la historia clínica"
               />
             </div>
-            <span className={styles.resultCount}>
+            <span className={styles.resultCount} aria-live="polite" aria-atomic="true">
               {filteredTimeline.length} {filteredTimeline.length === 1 ? 'entrada' : 'entradas'}
             </span>
           </div>
@@ -710,17 +749,20 @@ export function PatientView({ id }: PatientViewProps) {
                           <span className={`${styles.stateBadge} ${styles[`badge_${entry.statusTone}`]}`}>
                             {entry.statusLabel}
                           </span>
+                          <span className={styles.timelineToggle} aria-hidden="true">
+                            <Icon name="chevron-right" size={15} />
+                          </span>
                         </div>
                       </summary>
 
                       <div className={styles.timelineBody}>
                         {entry.kind === 'record' && entry.record && (
                           <>
-                            <p className={styles.sectionHeading}>RESUMEN</p>
+                            <h3 className={styles.sectionHeading}>Resumen</h3>
                             <p className={styles.sectionText}>{entry.record.summary}</p>
                             {entry.record.notes && (
                               <>
-                                <p className={styles.sectionHeading}>NOTAS</p>
+                                <h3 className={styles.sectionHeading}>Notas</h3>
                                 <p className={styles.sectionText}>{entry.record.notes}</p>
                               </>
                             )}
@@ -731,7 +773,7 @@ export function PatientView({ id }: PatientViewProps) {
                           <>
                             {parsed.sections.map((section, index) => (
                               <div key={index}>
-                                <p className={styles.sectionHeading}>{section.title}</p>
+                                <h3 className={styles.sectionHeading}>{section.title}</h3>
                                 <p className={styles.sectionText}>
                                   {section.content.trim() || '—'}
                                 </p>
@@ -768,7 +810,13 @@ export function PatientView({ id }: PatientViewProps) {
 
       {/* ─── Tab: Documentos ─── */}
       {activeTab === 'documentos' && (
-        <section className={styles.panel}>
+        <section
+          id="patient-panel-documentos"
+          className={styles.panel}
+          role="tabpanel"
+          tabIndex={0}
+          aria-labelledby="patient-tab-documentos"
+        >
           <div className={styles.docsToolbar}>
             <label className={styles.selectAll}>
               <input
@@ -814,39 +862,44 @@ export function PatientView({ id }: PatientViewProps) {
             </p>
           ) : (
             <table className={styles.docsTable}>
+              <caption className={styles.visuallyHidden}>Documentos digitalizados del paciente</caption>
               <thead>
                 <tr>
-                  <th aria-label="Selección" />
-                  <th>Documento</th>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
+                  <th scope="col"><span className={styles.visuallyHidden}>Selección</span></th>
+                  <th scope="col">Documento</th>
+                  <th scope="col">Fecha</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {overview.documents.map((doc) => (
                   <tr key={doc.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedDocs.has(doc.id)}
-                        onChange={() => toggleDocSelection(doc.id)}
-                        aria-label={`Seleccionar ${doc.originalName}`}
-                      />
+                    <td data-label="Seleccionar">
+                      <label className={styles.checkboxTarget}>
+                        <input
+                          type="checkbox"
+                          checked={selectedDocs.has(doc.id)}
+                          onChange={() => toggleDocSelection(doc.id)}
+                        />
+                        <span className={styles.visuallyHidden}>Seleccionar {doc.originalName}</span>
+                      </label>
                     </td>
-                    <td>
+                    <td data-label="Documento">
                       <Link href={`/patients/${id}/documents/${doc.id}`} className={styles.docLink}>
                         <Icon name="document" size={16} />
                         {doc.originalName}
                       </Link>
                     </td>
-                    <td className={styles.cellMuted}>{formatDate(doc.createdAt)}</td>
-                    <td>
+                    <td className={styles.cellMuted} data-label="Fecha">
+                      <time dateTime={doc.createdAt}>{formatDate(doc.createdAt)}</time>
+                    </td>
+                    <td data-label="Estado">
                       <span className={`${styles.stateBadge} ${styles[`badge_${DOC_STATUS_TONE[doc.status]}`]}`}>
                         {DOC_STATUS_LABEL[doc.status]}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Acciones">
                       <button
                         className={styles.btnSmall}
                         type="button"
@@ -867,7 +920,13 @@ export function PatientView({ id }: PatientViewProps) {
 
       {/* ─── Tab: Métricas ─── */}
       {activeTab === 'metricas' && (
-        <div className={styles.metricsGrid}>
+        <div
+          id="patient-panel-metricas"
+          className={styles.metricsGrid}
+          role="tabpanel"
+          tabIndex={0}
+          aria-labelledby="patient-tab-metricas"
+        >
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>Evolución CER / WER por documento</h2>
             {metricsDocs.length === 0 ? (
@@ -1021,14 +1080,45 @@ function MetricsChart({ documents }: { documents: MedicalDocument[] }) {
       </svg>
       <div className={styles.chartLegend}>
         <span className={styles.legendItem}>
-          <span className={styles.legendSwatch} style={{ background: 'var(--color-primary)' }} />
+          <span className={styles.legendSwatch} style={{ background: 'var(--color-primary)' }} aria-hidden="true" />
           CER (error de carácter)
         </span>
         <span className={styles.legendItem}>
-          <span className={styles.legendSwatch} style={{ background: 'var(--color-warning)' }} />
+          <span className={styles.legendSwatch} style={{ background: 'var(--color-warning)' }} aria-hidden="true" />
           WER (error de palabra)
         </span>
       </div>
+      <details className={styles.metricDetails}>
+        <summary>Ver datos del gráfico en tabla</summary>
+        <div
+          className={styles.metricDataWrap}
+          role="region"
+          aria-label="Datos CER y WER por documento"
+          tabIndex={0}
+        >
+          <table className={styles.metricDataTable}>
+            <caption className={styles.visuallyHidden}>Valores CER y WER por documento</caption>
+            <thead>
+              <tr>
+                <th scope="col">Documento</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">CER</th>
+                <th scope="col">WER</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documents.map((document) => (
+                <tr key={document.id}>
+                  <th scope="row">{document.originalName}</th>
+                  <td><time dateTime={document.createdAt}>{formatDate(document.createdAt)}</time></td>
+                  <td>{document.metrics?.cer == null ? '—' : `${(document.metrics.cer * 100).toFixed(2)}%`}</td>
+                  <td>{document.metrics?.wer == null ? '—' : `${(document.metrics.wer * 100).toFixed(2)}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }

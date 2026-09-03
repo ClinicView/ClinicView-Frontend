@@ -12,6 +12,7 @@
 }
 
 .newBtn {
+  min-height: 44px;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -38,6 +39,21 @@
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   overflow-x: auto;
+}
+
+.tableWrap:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .table {
@@ -80,6 +96,8 @@
   color: var(--gray-500);
   margin-top: 1px;
 }
+
+.userMeta { overflow-wrap: anywhere; }
 
 /* ─── States badges ──────────────────────────────────────────── */
 .empty {
@@ -129,6 +147,7 @@
 }
 
 .select {
+  min-height: 44px;
   padding: 0.375rem 0.625rem;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
@@ -140,9 +159,15 @@
   transition: border-color var(--transition-fast);
 }
 
-.select:focus { border-color: var(--color-primary); }
+.select:focus {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
 
 .btn {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   padding: 0.375rem 0.75rem;
@@ -171,4 +196,35 @@
   color: var(--color-danger);
   font-size: 0.875rem;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 760px) {
+  .toolbar { align-items: stretch; flex-direction: column; }
+  .newBtn { width: 100%; margin-left: 0; justify-content: center; }
+  .tableWrap { overflow: visible; border: 0; background: transparent; box-shadow: none; }
+  .table,
+  .table tbody { display: block; width: 100%; }
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .table tbody { display: grid; gap: 0.75rem; }
+  .table tbody tr { display: block; overflow: hidden; border: 1px solid var(--border-clinical); border-radius: var(--radius-md); background: var(--bg-surface); }
+  .table td { min-width: 0; display: grid; grid-template-columns: minmax(7.5rem, 0.7fr) minmax(0, 1.3fr); gap: 0.75rem; align-items: center; padding: 0.625rem 0.875rem; }
+  .table td::before { content: attr(data-label); color: var(--gray-500); font-size: 0.75rem; font-weight: 700; }
+  .table td:first-child { display: block; }
+  .table td:first-child::before { display: none; }
+  .table td.empty { display: block; }
+  .table td.empty::before { display: none; }
+  .select { width: 100%; max-width: 18rem; }
+}
+
+@media (max-width: 380px) {
+  .table td { grid-template-columns: 1fr; gap: 0.25rem; }
+  .actions > * { flex: 1 1 auto; justify-content: center; }
 }

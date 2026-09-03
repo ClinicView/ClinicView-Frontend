@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { formatDateOnly } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
@@ -24,24 +25,23 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
     usePatients(initialSearch ?? '');
   const router = useRouter();
 
-  function openPatient(id: string) {
-    router.push(`/patients/${id}`);
-  }
-
   return (
     <div>
       <div className={styles.toolbar}>
+        <label className={styles.visuallyHidden} htmlFor="patient-search">
+          Buscar pacientes por nombre o documento
+        </label>
         <div className={styles.searchField}>
           <span className={styles.searchIcon} aria-hidden="true">
             <Icon name="search" size={17} />
           </span>
           <input
+            id="patient-search"
             className={styles.search}
             type="search"
             placeholder="Buscar por nombre o documento"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            aria-label="Buscar pacientes"
           />
         </div>
 
@@ -51,7 +51,7 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
             className={styles.newBtn}
             onClick={() => router.push('/patients/new')}
           >
-            <Icon name="patient" size={17} />
+            <span aria-hidden="true"><Icon name="patient" size={17} /></span>
             Registrar paciente
           </button>
         )}
@@ -76,6 +76,7 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
           />
         ) : (
           <table className={styles.table}>
+            <caption className={styles.visuallyHidden}>Directorio de pacientes registrados</caption>
             <thead>
               <tr>
                 <th scope="col">Paciente</th>
@@ -89,26 +90,23 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
               {data.map((patient) => {
                 const patientName = `${patient.lastName}, ${patient.firstName}`;
                 return (
-                  <tr
-                    key={patient.id}
-                    role="link"
-                    tabIndex={0}
-                    aria-label={`Abrir ficha de ${patient.firstName} ${patient.lastName}`}
-                    onClick={() => openPatient(patient.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') openPatient(patient.id);
-                    }}
-                  >
+                  <tr key={patient.id}>
                     <td className={styles.patientCell} data-label="Paciente">
-                      <span className={styles.patientAvatar} aria-hidden="true">
-                        {getInitials(patient.firstName, patient.lastName)}
-                      </span>
-                      <span className={styles.patientIdentity}>
-                        <span className={styles.patientName}>{patientName}</span>
-                        <span className={`${styles.patientStatus} ${patient.isActive ? styles.active : styles.inactive}`}>
-                          <i aria-hidden="true" /> {patient.isActive ? 'Activo' : 'Inactivo'}
+                      <Link
+                        href={`/patients/${patient.id}`}
+                        className={styles.patientLink}
+                        aria-label={`Abrir ficha de ${patient.firstName} ${patient.lastName}`}
+                      >
+                        <span className={styles.patientAvatar} aria-hidden="true">
+                          {getInitials(patient.firstName, patient.lastName)}
                         </span>
-                      </span>
+                        <span className={styles.patientIdentity}>
+                          <span className={styles.patientName}>{patientName}</span>
+                          <span className={`${styles.patientStatus} ${patient.isActive ? styles.active : styles.inactive}`}>
+                            <i aria-hidden="true" /> {patient.isActive ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </span>
+                      </Link>
                     </td>
                     <td data-label="Documento">
                       <span className={styles.docBadge}>{DOC_LABEL[patient.documentType]}</span>
@@ -130,8 +128,8 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
       </div>
 
       {!isLoading && total > 0 && (
-        <div className={styles.pagination}>
-          <span>
+        <nav className={styles.pagination} aria-label="Paginación de pacientes">
+          <span aria-live="polite" aria-atomic="true">
             {total} paciente{total !== 1 ? 's' : ''} · Página {page} de {totalPages}
           </span>
           <div className={styles.paginationBtns}>
@@ -152,7 +150,7 @@ export function PatientList({ permissions, initialSearch }: PatientListProps) {
               Siguiente
             </button>
           </div>
-        </div>
+        </nav>
       )}
     </div>
   );

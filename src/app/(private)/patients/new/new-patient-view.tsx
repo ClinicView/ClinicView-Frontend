@@ -33,6 +33,40 @@ interface FormState {
   address: string;
 }
 
+type FieldErrors = Partial<Record<keyof FormState, string>>;
+
+const FIELD_LABELS: Partial<Record<keyof FormState, string>> = {
+  documentType: 'Tipo de documento',
+  documentNumber: 'Número de documento',
+  lastName: 'Apellidos',
+  firstName: 'Nombres',
+  dateOfBirth: 'Fecha de nacimiento',
+  sex: 'Sexo',
+  email: 'Correo electrónico',
+};
+
+function validateForm(form: FormState, duplicate: Patient | null): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!form.documentType) errors.documentType = 'Selecciona un tipo de documento.';
+  if (form.documentNumber.trim().length < 4) {
+    errors.documentNumber = 'Ingresa un número de documento de al menos 4 caracteres.';
+  } else if (duplicate) {
+    errors.documentNumber = 'Este documento ya está asociado a otro paciente.';
+  }
+  if (!form.lastName.trim()) errors.lastName = 'Ingresa los apellidos.';
+  if (!form.firstName.trim()) errors.firstName = 'Ingresa los nombres.';
+  if (!form.dateOfBirth) errors.dateOfBirth = 'Ingresa la fecha de nacimiento.';
+  else if (!isValidDateOnly(form.dateOfBirth)) errors.dateOfBirth = 'Ingresa una fecha válida.';
+  else if (isFutureDateOnly(form.dateOfBirth)) {
+    errors.dateOfBirth = 'La fecha de nacimiento no puede estar en el futuro.';
+  }
+  if (!form.sex) errors.sex = 'Selecciona el sexo.';
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = 'Ingresa un correo electrónico válido.';
+  }
+  return errors;
+}
+
 function emptyForm(): FormState {
   return {
     documentType: '',
@@ -55,8 +89,12 @@ export function NewPatientView() {
   const [error, setError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState<Patient | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [submitted, setSubmitted] = useState(false);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restoredRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (restoredRef.current) return;
@@ -65,6 +103,7 @@ export function NewPatientView() {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (raw) {
         setForm((prev) => ({ ...prev, ...(JSON.parse(raw) as Partial<FormState>) }));
+        dirtyRef.current = true;
         setDraftNotice('Borrador restaurado');
       }
     } catch {
@@ -73,6 +112,7 @@ export function NewPatientView() {
   }, []);
 
   function update(patch: Partial<FormState>) {
+    dirtyRef.current = true;
     setForm((prev) => {
       const next = { ...prev, ...patch };
       if (autosaveRef.current) clearTimeout(autosaveRef.current);
@@ -85,6 +125,9 @@ export function NewPatientView() {
       }, 600);
       return next;
     });
+    if (submitted) {
+      setFieldErrors(validateForm({ ...form, ...patch }, duplicate));
+    }
   }
 
   function clearDraft() {
@@ -105,6 +148,17 @@ export function NewPatientView() {
     }
   }
 
+  function cancelRegistration() {
+    if (
+      dirtyRef.current &&
+      !window.confirm('Se eliminará el borrador de este paciente. ¿Deseas cancelar el registro?')
+    ) {
+      return;
+    }
+    clearDraft();
+    router.push('/patients');
+  }
+
   // Detección de duplicados: al salir del campo número de documento se
   // consulta si ya existe un paciente con ese tipo + número.
   async function checkDuplicate() {
@@ -117,30 +171,21 @@ export function NewPatientView() {
         documentNumber: number,
         limit: 1,
       });
-      if (result.total > 0) setDuplicate(result.data[0]);
+      const match = result.total > 0 ? (result.data[0] ?? null) : null;
+      setDuplicate(match);
+      if (submitted) setFieldErrors(validateForm(form, match));
     } catch {
       // La verificación es preventiva; el backend rechaza duplicados igualmente.
     }
   }
 
-  const canSubmit =
-    form.documentType !== '' &&
-    form.documentNumber.trim().length >= 4 &&
-    form.lastName.trim().length > 0 &&
-    form.firstName.trim().length > 0 &&
-    form.dateOfBirth !== '' &&
-    form.sex !== '' &&
-    !duplicate;
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit) return;
-    if (!isValidDateOnly(form.dateOfBirth)) {
-      setError('La fecha de nacimiento no es válida.');
-      return;
-    }
-    if (isFutureDateOnly(form.dateOfBirth)) {
-      setError('La fecha de nacimiento no puede estar en el futuro.');
+    setSubmitted(true);
+    const validationErrors = validateForm(form, duplicate);
+    setFieldErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      requestAnimationFrame(() => errorSummaryRef.current?.focus());
       return;
     }
     setIsLoading(true);
@@ -203,11 +248,32 @@ export function NewPatientView() {
             </p>
           )}
 
+          {Object.keys(fieldErrors).length > 0 && (
+            <div
+              ref={errorSummaryRef}
+              className={styles.errorSummary}
+              role="alert"
+              tabIndex={-1}
+              aria-labelledby="patient-form-error-title"
+            >
+              <h2 id="patient-form-error-title">Revisa los campos indicados</h2>
+              <ul>
+                {Object.entries(fieldErrors).map(([field, message]) => (
+                  <li key={field}>
+                    <a href={`#${field}`}>
+                      {FIELD_LABELS[field as keyof FormState] ?? field}: {message}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Identificación */}
           <div className={styles.section}>
-            <p className={styles.sectionTitle}>
+            <h2 className={styles.sectionTitle}>
               <Icon name="records" size={17} /> Identificación
-            </p>
+            </h2>
             <div className={styles.row}>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="documentType">
@@ -222,11 +288,17 @@ export function NewPatientView() {
                     className={styles.select}
                     value={form.documentType}
                     onChange={(e) => {
-                      update({ documentType: e.target.value });
+                      const value = e.target.value;
+                      update({ documentType: value });
                       setDuplicate(null);
+                      if (submitted) {
+                        setFieldErrors(validateForm({ ...form, documentType: value }, null));
+                      }
                     }}
                     disabled={isLoading}
                     required
+                    aria-invalid={Boolean(fieldErrors.documentType)}
+                    aria-describedby={fieldErrors.documentType ? 'documentType-error' : undefined}
                   >
                     <option value="">Seleccionar tipo de documento…</option>
                     {DOC_TYPES.map((type) => (
@@ -234,6 +306,9 @@ export function NewPatientView() {
                     ))}
                   </select>
                 </div>
+                {fieldErrors.documentType && (
+                  <p id="documentType-error" className={styles.fieldError}>{fieldErrors.documentType}</p>
+                )}
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="documentNumber">
@@ -249,17 +324,29 @@ export function NewPatientView() {
                     placeholder="Ej.: 12345678"
                     value={form.documentNumber}
                     onChange={(e) => {
-                      update({ documentNumber: e.target.value });
+                      const value = e.target.value;
+                      update({ documentNumber: value });
                       setDuplicate(null);
+                      if (submitted) {
+                        setFieldErrors(validateForm({ ...form, documentNumber: value }, null));
+                      }
                     }}
                     onBlur={() => void checkDuplicate()}
                     maxLength={20}
                     disabled={isLoading}
                     required
+                    aria-invalid={Boolean(fieldErrors.documentNumber)}
+                    aria-describedby={[
+                      fieldErrors.documentNumber ? 'documentNumber-error' : '',
+                      duplicate ? 'documentNumber-duplicate' : '',
+                    ].filter(Boolean).join(' ') || undefined}
                   />
                 </div>
+                {fieldErrors.documentNumber && (
+                  <p id="documentNumber-error" className={styles.fieldError}>{fieldErrors.documentNumber}</p>
+                )}
                 {duplicate && (
-                  <p className={styles.duplicateWarning} role="alert">
+                  <p id="documentNumber-duplicate" className={styles.duplicateWarning} role="alert">
                     <Icon name="warning" size={15} />
                     <span>
                       Ya existe un paciente con este documento:{' '}
@@ -290,8 +377,14 @@ export function NewPatientView() {
                     maxLength={120}
                     disabled={isLoading}
                     required
+                    autoComplete="family-name"
+                    aria-invalid={Boolean(fieldErrors.lastName)}
+                    aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined}
                   />
                 </div>
+                {fieldErrors.lastName && (
+                  <p id="lastName-error" className={styles.fieldError}>{fieldErrors.lastName}</p>
+                )}
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="firstName">
@@ -310,17 +403,23 @@ export function NewPatientView() {
                     maxLength={120}
                     disabled={isLoading}
                     required
+                    autoComplete="given-name"
+                    aria-invalid={Boolean(fieldErrors.firstName)}
+                    aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined}
                   />
                 </div>
+                {fieldErrors.firstName && (
+                  <p id="firstName-error" className={styles.fieldError}>{fieldErrors.firstName}</p>
+                )}
               </div>
             </div>
           </div>
 
           {/* Datos personales */}
           <div className={styles.section}>
-            <p className={styles.sectionTitle}>
+            <h2 className={styles.sectionTitle}>
               <Icon name="profile" size={17} /> Datos personales
-            </p>
+            </h2>
             <div className={styles.row}>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="dateOfBirth">
@@ -339,8 +438,14 @@ export function NewPatientView() {
                     onChange={(e) => update({ dateOfBirth: e.target.value })}
                     disabled={isLoading}
                     required
+                    autoComplete="bday"
+                    aria-invalid={Boolean(fieldErrors.dateOfBirth)}
+                    aria-describedby={fieldErrors.dateOfBirth ? 'dateOfBirth-error' : undefined}
                   />
                 </div>
+                {fieldErrors.dateOfBirth && (
+                  <p id="dateOfBirth-error" className={styles.fieldError}>{fieldErrors.dateOfBirth}</p>
+                )}
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="sex">
@@ -357,6 +462,8 @@ export function NewPatientView() {
                     onChange={(e) => update({ sex: e.target.value })}
                     disabled={isLoading}
                     required
+                    aria-invalid={Boolean(fieldErrors.sex)}
+                    aria-describedby={fieldErrors.sex ? 'sex-error' : undefined}
                   >
                     <option value="">Seleccionar sexo…</option>
                     <option value="F">Femenino</option>
@@ -364,15 +471,18 @@ export function NewPatientView() {
                     <option value="OTHER">Otro</option>
                   </select>
                 </div>
+                {fieldErrors.sex && (
+                  <p id="sex-error" className={styles.fieldError}>{fieldErrors.sex}</p>
+                )}
               </div>
             </div>
           </div>
 
           {/* Contacto */}
           <div className={styles.section}>
-            <p className={styles.sectionTitle}>
+            <h2 className={styles.sectionTitle}>
               <Icon name="phone" size={17} /> Contacto
-            </p>
+            </h2>
             <div className={styles.row}>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="phone">Teléfono</label>
@@ -389,6 +499,7 @@ export function NewPatientView() {
                     onChange={(e) => update({ phone: e.target.value })}
                     maxLength={20}
                     disabled={isLoading}
+                    autoComplete="tel"
                   />
                 </div>
               </div>
@@ -407,8 +518,14 @@ export function NewPatientView() {
                     onChange={(e) => update({ email: e.target.value })}
                     maxLength={160}
                     disabled={isLoading}
+                    autoComplete="email"
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p id="email-error" className={styles.fieldError}>{fieldErrors.email}</p>
+                )}
               </div>
               <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="address">Dirección</label>
@@ -424,6 +541,7 @@ export function NewPatientView() {
                     onChange={(e) => update({ address: e.target.value })}
                     maxLength={240}
                     disabled={isLoading}
+                    autoComplete="street-address"
                   />
                 </div>
               </div>
@@ -450,10 +568,7 @@ export function NewPatientView() {
               <button
                 className={styles.btn}
                 type="button"
-                onClick={() => {
-                  clearDraft();
-                  router.push('/patients');
-                }}
+                onClick={cancelRegistration}
                 disabled={isLoading}
               >
                 Cancelar
@@ -470,7 +585,7 @@ export function NewPatientView() {
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 type="submit"
-                disabled={isLoading || !canSubmit}
+                disabled={isLoading}
               >
                 <Icon name="patient" size={16} />
                 {isLoading ? 'Registrando…' : 'Registrar paciente'}
@@ -486,7 +601,7 @@ export function NewPatientView() {
               <span className={styles.sideIcon} aria-hidden="true">
                 <Icon name="sparkle" size={20} />
               </span>
-              <p id="reco-title" className={styles.sideTitle}>Recomendaciones</p>
+              <h2 id="reco-title" className={styles.sideTitle}>Recomendaciones</h2>
             </div>
             <div className={styles.tipList}>
               <p className={styles.tip}>

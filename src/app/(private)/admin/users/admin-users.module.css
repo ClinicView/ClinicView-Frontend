@@ -21,6 +21,16 @@
   font-size: 0.875rem;
 }
 
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ─── Stat cards ─────────────────────────────────────────────── */
 .statsGrid {
   display: grid;
@@ -59,6 +69,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.0625rem;
+  min-width: 0;
 }
 
 .statLabel {
@@ -137,7 +148,8 @@
 
 .searchInput {
   flex: 1;
-  height: 40px;
+  min-height: 44px;
+  min-width: 0;
   border: 0;
   background: transparent;
   color: var(--gray-800);
@@ -159,7 +171,7 @@
 }
 
 .filterSelect {
-  height: 40px;
+  min-height: 44px;
   min-width: 150px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
@@ -174,7 +186,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  height: 40px;
+  min-height: 44px;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
   background: var(--color-primary);
@@ -193,6 +205,17 @@
 }
 
 /* ─── Tabla ──────────────────────────────────────────────────── */
+.tableRegion {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+}
+
+.tableRegion:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -224,6 +247,8 @@
   min-width: 0;
 }
 
+.userIdentity { min-width: 0; }
+
 .avatar {
   width: 40px;
   height: 40px;
@@ -243,25 +268,24 @@
   font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .userEmail {
-  overflow: hidden;
   color: var(--gray-500);
   font-size: 0.75rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 220px;
+  overflow-wrap: anywhere;
 }
 
 .cellMuted {
   color: var(--gray-500);
   font-size: 0.8125rem;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .roleSelect {
-  height: 34px;
+  min-height: 44px;
   border: 1px solid var(--color-primary-border);
   border-radius: var(--radius-xl);
   background: var(--color-primary-light);
@@ -302,8 +326,8 @@
 }
 
 .iconBtn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -327,6 +351,7 @@
 }
 
 .confirmBtn {
+  min-height: 44px;
   border: 1px solid var(--color-danger);
   border-radius: var(--radius-sm);
   background: var(--color-danger);
@@ -339,6 +364,7 @@
 }
 
 .cancelBtn {
+  min-height: 44px;
   border: 1px solid var(--border-clinical);
   border-radius: var(--radius-sm);
   background: #fff;
@@ -444,10 +470,77 @@
 }
 
 @media (max-width: 760px) {
-  .table th:nth-child(2),
-  .table td:nth-child(2),
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
-    display: none;
+  .pageHeader { align-items: stretch; flex-direction: column; }
+  .newBtn { width: 100%; justify-content: center; }
+  .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .toolbar { align-items: stretch; flex-direction: column; }
+  .searchWrap,
+  .filterField,
+  .filterSelect { width: 100%; min-width: 0; }
+  .searchInput,
+  .filterSelect { font-size: 1rem; }
+
+  .tableRegion { overflow: visible; }
+  .table,
+  .table tbody { display: block; width: 100%; }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
+
+  .table tbody { display: grid; gap: 0.75rem; }
+
+  .table tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border-clinical);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+  }
+
+  .table td {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.72fr) minmax(0, 1.28fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    color: var(--gray-500);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .table td:first-child {
+    display: block;
+    padding-block: 0.875rem;
+  }
+
+  .table td:first-child::before { display: none; }
+  .table td.empty { display: block; }
+  .table td.empty::before { display: none; }
+  .roleSelect { width: 100%; max-width: 18rem; }
+  .actions { flex-wrap: wrap; }
+  .mainPanel { padding: 1rem; }
+}
+
+@media (max-width: 420px) {
+  .statsGrid { grid-template-columns: 1fr; }
+  .table td { grid-template-columns: 1fr; gap: 0.25rem; }
+  .actions > * { flex: 1 1 auto; justify-content: center; }
+  .iconBtn { flex: 0 0 44px; }
+}
+
+@media (forced-colors: active) {
+  .tableRegion:focus-visible { outline-color: Highlight; }
 }

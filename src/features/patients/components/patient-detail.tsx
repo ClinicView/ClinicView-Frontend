@@ -38,17 +38,34 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
       setDeactivateError(err instanceof Error ? err.message : 'Error al desactivar el paciente.');
       setIsDeactivating(false);
       setConfirmDeactivate(false);
+      requestAnimationFrame(() => {
+        document.getElementById('deactivate-patient')?.focus();
+      });
     }
+  }
+
+  function requestDeactivate() {
+    setConfirmDeactivate(true);
+    requestAnimationFrame(() => {
+      document.getElementById('confirm-deactivate-patient')?.focus();
+    });
+  }
+
+  function cancelDeactivate() {
+    setConfirmDeactivate(false);
+    requestAnimationFrame(() => {
+      document.getElementById('deactivate-patient')?.focus();
+    });
   }
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <div>
-          <p className={styles.name}>
+          <h1 className={styles.name}>
             {patient.lastName}, {patient.firstName}
             {!patient.isActive && <span className={styles.inactiveBadge}>Inactivo</span>}
-          </p>
+          </h1>
           <p className={styles.docLine}>
             <span className={styles.docBadge}>{DOC_LABEL[patient.documentType]}</span>
             {patient.documentNumber}
@@ -56,40 +73,40 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
         </div>
       </div>
 
-      <div className={styles.grid}>
+      <dl className={styles.grid}>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Fecha de nacimiento</span>
-          <span className={styles.fieldValue}>
+          <dt className={styles.fieldLabel}>Fecha de nacimiento</dt>
+          <dd className={styles.fieldValue}>
             {formatDateOnly(patient.dateOfBirth, {
               day: '2-digit',
               month: 'long',
               year: 'numeric',
             })}
-          </span>
+          </dd>
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Sexo</span>
-          <span className={styles.fieldValue}>{SEX_LABEL[patient.sex]}</span>
+          <dt className={styles.fieldLabel}>Sexo</dt>
+          <dd className={styles.fieldValue}>{SEX_LABEL[patient.sex]}</dd>
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Teléfono</span>
-          <span className={`${styles.fieldValue} ${!patient.phone ? styles.empty : ''}`}>
+          <dt className={styles.fieldLabel}>Teléfono</dt>
+          <dd className={`${styles.fieldValue} ${!patient.phone ? styles.empty : ''}`}>
             {patient.phone ?? '-'}
-          </span>
+          </dd>
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Correo electrónico</span>
-          <span className={`${styles.fieldValue} ${!patient.email ? styles.empty : ''}`}>
+          <dt className={styles.fieldLabel}>Correo electrónico</dt>
+          <dd className={`${styles.fieldValue} ${!patient.email ? styles.empty : ''}`}>
             {patient.email ?? '-'}
-          </span>
+          </dd>
         </div>
         <div className={`${styles.field} ${styles.fieldFull}`}>
-          <span className={styles.fieldLabel}>Dirección</span>
-          <span className={`${styles.fieldValue} ${!patient.address ? styles.empty : ''}`}>
+          <dt className={styles.fieldLabel}>Dirección</dt>
+          <dd className={`${styles.fieldValue} ${!patient.address ? styles.empty : ''}`}>
             {patient.address ?? '-'}
-          </span>
+          </dd>
         </div>
-      </div>
+      </dl>
 
       {(can(permissions, 'documents.read') || can(permissions, 'records.read')) && (
         <>
@@ -97,6 +114,7 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
           <div className={styles.flowActions}>
             {can(permissions, 'documents.read') && (
               <button
+                type="button"
                 className={styles.primaryFlow}
                 onClick={() => router.push(`/patients/${patient.id}/documents`)}
               >
@@ -113,6 +131,7 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
 
             {can(permissions, 'records.read') && (
               <button
+                type="button"
                 className={styles.secondaryFlow}
                 onClick={() => router.push(`/patients/${patient.id}/records`)}
               >
@@ -140,12 +159,13 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
       <hr className={styles.divider} />
 
       <div className={styles.actions}>
-        <button className={styles.btn} onClick={() => router.back()}>
+        <button type="button" className={styles.btn} onClick={() => router.back()}>
           Volver
         </button>
 
         {can(permissions, 'patients.update') && patient.isActive && (
           <button
+            type="button"
             className={styles.btn}
             onClick={() => router.push(`/patients/${patient.id}/edit`)}
           >
@@ -155,8 +175,10 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
 
         {can(permissions, 'patients.update') && patient.isActive && !confirmDeactivate && (
           <button
+            id="deactivate-patient"
+            type="button"
             className={`${styles.btn} ${styles.btnDanger}`}
-            onClick={() => setConfirmDeactivate(true)}
+            onClick={requestDeactivate}
           >
             Desactivar
           </button>
@@ -165,6 +187,8 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
         {confirmDeactivate && (
           <>
             <button
+              id="confirm-deactivate-patient"
+              type="button"
               className={`${styles.btn} ${styles.btnDanger}`}
               onClick={() => void handleDeactivate()}
               disabled={isDeactivating}
@@ -172,8 +196,9 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
               {isDeactivating ? 'Desactivando...' : 'Confirmar desactivación'}
             </button>
             <button
+              type="button"
               className={styles.btn}
-              onClick={() => setConfirmDeactivate(false)}
+              onClick={cancelDeactivate}
               disabled={isDeactivating}
             >
               Cancelar
@@ -182,7 +207,7 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
         )}
       </div>
 
-      {deactivateError && <p className={styles.error}>{deactivateError}</p>}
+      {deactivateError && <p className={styles.error} role="alert">{deactivateError}</p>}
     </div>
   );
 }

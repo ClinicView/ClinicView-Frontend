@@ -4,6 +4,8 @@
   border-radius: var(--radius-lg);
   padding: 2rem;
   max-width: 760px;
+  width: 100%;
+  min-width: 0;
   box-shadow: var(--shadow-sm);
 }
 
@@ -32,6 +34,7 @@
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  line-height: 1.4;
 }
 
 /* Status badge — kept local as in document-detail */
@@ -57,7 +60,7 @@
   margin-bottom: 1.5rem;
 }
 
-.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field { min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
 
 .fieldLabel {
   font-size: 0.6875rem;
@@ -67,7 +70,7 @@
   letter-spacing: 0.06em;
 }
 
-.fieldValue { font-size: 0.875rem; color: var(--gray-700); font-weight: 500; }
+.fieldValue { margin: 0; font-size: 0.875rem; color: var(--gray-700); font-weight: 500; overflow-wrap: anywhere; }
 .fieldEmpty { color: var(--gray-300); font-weight: 400; }
 
 /* ─── Sections ───────────────────────────────────────────────── */
@@ -93,7 +96,7 @@
   line-height: 1.7;
   color: var(--gray-700);
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .voidBox {
@@ -103,6 +106,7 @@
   padding: 0.875rem 1rem;
   font-size: 0.875rem;
   color: #991b1b;
+  overflow-wrap: anywhere;
 }
 
 .correctionLink {
@@ -112,7 +116,8 @@
   cursor: pointer;
   background: none;
   border: none;
-  padding: 0;
+  min-height: 44px;
+  padding: 0.5rem;
   margin-left: 0.75rem;
 }
 
@@ -129,6 +134,7 @@
 }
 
 .btn {
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1rem;
@@ -168,6 +174,24 @@
   border-radius: var(--radius-sm);
 }
 
+.voidTitle {
+  color: var(--gray-900);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.voidLabel {
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.voidHelp {
+  color: var(--gray-600);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
 .voidTextarea {
   width: 100%;
   padding: 0.625rem 0.75rem;
@@ -183,7 +207,14 @@
   transition: border-color var(--transition-fast);
 }
 
-.voidTextarea:focus { border-color: var(--color-primary); }
+.voidTextarea:focus {
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.voidTextarea[aria-invalid='true'] { border-color: var(--color-danger); }
 
 .actionError {
   font-size: 0.8125rem;
@@ -194,4 +225,17 @@
 @media (max-width: 580px) {
   .grid { grid-template-columns: 1fr; }
   .card { padding: 1.25rem; }
+  .header { align-items: stretch; flex-direction: column; }
+  .voidTextarea { font-size: 1rem; }
+  .actions .btn { flex: 1 1 9rem; justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .card { padding: 1rem; }
+  .actions { align-items: stretch; flex-direction: column; }
+  .actions .btn { width: 100%; flex-basis: auto; }
+}
+
+@media (forced-colors: active) {
+  .voidTextarea[aria-invalid='true'] { border-color: Mark; }
 }

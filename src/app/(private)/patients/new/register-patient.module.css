@@ -7,6 +7,8 @@
   margin-bottom: 1rem;
   color: var(--gray-500);
   font-size: 0.8125rem;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 
 .breadcrumb a {
@@ -21,6 +23,8 @@
   align-items: start;
 }
 
+.layout > * { min-width: 0; }
+
 /* ─── Card del formulario ────────────────────────────────────── */
 .formCard {
   border: 1px solid var(--border-clinical);
@@ -28,6 +32,7 @@
   background: var(--bg-surface);
   box-shadow: var(--shadow-xs);
   padding: 1.75rem 1.875rem;
+  min-width: 0;
 }
 
 .formHeader {
@@ -36,6 +41,8 @@
   gap: 1rem;
   margin-bottom: 1.75rem;
 }
+
+.formHeader > div { min-width: 0; }
 
 .formHeaderIcon {
   width: 56px;
@@ -61,6 +68,11 @@
   color: var(--gray-500);
   font-size: 0.875rem;
 }
+
+.formTitle,
+.formSubtitle,
+.sideTitle,
+.tip { overflow-wrap: anywhere; }
 
 .newBadge {
   display: inline-flex;
@@ -145,12 +157,12 @@
 
 .input,
 .select {
-  height: 46px;
+  min-height: 46px;
   width: 100%;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   background: #fff;
-  padding: 0 0.875rem 0 2.5rem;
+  padding: 0.7rem 0.875rem 0.7rem 2.5rem;
   color: var(--gray-800);
   font-size: 0.875rem;
   font-family: inherit;
@@ -168,7 +180,8 @@
 
 .input:focus,
 .select:focus {
-  outline: none;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -182,6 +195,51 @@
 .hint {
   color: var(--gray-400);
   font-size: 0.71875rem;
+}
+
+.fieldError {
+  color: var(--color-danger);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'] {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 1px var(--color-danger-border);
+}
+
+.errorSummary {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--color-danger-border);
+  border-left: 4px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-light);
+  padding: 0.875rem 1rem;
+  color: var(--gray-900);
+}
+
+.errorSummary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+.errorSummary h2 {
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+
+.errorSummary ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.errorSummary a {
+  color: var(--color-danger-dark);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Aviso de duplicado */
@@ -259,6 +317,7 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
+  min-height: 44px;
   transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -391,4 +450,27 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .input,
+  .select { font-size: 1rem; }
+
+  .actions { width: 100%; }
+
+  .actions .btn { flex: 1 1 10rem; justify-content: center; }
+
+  .formCard { padding: 1.25rem; }
+}
+
+@media (max-width: 380px) {
+  .formHeader { align-items: center; }
+  .formHeaderIcon { width: 44px; height: 44px; }
+  .formTitle { font-size: 1.25rem; }
+  .actions { flex-direction: column-reverse; }
+  .actions .btn { width: 100%; flex-basis: auto; }
+  .sideCard { padding: 1rem; }
+}
+
+@media (forced-colors: active) {
+  .input[aria-invalid='true'],
+  .select[aria-invalid='true'] { border-color: Mark; }
 }

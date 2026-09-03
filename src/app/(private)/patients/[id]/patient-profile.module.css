@@ -10,6 +10,16 @@
   margin-bottom: 1.25rem;
 }
 
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .headerTop {
   display: flex;
   align-items: center;
@@ -40,6 +50,7 @@
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 .badgeRow {
@@ -199,12 +210,10 @@
 }
 
 .summaryHint {
-  overflow: hidden;
   color: var(--gray-500);
   font-size: 0.71875rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 200px;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Tabs ───────────────────────────────────────────────────── */
@@ -228,6 +237,7 @@
   font-family: inherit;
   cursor: pointer;
   transition: color var(--transition-fast);
+  min-height: 44px;
 }
 
 .tab:hover {
@@ -249,6 +259,12 @@
   background: var(--color-primary);
 }
 
+.tab:focus-visible,
+[role='tabpanel']:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 /* ─── Paneles ────────────────────────────────────────────────── */
 .panel {
   border: 1px solid var(--border-clinical);
@@ -257,6 +273,7 @@
   box-shadow: var(--shadow-xs);
   padding: 1.375rem;
   margin-bottom: 1.25rem;
+  min-width: 0;
 }
 
 .panelHeader {
@@ -288,6 +305,7 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .emptyHint {
@@ -346,10 +364,20 @@
 }
 
 .recentTitle {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
   color: var(--gray-800);
   font-weight: 700;
+  overflow-wrap: anywhere;
+  text-decoration: none;
 }
+
+a.recentTitle:hover { color: var(--color-primary); text-decoration: underline; }
+
+.recentTitle > span { min-width: 0; overflow-wrap: anywhere; }
+.recentTitle > svg { flex: 0 0 auto; }
 
 .recentCode {
   display: block;
@@ -360,6 +388,7 @@
 .cellMuted {
   color: var(--gray-500);
   font-size: 0.8125rem;
+  overflow-wrap: anywhere;
 }
 
 /* Acciones rápidas */
@@ -384,6 +413,7 @@
   text-decoration: none;
   cursor: pointer;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  min-height: 56px;
 }
 
 .quickAction:hover {
@@ -456,6 +486,7 @@
 .miniMeta {
   color: var(--gray-500);
   font-size: 0.71875rem;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Historia clínica (timeline) ────────────────────────────── */
@@ -486,7 +517,8 @@
 
 .searchInput {
   flex: 1;
-  height: 40px;
+  min-height: 44px;
+  min-width: 0;
   border: 0;
   background: transparent;
   color: var(--gray-800);
@@ -558,10 +590,16 @@
   padding: 0.875rem 1.125rem;
   cursor: pointer;
   list-style: none;
+  min-height: 44px;
 }
 
 .timelineSummary::-webkit-details-marker {
   display: none;
+}
+
+.timelineSummary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .timelineHead {
@@ -580,18 +618,17 @@
 }
 
 .timelineTitle {
-  overflow: hidden;
   color: var(--gray-900);
   font-size: 0.9375rem;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 380px;
+  overflow-wrap: anywhere;
 }
 
 .timelineService {
   color: var(--gray-500);
   font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .timelineRight {
@@ -600,6 +637,19 @@
   gap: 0.625rem;
   flex-wrap: wrap;
 }
+
+.timelineToggle {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--gray-500);
+  transition: transform var(--transition-fast);
+}
+
+.timelineCard[open] .timelineToggle { transform: rotate(90deg); }
 
 .entityChips {
   display: flex;
@@ -615,6 +665,7 @@
   color: var(--color-primary-dark);
   font-size: 0.6875rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .timelineBody {
@@ -628,6 +679,7 @@
   font-size: 0.71875rem;
   font-weight: 800;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .sectionHeading:first-child {
@@ -639,6 +691,7 @@
   font-size: 0.8425rem;
   line-height: 1.6;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .timelineLink {
@@ -649,6 +702,7 @@
   color: var(--color-primary);
   font-size: 0.8125rem;
   font-weight: 700;
+  min-height: 44px;
 }
 
 /* ─── Documentos ─────────────────────────────────────────────── */
@@ -669,11 +723,12 @@
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .selectAll input {
-  width: 15px;
-  height: 15px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--color-primary);
 }
 
@@ -684,9 +739,18 @@
 }
 
 .docsTable input[type='checkbox'] {
-  width: 15px;
-  height: 15px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--color-primary);
+}
+
+.checkboxTarget {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .docLink {
@@ -695,6 +759,8 @@
   gap: 0.5rem;
   color: var(--gray-800);
   font-weight: 600;
+  min-height: 44px;
+  overflow-wrap: anywhere;
 }
 
 .docLink:hover {
@@ -731,6 +797,48 @@
   border-radius: 3px;
 }
 
+.metricDetails {
+  margin-top: 1rem;
+  border-top: 1px solid var(--gray-100);
+  padding-top: 0.5rem;
+}
+
+.metricDetails > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.metricDataWrap { overflow-x: auto; }
+
+.metricDataWrap:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.metricDataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.metricDataTable th,
+.metricDataTable td {
+  border-bottom: 1px solid var(--gray-100);
+  padding: 0.625rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.metricDataTable thead th {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+}
+
 .freqList {
   display: flex;
   flex-direction: column;
@@ -747,12 +855,10 @@
 }
 
 .freqValue {
-  overflow: hidden;
   color: var(--gray-700);
   font-size: 0.8125rem;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .freqBarTrack {
@@ -790,6 +896,7 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
+  min-height: 44px;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
@@ -837,6 +944,7 @@
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
+  min-height: 44px;
   transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
@@ -865,13 +973,108 @@
   }
 }
 
-@media (max-width: 640px) {
-  .timelineTitle {
-    max-width: 220px;
+@media (max-width: 900px) {
+  .recentTable,
+  .recentTable tbody,
+  .docsTable,
+  .docsTable tbody { display: block; width: 100%; }
+
+  .recentTable thead,
+  .docsTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
+
+  .recentTable tbody,
+  .docsTable tbody { display: grid; gap: 0.75rem; }
+
+  .recentTable tbody tr,
+  .docsTable tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border-clinical);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+  }
+
+  .recentTable td,
+  .docsTable td {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(0, 1.3fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .recentTable td::before,
+  .docsTable td::before {
+    content: attr(data-label);
+    color: var(--gray-500);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerCard,
+  .panel { padding: 1rem; }
+
+  .headerTop { align-items: flex-start; }
+
+  .avatar { width: 48px; height: 48px; font-size: 1.125rem; }
+
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .tab { white-space: normal; }
+
+  .historiaToolbar { align-items: stretch; flex-direction: column; }
+  .searchInput { font-size: 1rem; }
+
+  .timeline { padding-left: 1.25rem; }
+  .timelineDot { left: -1.25rem; }
+  .timelineSummary { align-items: flex-start; flex-direction: column; }
+  .timelineTitle { max-width: none; }
+  .timelineRight { width: 100%; }
 
   .docsToolbar {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .docsToolbarActions,
+  .docsToolbarActions .btn { width: 100%; }
+  .docsToolbarActions .btn { justify-content: center; }
+
+  .inactiveBanner { align-items: stretch; flex-direction: column; }
+  .inactiveBanner .btn { width: 100%; justify-content: center; }
+
+  .footerActions .btn { flex: 1 1 9rem; justify-content: center; }
+}
+
+@media (max-width: 420px) {
+  .summaryGrid,
+  .demoGrid { grid-template-columns: 1fr; }
+  .patientName { font-size: 1.25rem; }
+  .recentTable td,
+  .docsTable td { grid-template-columns: 1fr; gap: 0.25rem; }
+  .freqItem { grid-template-columns: 1fr auto; }
+  .freqBarTrack { grid-column: 1 / -1; grid-row: 2; }
+  .chartLegend { align-items: flex-start; flex-direction: column; gap: 0.5rem; }
+  .footerActions { align-items: stretch; flex-direction: column-reverse; }
+  .footerActions .btn { width: 100%; flex-basis: auto; }
+}
+
+@media (forced-colors: active) {
+  .tab:focus-visible,
+  [role='tabpanel']:focus-visible { outline-color: Highlight; }
 }

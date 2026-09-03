@@ -83,10 +83,10 @@ export function EditPatientView({ patientId }: EditPatientViewProps) {
 
       {can(user.permissions, 'patients.update') && patient.isActive && (
         <section className={dangerStyles.dangerZone} aria-labelledby="danger-zone-title">
-          <p id="danger-zone-title" className={dangerStyles.dangerHeader}>
+          <h2 id="danger-zone-title" className={dangerStyles.dangerHeader}>
             <Icon name="warning" size={16} />
             Zona de peligro
-          </p>
+          </h2>
           <div className={dangerStyles.dangerBody}>
             <p className={dangerStyles.dangerText}>
               Desactivar al paciente lo oculta de las listas y bloquea nuevas
@@ -112,7 +112,7 @@ export function EditPatientView({ patientId }: EditPatientViewProps) {
             >
               {isDeactivating ? 'Desactivando…' : 'Desactivar paciente'}
             </button>
-            {deactivateError && <p className={dangerStyles.dangerError}>{deactivateError}</p>}
+            {deactivateError && <p className={dangerStyles.dangerError} role="alert">{deactivateError}</p>}
           </div>
         </section>
       )}

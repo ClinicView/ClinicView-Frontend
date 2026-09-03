@@ -30,6 +30,20 @@ export function UserList() {
     setPendingDeactivate(null);
   }
 
+  function requestDeactivate(id: string) {
+    setPendingDeactivate(id);
+    requestAnimationFrame(() => {
+      document.getElementById(`legacy-confirm-deactivate-${id}`)?.focus();
+    });
+  }
+
+  function cancelDeactivate(id: string) {
+    setPendingDeactivate(null);
+    requestAnimationFrame(() => {
+      document.getElementById(`legacy-deactivate-${id}`)?.focus();
+    });
+  }
+
   async function handleRoleChange(userId: string, roleKey: string) {
     if (!roleKey) return;
     setActingId(userId);
@@ -43,43 +57,45 @@ export function UserList() {
         <span className={styles.count}>
           {users.length} usuario{users.length !== 1 ? 's' : ''}
         </span>
-        <button className={styles.newBtn} onClick={() => router.push('/admin/users/new')}>
+        <button type="button" className={styles.newBtn} onClick={() => router.push('/admin/users/new')}>
           + Nuevo usuario
         </button>
       </div>
 
       {(error || actionError) && (
-        <p className={styles.error}>{error ?? actionError}</p>
+        <p className={styles.error} role="alert">{error ?? actionError}</p>
       )}
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="Usuarios del sistema" tabIndex={0}>
         <table className={styles.table}>
+          <caption className={styles.visuallyHidden}>Usuarios, roles, estado y acciones disponibles</caption>
           <thead>
             <tr>
-              <th>Usuario</th>
-              <th>Profesión</th>
-              <th>Documento</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th scope="col">Usuario</th>
+              <th scope="col">Profesión</th>
+              <th scope="col">Documento</th>
+              <th scope="col">Rol</th>
+              <th scope="col">Último acceso</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className={styles.empty}>Cargando…</td></tr>
+              <tr><td colSpan={7} className={styles.empty}>Cargando…</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={6} className={styles.empty}>No hay usuarios registrados.</td></tr>
+              <tr><td colSpan={7} className={styles.empty}>No hay usuarios registrados.</td></tr>
             ) : (
               users.map((u) => (
                 <tr key={u.id}>
-                  <td>
+                  <td data-label="Usuario">
                     <div className={styles.userPrimary}>{u.fullName}</div>
                     <div className={styles.userMeta}>@{u.username} · {u.email}</div>
                     <div className={styles.userMeta}>Último acceso: {formatDate(u.lastLoginAt)}</div>
                   </td>
-                  <td>{u.profession ?? '—'}</td>
-                  <td>{formatDocument(u)}</td>
-                  <td>
+                  <td data-label="Profesión">{u.profession ?? '—'}</td>
+                  <td data-label="Documento">{formatDocument(u)}</td>
+                  <td data-label="Rol">
                     {u.isActive ? (
                       <select
                         className={styles.select}
@@ -101,18 +117,22 @@ export function UserList() {
                       )
                     )}
                   </td>
-                  <td>{formatDate(u.lastLoginAt)}</td>
-                  <td>
+                  <td data-label="Último acceso">
+                    {u.lastLoginAt ? <time dateTime={u.lastLoginAt}>{formatDate(u.lastLoginAt)}</time> : '—'}
+                  </td>
+                  <td data-label="Estado">
                     <span className={`${styles.badge} ${u.isActive ? styles.active : styles.inactive}`}>
                       {u.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td>
-                    <div className={styles.actions}>
+                  <td data-label="Acciones">
+                    <div className={styles.actions} role="group" aria-label={`Acciones para ${u.fullName}`}>
                       {u.isActive && pendingDeactivate !== u.id && (
                         <button
+                          id={`legacy-deactivate-${u.id}`}
+                          type="button"
                           className={`${styles.btn} ${styles.btnDanger}`}
-                          onClick={() => setPendingDeactivate(u.id)}
+                          onClick={() => requestDeactivate(u.id)}
                           disabled={actingId === u.id}
                         >
                           Desactivar
@@ -121,6 +141,8 @@ export function UserList() {
                       {pendingDeactivate === u.id && (
                         <>
                           <button
+                            id={`legacy-confirm-deactivate-${u.id}`}
+                            type="button"
                             className={`${styles.btn} ${styles.btnDanger}`}
                             onClick={() => void handleDeactivate(u.id)}
                             disabled={actingId === u.id}
@@ -128,8 +150,9 @@ export function UserList() {
                             {actingId === u.id ? 'Desactivando…' : 'Confirmar'}
                           </button>
                           <button
+                            type="button"
                             className={styles.btn}
-                            onClick={() => setPendingDeactivate(null)}
+                            onClick={() => cancelDeactivate(u.id)}
                             disabled={actingId === u.id}
                           >
                             Cancelar

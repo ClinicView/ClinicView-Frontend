@@ -4,6 +4,8 @@
   border-radius: var(--radius-md);
   padding: 2rem;
   max-width: 900px;
+  width: 100%;
+  min-width: 0;
   box-shadow: var(--shadow-sm);
 }
 
@@ -25,6 +27,7 @@
   font-weight: 700;
   color: var(--gray-800);
   margin-bottom: 0.375rem;
+  overflow-wrap: anywhere;
 }
 
 .docLine {
@@ -88,9 +91,11 @@
 }
 
 .fieldValue {
+  margin: 0;
   font-size: 0.9375rem;
   color: var(--gray-700);
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .empty {
@@ -125,6 +130,7 @@
   flex-direction: column;
   gap: 0.35rem;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  min-height: 44px;
 }
 
 .primaryFlow {
@@ -218,6 +224,7 @@
   color: var(--gray-700);
   transition: background var(--transition-fast), border-color var(--transition-fast);
   text-decoration: none;
+  min-height: 44px;
 }
 
 .btn:hover {
@@ -275,4 +282,14 @@
   .grid { grid-template-columns: 1fr; }
   .flowActions { grid-template-columns: 1fr; }
   .card { padding: 1.25rem; }
+  .header { align-items: stretch; flex-direction: column; }
+  .actions .btn { flex: 1 1 9rem; justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .card { padding: 1rem; }
+  .docLine { align-items: flex-start; flex-direction: column; overflow-wrap: anywhere; }
+  .inactiveBadge { margin-left: 0; }
+  .actions { align-items: stretch; flex-direction: column; }
+  .actions .btn { width: 100%; flex-basis: auto; }
 }

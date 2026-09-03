@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge } from '@/shared/ui';
@@ -49,20 +50,24 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
   return (
     <div>
       <div className={styles.toolbar}>
+        <div className={styles.filterField}>
+        <label className={styles.filterLabel} htmlFor="record-status-filter">Estado</label>
         <select
+          id="record-status-filter"
           className={styles.select}
           value={statusFilter ?? ''}
           onChange={(e) => onStatusFilterChange((e.target.value as RecordStatus) || undefined)}
-          aria-label="Filtrar por estado"
         >
           <option value="">Todos los estados</option>
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>
           ))}
         </select>
+        </div>
 
         {can(permissions, 'records.create') && (
           <button
+            type="button"
             className={styles.newBtn}
             onClick={() => router.push(`/patients/${patientId}/records/new`)}
           >
@@ -88,28 +93,34 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
           />
         ) : (
           <table className={styles.table}>
+            <caption className={styles.visuallyHidden}>Registros manuales de atención clínica</caption>
             <thead>
               <tr>
-                <th>Tipo de registro manual</th>
-                <th>Resumen</th>
-                <th>Fecha de atención</th>
-                <th>Estado</th>
+                <th scope="col">Tipo de registro manual</th>
+                <th scope="col">Resumen</th>
+                <th scope="col">Fecha de atención</th>
+                <th scope="col">Estado</th>
               </tr>
             </thead>
             <tbody>
               {data.map((r) => (
-                <tr
-                  key={r.id}
-                  onClick={() => router.push(`/patients/${patientId}/records/${r.id}`)}
-                >
-                  <td>
-                    <span className={styles.recordType}>{TYPE_SHORT[r.recordType]}</span>
+                <tr key={r.id}>
+                  <td data-label="Tipo">
+                    <Link
+                      className={styles.recordLink}
+                      href={`/patients/${patientId}/records/${r.id}`}
+                      aria-label={`Abrir registro: ${TYPE_SHORT[r.recordType]}`}
+                    >
+                      {TYPE_SHORT[r.recordType]}
+                    </Link>
                   </td>
-                  <td>
+                  <td data-label="Resumen">
                     <span className={styles.summary}>{r.summary}</span>
                   </td>
-                  <td>{formatDate(r.attendedAt)}</td>
-                  <td>
+                  <td data-label="Fecha de atención">
+                    <time dateTime={r.attendedAt}>{formatDate(r.attendedAt)}</time>
+                  </td>
+                  <td data-label="Estado">
                     <StatusBadge status={r.status} label={STATUS_LABEL[r.status]} />
                   </td>
                 </tr>
@@ -120,19 +131,19 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
       </div>
 
       {!isLoading && total > 0 && (
-        <div className={styles.pagination}>
-          <span>
+        <nav className={styles.pagination} aria-label="Paginación de registros clínicos">
+          <span aria-live="polite" aria-atomic="true">
             {total} registro{total !== 1 ? 's' : ''} — página {page} de {totalPages}
           </span>
           <div className={styles.paginationBtns}>
-            <button className={styles.pageBtn} onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+            <button type="button" className={styles.pageBtn} onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
               Anterior
             </button>
-            <button className={styles.pageBtn} onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+            <button type="button" className={styles.pageBtn} onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
               Siguiente
             </button>
           </div>
-        </div>
+        </nav>
       )}
     </div>
   );
