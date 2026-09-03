@@ -8,6 +8,9 @@ export type {
   ClinicalHistoryExport,
   ClinicalHistoryExportDocument,
   ClinicalHistoryExportRecord,
+  PatientRegistrationDraft,
+  PatientRegistrationDraftPayload,
+  SavePatientRegistrationDraftData,
 } from './types/patient';
 export {
   listPatients,
@@ -18,6 +21,9 @@ export {
   deactivatePatient,
   activatePatient,
   getPatientStats,
+  getCurrentPatientRegistrationDraft,
+  saveCurrentPatientRegistrationDraft,
+  deleteCurrentPatientRegistrationDraft,
 } from './services/patients.service';
 export type { PatientStats } from './services/patients.service';
 export { usePatients } from './hooks/use-patients';

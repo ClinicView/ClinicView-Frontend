@@ -1,9 +1,11 @@
-import { apiGet, apiPatch, apiPost } from '@/shared/services/api-client';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/shared/services/api-client';
 import type {
   ClinicalHistoryExport,
   CreatePatientData,
   Patient,
+  PatientRegistrationDraft,
   PatientsPage,
+  SavePatientRegistrationDraftData,
   UpdatePatientData,
 } from '../types/patient';
 
@@ -46,6 +48,28 @@ export function getClinicalHistoryExport(id: string): Promise<ClinicalHistoryExp
 
 export function createPatient(data: CreatePatientData): Promise<Patient> {
   return apiPost<Patient>('/patients', data);
+}
+
+export function getCurrentPatientRegistrationDraft(): Promise<PatientRegistrationDraft | null> {
+  return apiGet<PatientRegistrationDraft | undefined>('/patients/draft/current')
+    .then((draft) => draft ?? null);
+}
+
+export function saveCurrentPatientRegistrationDraft(
+  data: SavePatientRegistrationDraftData,
+): Promise<PatientRegistrationDraft> {
+  return apiPut<PatientRegistrationDraft>('/patients/draft/current', data);
+}
+
+export function deleteCurrentPatientRegistrationDraft(
+  draftId: string,
+  expectedVersion: number,
+): Promise<void> {
+  const query = new URLSearchParams({
+    draftId,
+    expectedVersion: String(expectedVersion),
+  });
+  return apiDelete<void>(`/patients/draft/current?${query}`);
 }
 
 export function updatePatient(id: string, data: UpdatePatientData): Promise<Patient> {

@@ -40,6 +40,35 @@ export interface CreatePatientData {
   phone?: string;
   email?: string;
   address?: string;
+  draftId?: string;
+  expectedDraftVersion?: number;
+}
+
+export interface PatientRegistrationDraftPayload {
+  documentType?: DocumentType;
+  documentNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  sex?: Sex;
+  phone?: string;
+  email?: string;
+  address?: string;
+}
+
+export interface PatientRegistrationDraft {
+  id: string;
+  payload: PatientRegistrationDraftPayload;
+  version: number;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavePatientRegistrationDraftData {
+  expectedId?: string;
+  expectedVersion?: number;
+  payload: PatientRegistrationDraftPayload;
 }
 
 export interface UpdatePatientData {
