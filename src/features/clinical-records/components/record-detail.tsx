@@ -11,6 +11,7 @@ import {
   recordDetailsIncludeValue,
 } from '../lib/record-details-presentation';
 import { getRecordTypeDefinition } from '../lib/record-type-definitions';
+import { RecordAttachmentsGallery } from './record-attachments-gallery';
 import { RecordDetailsView } from './record-details-view';
 import styles from './record-detail.module.css';
 
@@ -182,7 +183,10 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
         </>
       )}
 
-      {/* Extensión futura: galería clínica del registro, cuando exista el contrato de adjuntos. */}
+      <RecordAttachmentsGallery
+        recordType={record.recordType}
+        attachments={record.attachments ?? []}
+      />
 
       {showLegacyNotes && (
         <div className={styles.section}>

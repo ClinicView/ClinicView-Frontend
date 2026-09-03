@@ -1,15 +1,42 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import type { ClinicalRecord, RecordDetails, RecordType } from '../types/record';
+import type { ClinicalMediaAsset, ClinicalRecord, RecordDetails, RecordType } from '../types/record';
 import {
+  MAX_RECORD_ATTACHMENTS,
+  MAX_RECORD_MEDIA_FILE_BYTES,
+  MAX_RECORD_MEDIA_TOTAL_BYTES,
   createCorrectionEditorState,
   createEmptyEditorState,
+  moveAttachmentReference,
+  normalizeAttachmentReferences,
   recordEditorFingerprint,
   restoreEditorState,
+  serializeAttachmentReferences,
+  toCreateRecordData,
   toCorrectRecordData,
   toDraftPayload,
+  validateRecordMediaCandidate,
   validateEditorState,
 } from '../../../app/(private)/patients/[id]/records/new/record-form-model';
+
+function assetFixture(id: string, status: ClinicalMediaAsset['status']): ClinicalMediaAsset {
+  return {
+    id,
+    patientId: 'patient-1',
+    originalName: `${id}.png`,
+    mimeType: 'image/png',
+    sizeBytes: 1024,
+    width: 640,
+    height: 480,
+    sha256: 'a'.repeat(64),
+    status,
+    expiresAt: status === 'TEMPORARY' ? '2020-01-22T15:30:00.000Z' : null,
+    version: 1,
+    createdAt: '2020-01-15T15:30:00.000Z',
+    updatedAt: '2020-01-15T15:30:00.000Z',
+    contentUrl: `/patients/patient-1/record-media/${id}/content`,
+  };
+}
 
 function recordFixture(patch: Partial<ClinicalRecord> = {}): ClinicalRecord {
   return {
@@ -39,6 +66,7 @@ function recordFixture(patch: Partial<ClinicalRecord> = {}): ClinicalRecord {
     createdBy: 'user-1',
     updatedAt: '2020-01-15T15:35:00.000Z',
     ...patch,
+    attachments: patch.attachments ?? [],
   };
 }
 
@@ -111,6 +139,94 @@ test('restaura datetime ISO a controles locales y reserva adjuntos tipados', () 
   assert.deepEqual(state.attachments, []);
 });
 
+test('restaura, ordena y serializa referencias de adjuntos del borrador', () => {
+  const state = restoreEditorState({
+    attachments: [
+      { assetId: 'asset-b', caption: '  Vista lateral  ', sortOrder: 2 },
+      { assetId: 'asset-a', sectionKey: '  exam  ', altText: '  Lesión visible  ', sortOrder: 0 },
+      { assetId: 'asset-a', caption: 'duplicado', sortOrder: 1 },
+    ],
+  });
+
+  assert.deepEqual(state.attachments, [
+    {
+      assetId: 'asset-a',
+      sectionKey: 'exam',
+      caption: '',
+      altText: 'Lesión visible',
+      sortOrder: 0,
+    },
+    {
+      assetId: 'asset-b',
+      sectionKey: '',
+      caption: 'Vista lateral',
+      altText: '',
+      sortOrder: 1,
+    },
+  ]);
+  assert.deepEqual(toDraftPayload(state).attachments, [
+    { assetId: 'asset-a', sectionKey: 'exam', altText: 'Lesión visible', sortOrder: 0 },
+    { assetId: 'asset-b', caption: 'Vista lateral', sortOrder: 1 },
+  ]);
+
+  const oversizedDraft = restoreEditorState({
+    attachments: Array.from({ length: MAX_RECORD_ATTACHMENTS + 2 }, (_, index) => ({
+      assetId: `asset-${index}`,
+      sortOrder: index,
+    })),
+  });
+  assert.equal(oversizedDraft.attachments.length, MAX_RECORD_ATTACHMENTS);
+});
+
+test('reordena adjuntos con índices consecutivos y limita la selección de archivos', () => {
+  const references = normalizeAttachmentReferences([
+    { assetId: 'asset-a', sortOrder: 0 },
+    { assetId: 'asset-b', sortOrder: 1 },
+    { assetId: 'asset-c', sortOrder: 2 },
+  ]);
+  assert.deepEqual(
+    serializeAttachmentReferences(moveAttachmentReference(references, 2, 0)),
+    [
+      { assetId: 'asset-c', sortOrder: 0 },
+      { assetId: 'asset-a', sortOrder: 1 },
+      { assetId: 'asset-b', sortOrder: 2 },
+    ],
+  );
+
+  const valid = { name: 'radiografía.png', type: 'image/png', size: 1024 };
+  assert.equal(validateRecordMediaCandidate(valid, { count: 0, totalBytes: 0 }), null);
+  assert.match(validateRecordMediaCandidate(
+    { ...valid, type: 'image/gif' },
+    { count: 0, totalBytes: 0 },
+  ) ?? '', /JPEG o PNG/);
+  assert.match(validateRecordMediaCandidate(
+    { ...valid, size: MAX_RECORD_MEDIA_FILE_BYTES + 1 },
+    { count: 0, totalBytes: 0 },
+  ) ?? '', /10 MiB/);
+  assert.match(validateRecordMediaCandidate(
+    valid,
+    { count: MAX_RECORD_ATTACHMENTS, totalBytes: 0 },
+  ) ?? '', /10 imágenes/);
+  assert.match(validateRecordMediaCandidate(
+    valid,
+    { count: 1, totalBytes: MAX_RECORD_MEDIA_TOTAL_BYTES },
+  ) ?? '', /30 MiB/);
+});
+
+test('el alta envía referencias limpias y en el orden visible', () => {
+  const state = validCommon('CONSULTATION');
+  state.detailsByType.CONSULTATION.chiefComplaint = 'Control clínico';
+  state.attachments = normalizeAttachmentReferences([
+    { assetId: 'asset-b', caption: '  Segunda vista  ', sortOrder: 1 },
+    { assetId: 'asset-a', altText: '  Vista frontal  ', sortOrder: 0 },
+  ]);
+
+  assert.deepEqual(toCreateRecordData(state)?.attachments, [
+    { assetId: 'asset-a', altText: 'Vista frontal', sortOrder: 0 },
+    { assetId: 'asset-b', caption: 'Segunda vista', sortOrder: 1 },
+  ]);
+});
+
 test('inicializa registros legacy sin details ni profesional sin bloquear la corrección', () => {
   const original = recordFixture({
     recordType: 'PROCEDURE',
@@ -176,4 +292,31 @@ test('impide convertir una corrección en otro tipo clínico', () => {
   const state = createCorrectionEditorState(original);
   state.recordType = 'OTHER';
   assert.equal(toCorrectRecordData(state, original), null);
+});
+
+test('la corrección hereda adjuntos y envía explícitamente el nuevo orden o su remoción', () => {
+  const attachedAsset = assetFixture('asset-original', 'ATTACHED');
+  const original = recordFixture({
+    attachments: [{
+      id: 'attachment-1',
+      assetId: attachedAsset.id,
+      sectionKey: 'consultation-main',
+      caption: 'Vista original',
+      altText: null,
+      sortOrder: 0,
+      createdBy: 'user-1',
+      createdAt: '2020-01-15T15:35:00.000Z',
+      asset: attachedAsset,
+    }],
+  });
+  const state = createCorrectionEditorState(original);
+
+  assert.deepEqual(serializeAttachmentReferences(state.attachments), [{
+    assetId: 'asset-original',
+    sectionKey: 'consultation-main',
+    caption: 'Vista original',
+    sortOrder: 0,
+  }]);
+  state.attachments = [];
+  assert.deepEqual(toCorrectRecordData(state, original)?.attachments, []);
 });

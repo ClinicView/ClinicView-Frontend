@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
 import {
   RECORD_TYPE_OPTIONS,
+  RecordMediaUploader,
   createRecord,
+  getRecordTypeDefinition,
   useRecordDraft,
+  useRecordMedia,
   type RecordDetails,
   type RecordPriority,
   type RecordType,
@@ -32,6 +35,7 @@ import {
   toCreateRecordData,
   toDraftPayload,
   validateEditorState,
+  type RecordAttachmentFormReference,
   type RecordEditorState,
   type RecordFormError,
 } from './record-form-model';
@@ -87,6 +91,8 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   const [validationErrors, setValidationErrors] = useState<RecordFormError[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+  const [isReloadingDraft, setIsReloadingDraft] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const [templateNotice, setTemplateNotice] = useState('');
@@ -106,6 +112,14 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
 
   const errorsById = useMemo(() => errorMap(validationErrors), [validationErrors]);
   const patientAge = useMemo(() => ageFromDateOnly(patient?.dateOfBirth), [patient]);
+  const mediaSections = useMemo(() => form.recordType
+    ? getRecordTypeDefinition(form.recordType).sections
+    : [], [form.recordType]);
+  const media = useRecordMedia({
+    patientId,
+    attachments: form.attachments,
+    onAttachmentsChange: updateAttachments,
+  });
 
   useEffect(() => {
     if (draftState.isLoading || hydratedRef.current) return;
@@ -118,8 +132,17 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   }, [draftState.draft, draftState.isLoading]);
 
   useEffect(() => {
-    if (submitted) setValidationErrors(validateEditorState(form));
-  }, [form, submitted]);
+    if (!submitted) return;
+    const errors = validateEditorState(form);
+    if (media.submissionBlockingMessage) {
+      errors.push({
+        id: COMMON_FIELD_IDS.attachments,
+        label: 'Adjuntos',
+        message: media.submissionBlockingMessage,
+      });
+    }
+    setValidationErrors(errors);
+  }, [form, media.submissionBlockingMessage, submitted]);
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -136,7 +159,8 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   }, []);
 
   useEffect(() => {
-    if (!hydratedRef.current || isSubmitting || isDraftSaving
+    if (!hydratedRef.current || isSubmitting || isDiscarding || isReloadingDraft
+      || isDraftSaving || media.isSubmissionBlocked
       || revisionRef.current === savedRevisionRef.current
       || !hasMeaningfulEditorData(form)) return;
     const revision = revisionRef.current;
@@ -156,13 +180,14 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       }
     }, 1400);
     return () => window.clearTimeout(timer);
-  }, [form, isDraftSaving, isSubmitting, saveDraftOnServer]);
+  }, [form, isDiscarding, isDraftSaving, isReloadingDraft, isSubmitting, media.isSubmissionBlocked, saveDraftOnServer]);
 
   useEffect(() => {
     function warnBeforeLeave(event: BeforeUnloadEvent) {
       if (
-        revisionRef.current !== savedRevisionRef.current
-        && hasMeaningfulEditorData(form)
+        (revisionRef.current !== savedRevisionRef.current && hasMeaningfulEditorData(form))
+        || media.hasPendingUploads
+        || media.isRemoving
       ) {
         event.preventDefault();
         event.returnValue = '';
@@ -170,7 +195,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     }
     window.addEventListener('beforeunload', warnBeforeLeave);
     return () => window.removeEventListener('beforeunload', warnBeforeLeave);
-  }, [form]);
+  }, [form, media.hasPendingUploads, media.isRemoving]);
 
   function markChanged(next: RecordEditorState) {
     revisionRef.current += 1;
@@ -189,6 +214,13 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       ...form,
       detailsByType: { ...form.detailsByType, [form.recordType]: details },
     });
+  }
+
+  function updateAttachments(attachments: RecordAttachmentFormReference[]) {
+    revisionRef.current += 1;
+    setSaveStatus('idle');
+    setStatusMessage('Cambios pendientes de guardar.');
+    setForm((current) => ({ ...current, attachments }));
   }
 
   function changeRecordType(type: RecordType | '') {
@@ -254,6 +286,13 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   }
 
   async function saveDraftNow(): Promise<boolean> {
+    if (media.isSubmissionBlocked) {
+      setSaveStatus('error');
+      setStatusMessage(media.hasPendingUploads
+        ? 'Espera a que terminen las cargas antes de guardar el borrador.'
+        : 'Resuelve o quita los archivos con error antes de guardar el borrador.');
+      return false;
+    }
     if (!hasMeaningfulEditorData(form)) {
       setStatusMessage('Completa al menos un campo antes de guardar el borrador.');
       return false;
@@ -276,6 +315,10 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   }
 
   async function leaveForm() {
+    if (media.hasPendingUploads || media.isRemoving) {
+      setStatusMessage('Espera a que finalice la operación de adjuntos antes de salir.');
+      return;
+    }
     const hasUnsaved = revisionRef.current !== savedRevisionRef.current
       && hasMeaningfulEditorData(form);
     if (hasUnsaved) {
@@ -292,34 +335,76 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     if (!window.confirm('Se eliminará este borrador clínico. Esta acción no se puede deshacer. ¿Continuar?')) {
       return;
     }
+    setIsDiscarding(true);
+    let deletedBeforeDraft: string[] = [];
     try {
+      const draftAttachmentIds = new Set(
+        draftState.draft?.payload.attachments?.map(({ assetId }) => assetId) ?? [],
+      );
+      const beforeDraft = await media.cleanupTemporaryAssets(
+        form.attachments.filter(({ assetId }) => !draftAttachmentIds.has(assetId)),
+      );
+      deletedBeforeDraft = beforeDraft.deletedIds;
       if (draftState.draft) await draftState.remove();
+      const afterDraft = await media.cleanupTemporaryAssets(
+        form.attachments.filter(({ assetId }) => draftAttachmentIds.has(assetId)),
+      );
+      const cleanupFailures = [...beforeDraft.failures, ...afterDraft.failures];
+      media.clearUploadErrors();
       setForm(createEmptyEditorState());
       revisionRef.current = 0;
       savedRevisionRef.current = 0;
       setValidationErrors([]);
       setSubmitted(false);
       setSaveStatus('idle');
-      setStatusMessage('Borrador descartado.');
+      setStatusMessage(cleanupFailures.length > 0
+        ? `Borrador descartado. ${cleanupFailures.length} ${cleanupFailures.length === 1 ? 'imagen temporal no pudo eliminarse' : 'imágenes temporales no pudieron eliminarse'} y caducará automáticamente.`
+        : 'Borrador e imágenes temporales descartados.');
     } catch {
+      if (deletedBeforeDraft.length > 0) {
+        setForm((current) => ({
+          ...current,
+          attachments: current.attachments.filter(
+            ({ assetId }) => !deletedBeforeDraft.includes(assetId),
+          ),
+        }));
+      }
       setSaveStatus('error');
-      setStatusMessage('No se pudo descartar el borrador.');
+      setStatusMessage(deletedBeforeDraft.length > 0
+        ? 'No se pudo eliminar el borrador; las imágenes nuevas que no estaban guardadas sí se descartaron.'
+        : 'No se pudo descartar el borrador. No se eliminó ninguna referencia guardada.');
+    } finally {
+      setIsDiscarding(false);
     }
   }
 
   async function reloadServerDraft() {
+    if (media.hasPendingUploads || media.isRemoving) {
+      setStatusMessage('Espera a que finalice la operación de adjuntos antes de recargar el borrador.');
+      return;
+    }
     if (hasMeaningfulEditorData(form) && !window.confirm(
       'Recargar reemplazará los cambios visibles por la versión guardada en el servidor. ¿Continuar?',
     )) return;
+    setIsReloadingDraft(true);
     try {
       const current = await draftState.reload();
+      const retainedIds = new Set(current?.payload.attachments?.map(({ assetId }) => assetId) ?? []);
+      const cleanup = await media.cleanupTemporaryAssets(
+        form.attachments.filter(({ assetId }) => !retainedIds.has(assetId)),
+      );
+      media.clearUploadErrors();
       setForm(current ? restoreEditorState(current.payload) : createEmptyEditorState());
       revisionRef.current = 0;
       savedRevisionRef.current = 0;
       setSaveStatus(current ? 'saved' : 'idle');
-      setStatusMessage(current ? 'Borrador del servidor recargado.' : 'No hay un borrador guardado.');
+      setStatusMessage(cleanup.failures.length > 0
+        ? `${current ? 'Borrador recargado.' : 'No hay un borrador guardado.'} ${cleanup.failures.length} ${cleanup.failures.length === 1 ? 'imagen temporal reemplazada caducará' : 'imágenes temporales reemplazadas caducarán'} automáticamente.`
+        : current ? 'Borrador del servidor recargado.' : 'No hay un borrador guardado.');
     } catch {
       setSaveStatus('error');
+    } finally {
+      setIsReloadingDraft(false);
     }
   }
 
@@ -327,6 +412,13 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     event.preventDefault();
     setSubmitted(true);
     const errors = validateEditorState(form);
+    if (media.submissionBlockingMessage) {
+      errors.push({
+        id: COMMON_FIELD_IDS.attachments,
+        label: 'Adjuntos',
+        message: media.submissionBlockingMessage,
+      });
+    }
     setValidationErrors(errors);
     if (errors.length > 0) {
       window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
@@ -357,7 +449,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     return <PageShell><Alert variant="error">{patientError ?? 'Paciente no encontrado.'}</Alert></PageShell>;
   }
 
-  const commonDisabled = isSubmitting || draftState.isLoading;
+  const commonDisabled = isSubmitting || isDiscarding || isReloadingDraft || draftState.isLoading;
 
   return (
     <PageShell>
@@ -418,7 +510,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
         className={styles.formCard}
         onSubmit={(event) => void handleSubmit(event)}
         noValidate
-        aria-busy={isSubmitting}
+        aria-busy={isSubmitting || isDiscarding || isReloadingDraft}
       >
         {(submitError || validationErrors.length > 0) && (
           <div
@@ -448,7 +540,13 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
           <div className={styles.draftError} role="alert">
             <Icon name="warning" size={18} />
             <span>{draftState.error}</span>
-            <button type="button" onClick={() => void reloadServerDraft()}>Recargar borrador</button>
+            <button
+              type="button"
+              onClick={() => void reloadServerDraft()}
+              disabled={isReloadingDraft || media.hasPendingUploads || media.isRemoving}
+            >
+              {isReloadingDraft ? 'Recargando…' : 'Recargar borrador'}
+            </button>
           </div>
         )}
 
@@ -770,15 +868,14 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
         <section className={styles.formSection} aria-labelledby="attachments-title">
           <div className={styles.sectionHeading}>
             <span className={styles.sectionStep}>3</span>
-            <div><h2 id="attachments-title">Adjuntos</h2><p>Sección preparada para una integración futura.</p></div>
+            <div><h2 id="attachments-title">Adjuntos</h2><p>Imágenes clínicas privadas vinculadas a este registro.</p></div>
           </div>
-          <div className={styles.attachmentPlaceholder}>
-            <span aria-hidden="true"><Icon name="folder" size={22} /></span>
-            <div>
-              <strong>Los adjuntos aún no están disponibles</strong>
-              <p>No se enviará ningún archivo desde este formulario. La historia puede registrarse sin adjuntos.</p>
-            </div>
-          </div>
+          <RecordMediaUploader
+            attachments={form.attachments}
+            sections={mediaSections}
+            controller={media}
+            disabled={commonDisabled}
+          />
         </section>
 
         <div className={styles.draftBar}>
@@ -790,25 +887,38 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
             </p>
           </div>
           {(draftState.draft || hasMeaningfulEditorData(form)) && (
-            <button type="button" onClick={() => void discardDraft()} disabled={commonDisabled || draftState.isSaving}>
-              Descartar borrador
+            <button
+              type="button"
+              onClick={() => void discardDraft()}
+              disabled={commonDisabled || draftState.isSaving || media.hasPendingUploads || media.isRemoving}
+            >
+              {isDiscarding ? 'Descartando…' : 'Descartar borrador'}
             </button>
           )}
         </div>
 
         <div className={styles.stickyActions}>
-          <button className={styles.btn} type="button" onClick={() => void leaveForm()} disabled={isSubmitting}>
+          <button
+            className={styles.btn}
+            type="button"
+            onClick={() => void leaveForm()}
+            disabled={isSubmitting || media.hasPendingUploads || media.isRemoving}
+          >
             Salir
           </button>
           <button
             className={`${styles.btn} ${styles.btnOutline}`}
             type="button"
             onClick={() => void saveDraftNow()}
-            disabled={commonDisabled || draftState.isSaving || !hasMeaningfulEditorData(form)}
+            disabled={commonDisabled || draftState.isSaving || media.isSubmissionBlocked || !hasMeaningfulEditorData(form)}
           >
             {draftState.isSaving || saveStatus === 'saving' ? 'Guardando…' : 'Guardar borrador'}
           </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={commonDisabled}>
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            type="submit"
+            disabled={commonDisabled || media.isSubmissionBlocked}
+          >
             <Icon name="check" size={17} /> {isSubmitting ? 'Registrando…' : 'Registrar atención'}
           </button>
         </div>

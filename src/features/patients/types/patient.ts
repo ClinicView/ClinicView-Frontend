@@ -1,4 +1,5 @@
 import type {
+  ClinicalRecordAttachment,
   RecordDetails,
   RecordSchemaVersion,
 } from '../../clinical-records/types/record';
@@ -85,6 +86,7 @@ export interface ClinicalHistoryExportRecord {
   createdBy: string | null;
   updatedAt: string;
   updatedBy: string | null;
+  attachments: ClinicalRecordAttachment[];
 }
 
 export interface ClinicalHistoryExportDocument {

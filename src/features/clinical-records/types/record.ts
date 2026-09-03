@@ -13,6 +13,45 @@ export type RecordStatus = 'ACTIVE' | 'CORRECTED' | 'VOIDED';
 
 export type RecordPriority = 'URGENT' | 'PRIORITY' | 'NORMAL' | 'ELECTIVE';
 
+export type ClinicalMediaStatus = 'TEMPORARY' | 'ATTACHED';
+
+export interface ClinicalMediaAsset {
+  id: string;
+  patientId: string;
+  originalName: string;
+  mimeType: 'image/jpeg' | 'image/png';
+  sizeBytes: number;
+  width: number;
+  height: number;
+  sha256: string;
+  status: ClinicalMediaStatus;
+  expiresAt: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  contentUrl: string;
+}
+
+export interface RecordAttachmentInput {
+  assetId: string;
+  sectionKey?: string;
+  caption?: string;
+  altText?: string;
+  sortOrder?: number;
+}
+
+export interface ClinicalRecordAttachment {
+  id: string;
+  assetId: string;
+  sectionKey: string | null;
+  caption: string | null;
+  altText: string | null;
+  sortOrder: number;
+  createdBy: string;
+  createdAt: string;
+  asset: ClinicalMediaAsset;
+}
+
 export const RECORD_SCHEMA_VERSION = 1 as const;
 export type RecordSchemaVersion = typeof RECORD_SCHEMA_VERSION;
 
@@ -186,6 +225,7 @@ export interface ClinicalRecord {
   priority: RecordPriority;
   schemaVersion: RecordSchemaVersion;
   details: RecordDetails;
+  attachments: ClinicalRecordAttachment[];
   version: number;
   parentRecordId: string | null;
   voidReason: string | null;
@@ -213,6 +253,7 @@ export interface CreateRecordCommonData {
   preliminaryDiagnosis?: string;
   plan?: string;
   priority?: RecordPriority;
+  attachments?: RecordAttachmentInput[];
   draftId?: string;
 }
 
@@ -240,6 +281,7 @@ export type CorrectRecordData = {
   preliminaryDiagnosis: string | null;
   plan: string | null;
   priority: RecordPriority;
+  attachments: RecordAttachmentInput[];
 } & TypedRecordDetailsPayload;
 
 export interface RecordDraftPayload {
@@ -256,6 +298,7 @@ export interface RecordDraftPayload {
   priority?: RecordPriority;
   schemaVersion?: RecordSchemaVersion;
   details?: DeepPartial<RecordDetails>;
+  attachments?: RecordAttachmentInput[];
 }
 
 export interface RecordDraftResponse {

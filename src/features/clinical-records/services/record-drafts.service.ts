@@ -9,7 +9,8 @@ function currentDraftPath(patientId: string): string {
 }
 
 export function getCurrentRecordDraft(patientId: string): Promise<RecordDraftResponse | null> {
-  return apiGet<RecordDraftResponse | null>(currentDraftPath(patientId));
+  return apiGet<RecordDraftResponse | undefined>(currentDraftPath(patientId))
+    .then((draft) => draft ?? null);
 }
 
 export function saveCurrentRecordDraft(

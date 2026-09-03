@@ -7,6 +7,7 @@ import { useSession } from '@/features/auth';
 import { activatePatient, getClinicalHistoryExport, usePatient } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
 import { RecordDetailsView } from '@/features/clinical-records/components/record-details-view';
+import { RecordAttachmentsGallery } from '@/features/clinical-records/components/record-attachments-gallery';
 import {
   getRecordDetailsPresentation,
   getRecordDetailsSearchText,
@@ -14,6 +15,7 @@ import {
   type RecordDetailsSection,
 } from '@/features/clinical-records/lib/record-details-presentation';
 import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-type-definitions';
+import { RequiredAttachmentResolutionError } from '@/features/clinical-records/lib/record-attachments-presentation';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import {
@@ -249,8 +251,12 @@ export function PatientView({ id }: PatientViewProps) {
     setExportError(null);
     try {
       await exportPatientPdf({ patient, items, subtitle, fileName, orderDescription });
-    } catch {
-      setExportError('No se pudo generar el PDF. Inténtalo nuevamente.');
+    } catch (cause) {
+      setExportError(
+        cause instanceof RequiredAttachmentResolutionError
+          ? cause.message
+          : 'No se pudo generar el PDF. Inténtalo nuevamente.',
+      );
     } finally {
       setIsExporting(false);
     }
@@ -333,8 +339,12 @@ export function PatientView({ id }: PatientViewProps) {
         generatedAt: history.generatedAt,
         orderDescription: 'orden por fecha de atención o de carga, según el tipo de entrada',
       });
-    } catch {
-      setExportError('La historia se obtuvo, pero no se pudo generar el PDF. Inténtalo nuevamente.');
+    } catch (cause) {
+      setExportError(
+        cause instanceof RequiredAttachmentResolutionError
+          ? cause.message
+          : 'La historia se obtuvo, pero no se pudo generar el PDF. Inténtalo nuevamente.',
+      );
     } finally {
       setIsExporting(false);
     }
@@ -780,7 +790,12 @@ export function PatientView({ id }: PatientViewProps) {
                                 />
                               </div>
                             )}
-                            {/* Extensión futura: galería compacta, sin asumir URLs de adjuntos. */}
+                            <RecordAttachmentsGallery
+                              recordType={entry.record.recordType}
+                              attachments={entry.record.attachments ?? []}
+                              headingLevel={3}
+                              variant="compact"
+                            />
                             {entry.record.notes &&
                               !recordDetailsIncludeValue(entry.recordDetails ?? [], entry.record.notes) && (
                               <>

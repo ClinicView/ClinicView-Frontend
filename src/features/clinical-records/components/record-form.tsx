@@ -15,6 +15,7 @@ import {
 import { currentDateTimeLocal } from '@/shared/lib/date-time';
 import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
 import { Icon, type IconName } from '@/shared/ui';
+import { useRecordMedia } from '../hooks/use-record-media';
 import { getRecordTypeDefinition } from '../lib/record-type-definitions';
 import type {
   ClinicalRecord,
@@ -22,6 +23,8 @@ import type {
   RecordDetails,
   RecordPriority,
 } from '../types/record';
+import type { RecordAttachmentFormReference } from '@/app/(private)/patients/[id]/records/new/record-form-model';
+import { RecordMediaUploader } from './record-media-uploader';
 import styles from '@/app/(private)/patients/[id]/records/new/manual-record.module.css';
 
 const SERVICES = [
@@ -70,6 +73,7 @@ export function RecordForm(props: CorrectRecordFormProps) {
   const [validationErrors, setValidationErrors] = useState<RecordFormError[]>([]);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const [doctorOptions, setDoctorOptions] = useState<Professional[]>([]);
@@ -82,10 +86,25 @@ export function RecordForm(props: CorrectRecordFormProps) {
   const errorsById = useMemo(() => errorMap(validationErrors), [validationErrors]);
   const definition = getRecordTypeDefinition(props.original.recordType);
   const isDirty = recordEditorFingerprint(form) !== initialFingerprintRef.current;
+  const media = useRecordMedia({
+    patientId: props.original.patientId,
+    attachments: form.attachments,
+    onAttachmentsChange: updateAttachments,
+    initialAssets: (props.original.attachments ?? []).map(({ asset }) => asset),
+  });
 
   useEffect(() => {
-    if (submitted) setValidationErrors(validateEditorState(form, { mode: 'correct' }));
-  }, [form, submitted]);
+    if (!submitted) return;
+    const errors = validateEditorState(form, { mode: 'correct' });
+    if (media.submissionBlockingMessage) {
+      errors.push({
+        id: COMMON_FIELD_IDS.attachments,
+        label: 'Adjuntos',
+        message: media.submissionBlockingMessage,
+      });
+    }
+    setValidationErrors(errors);
+  }, [form, media.submissionBlockingMessage, submitted]);
 
   useEffect(() => {
     if (!props.error) return;
@@ -108,13 +127,13 @@ export function RecordForm(props: CorrectRecordFormProps) {
 
   useEffect(() => {
     function warnBeforeLeave(event: BeforeUnloadEvent) {
-      if (!isDirty) return;
+      if (!isDirty && !media.hasPendingUploads && !media.isRemoving) return;
       event.preventDefault();
       event.returnValue = '';
     }
     window.addEventListener('beforeunload', warnBeforeLeave);
     return () => window.removeEventListener('beforeunload', warnBeforeLeave);
-  }, [isDirty]);
+  }, [isDirty, media.hasPendingUploads, media.isRemoving]);
 
   function updateCommon(patch: Partial<Omit<RecordEditorState, 'detailsByType' | 'attachments'>>) {
     setForm((current) => ({ ...current, ...patch }));
@@ -128,6 +147,10 @@ export function RecordForm(props: CorrectRecordFormProps) {
         [props.original.recordType]: details,
       },
     }));
+  }
+
+  function updateAttachments(attachments: RecordAttachmentFormReference[]) {
+    setForm((current) => ({ ...current, attachments }));
   }
 
   function searchDoctors(query: string) {
@@ -187,6 +210,13 @@ export function RecordForm(props: CorrectRecordFormProps) {
     event.preventDefault();
     setSubmitted(true);
     const errors = validateEditorState(form, { mode: 'correct' });
+    if (media.submissionBlockingMessage) {
+      errors.push({
+        id: COMMON_FIELD_IDS.attachments,
+        label: 'Adjuntos',
+        message: media.submissionBlockingMessage,
+      });
+    }
     setValidationErrors(errors);
     if (errors.length > 0) {
       window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
@@ -197,9 +227,16 @@ export function RecordForm(props: CorrectRecordFormProps) {
     await props.onSubmit(payload);
   }
 
-  function handleCancel() {
+  async function handleCancel() {
+    if (media.hasPendingUploads || media.isRemoving) return;
     if (isDirty && !window.confirm('Hay cambios sin guardar. ¿Deseas salir de la corrección?')) return;
-    props.onCancel();
+    setIsCancelling(true);
+    try {
+      await media.cleanupTemporaryAssets(form.attachments);
+      props.onCancel();
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   async function handleReloadConflict() {
@@ -208,13 +245,14 @@ export function RecordForm(props: CorrectRecordFormProps) {
     )) return;
     setIsReloading(true);
     try {
+      await media.cleanupTemporaryAssets(form.attachments);
       await props.onReloadConflict();
     } finally {
       setIsReloading(false);
     }
   }
 
-  const disabled = props.isLoading || isReloading;
+  const disabled = props.isLoading || isReloading || isCancelling;
 
   return (
     <>
@@ -222,7 +260,7 @@ export function RecordForm(props: CorrectRecordFormProps) {
         className={styles.formCard}
         onSubmit={(event) => void handleSubmit(event)}
         noValidate
-        aria-busy={props.isLoading}
+        aria-busy={props.isLoading || isReloading || isCancelling}
       >
         <header className={styles.correctionHeader}>
           <div>
@@ -591,26 +629,34 @@ export function RecordForm(props: CorrectRecordFormProps) {
             <span className={styles.sectionStep}>3</span>
             <div>
               <h2 id="correction-attachments-title">Adjuntos</h2>
-              <p>Los archivos asociados se conservan sin cambios en esta versión.</p>
+              <p>Conserva, quita o agrega imágenes para la nueva versión del registro.</p>
             </div>
           </div>
-          <div className={styles.attachmentPlaceholder}>
-            <span aria-hidden="true"><Icon name="folder" size={22} /></span>
-            <div>
-              <strong>Adjuntos conservados</strong>
-              <p>La edición de archivos aún no está disponible desde una corrección.</p>
-            </div>
-          </div>
+          <RecordMediaUploader
+            attachments={form.attachments}
+            sections={definition.sections}
+            controller={media}
+            disabled={disabled}
+          />
         </section>
 
         <div className={styles.stickyActions}>
           <span className={styles.dirtyStatus} role="status">
             {isDirty ? 'Cambios sin guardar' : 'Sin cambios pendientes'}
           </span>
-          <button className={styles.btn} type="button" onClick={handleCancel} disabled={disabled}>
-            Cancelar
+          <button
+            className={styles.btn}
+            type="button"
+            onClick={() => void handleCancel()}
+            disabled={disabled || media.hasPendingUploads || media.isRemoving}
+          >
+            {isCancelling ? 'Saliendo…' : 'Cancelar'}
           </button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} type="submit" disabled={disabled || !isDirty}>
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            type="submit"
+            disabled={disabled || !isDirty || media.isSubmissionBlocked}
+          >
             <Icon name="check" size={17} /> {props.isLoading ? 'Guardando…' : 'Guardar corrección'}
           </button>
         </div>

@@ -17,8 +17,19 @@ import {
   getRecordDetailsPresentation,
   recordDetailsIncludeValue,
 } from '@/features/clinical-records/lib/record-details-presentation';
+import {
+  fitRecordAttachmentDimensions,
+  formatRecordAttachmentSize,
+  getRecordExportAttachments,
+  resolveRequiredAttachmentData,
+  type AttachmentBlobLoader,
+  type AttachmentDataUrlEncoder,
+  type RecordExportAttachment,
+  type ResolvedAttachment,
+} from '@/features/clinical-records/lib/record-attachments-presentation';
 import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-type-definitions';
 import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
+import { apiBlob } from '@/shared/services/api-client';
 import {
   CLINICAL_TIME_ZONE,
   formatDateOnly,
@@ -33,10 +44,14 @@ export type ExportSectionBlock =
   | { kind: 'table'; label?: string; columns: string[]; rows: string[][] };
 
 export interface ExportSection {
+  key?: string;
   title: string;
   content?: string;
   blocks?: ExportSectionBlock[];
 }
+
+export type ExportAttachment = RecordExportAttachment;
+export type ResolvedExportAttachment = ResolvedAttachment<ExportAttachment>;
 
 export interface ExportItem {
   title: string;
@@ -45,7 +60,11 @@ export interface ExportItem {
   status: string;
   origin: string;
   sections: ExportSection[];
-  // Los descriptores de media se agregarán aquí cuando exista su contrato de API.
+  attachments: ExportAttachment[];
+}
+
+interface ResolvedExportItem extends Omit<ExportItem, 'attachments'> {
+  attachments: ResolvedExportAttachment[];
 }
 
 const DOC_STATUS_LABEL: Record<string, string> = {
@@ -164,6 +183,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
+    attachments: [],
   };
 }
 
@@ -234,6 +254,7 @@ export function clinicalHistoryDocumentToExportItem(
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
+    attachments: [],
   };
 }
 
@@ -242,6 +263,11 @@ export function recordToExportItem(
 ): ExportItem {
   const sections: ExportSection[] = [];
   const details = getRecordDetailsPresentation(record.recordType, record.details);
+  const definition = getRecordTypeDefinition(record.recordType);
+  const attachments = getRecordExportAttachments(
+    record.recordType,
+    record.attachments ?? [],
+  );
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
 
   if (professionalName?.trim()) {
@@ -266,9 +292,19 @@ export function recordToExportItem(
   });
   sections.push({ title: 'RESUMEN', content: record.summary });
 
-  for (const detailSection of details) {
+  const detailsBySection = new Map(details.map((section) => [section.id, section]));
+  const attachmentSectionIds = new Set(
+    attachments.flatMap((attachment) =>
+      attachment.sectionId ? [attachment.sectionId] : [],
+    ),
+  );
+
+  for (const definitionSection of definition.sections) {
+    const detailSection = detailsBySection.get(definitionSection.id);
+    if (!detailSection && !attachmentSectionIds.has(definitionSection.id)) continue;
+
     const blocks: ExportSectionBlock[] = [];
-    for (const block of detailSection.blocks) {
+    for (const block of detailSection?.blocks ?? []) {
       if (block.kind === 'fields') {
         blocks.push(
           ...block.fields.map((field) => ({
@@ -289,7 +325,11 @@ export function recordToExportItem(
       }
     }
 
-    sections.push({ title: detailSection.title.toLocaleUpperCase('es-PE'), blocks });
+    sections.push({
+      key: definitionSection.id,
+      title: definitionSection.title.toLocaleUpperCase('es-PE'),
+      ...(blocks.length > 0 && { blocks }),
+    });
   }
 
   if (
@@ -327,13 +367,47 @@ export function recordToExportItem(
   ].filter((line): line is string => Boolean(line));
   sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
   return {
-    title: getRecordTypeDefinition(record.recordType).label,
+    title: definition.label,
     date: record.attendedAt,
     dateLabel: 'Fecha de atención',
     status: record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
     origin: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
     sections,
+    attachments,
   };
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('No se pudo preparar la imagen para el PDF.'));
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen para el PDF.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function resolveExportItemAttachments(
+  items: readonly ExportItem[],
+  loadBlob: AttachmentBlobLoader = apiBlob,
+  encodeDataUrl: AttachmentDataUrlEncoder = blobToDataUrl,
+): Promise<ResolvedExportItem[]> {
+  const resolved: ResolvedExportItem[] = [];
+
+  for (const item of items) {
+    resolved.push({
+      ...item,
+      attachments: await resolveRequiredAttachmentData(
+        item.attachments,
+        loadBlob,
+        encodeDataUrl,
+      ),
+    });
+  }
+
+  return resolved;
 }
 
 export async function exportPatientPdf(options: {
@@ -356,6 +430,7 @@ export async function exportPatientPdf(options: {
   orderDescription?: string;
 }): Promise<void> {
   const { patient, items, subtitle, fileName, generatedAt, orderDescription } = options;
+  const resolvedItems = await resolveExportItemAttachments(items);
   const { pdf, Document, Image: PdfImage, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
   const brandLogoUrl = new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
@@ -480,6 +555,45 @@ export async function exportPatientPdf(options: {
       lineHeight: 1.35,
       color: PDF_COLORS.ink,
     },
+    attachmentBlock: {
+      marginTop: 7,
+      marginBottom: 9,
+      borderWidth: 1,
+      borderColor: '#CBD5E1',
+      borderRadius: 3,
+      backgroundColor: '#F8FAFC',
+      padding: 7,
+    },
+    attachmentLabel: {
+      marginBottom: 5,
+      fontSize: 7.5,
+      fontFamily: 'Helvetica-Bold',
+      letterSpacing: 0.6,
+      color: PDF_COLORS.primary,
+    },
+    attachmentImage: {
+      alignSelf: 'center',
+      objectFit: 'contain',
+      marginBottom: 6,
+    },
+    attachmentCaption: {
+      marginBottom: 2,
+      fontSize: 9,
+      fontFamily: 'Helvetica-Bold',
+      lineHeight: 1.4,
+      color: PDF_COLORS.ink,
+    },
+    attachmentDescription: {
+      marginBottom: 2,
+      fontSize: 8.5,
+      lineHeight: 1.4,
+      color: PDF_COLORS.ink,
+    },
+    attachmentMeta: {
+      fontSize: 7.5,
+      lineHeight: 1.35,
+      color: '#475569',
+    },
     footer: {
       position: 'absolute',
       bottom: 28,
@@ -503,6 +617,38 @@ export async function exportPatientPdf(options: {
     timeZone: CLINICAL_TIME_ZONE,
   });
 
+  const renderAttachment = (attachment: ResolvedExportAttachment) => {
+    const fitted = fitRecordAttachmentDimensions(
+      attachment.width,
+      attachment.height,
+      480,
+      280,
+    );
+
+    return (
+      <View key={attachment.id} style={styles.attachmentBlock} wrap={false}>
+        <Text style={styles.attachmentLabel}>IMAGEN CLÍNICA ADJUNTA</Text>
+        <PdfImage
+          src={attachment.dataUrl}
+          style={[
+            styles.attachmentImage,
+            { width: fitted.width, height: fitted.height },
+          ]}
+        />
+        {attachment.caption && (
+          <Text style={styles.attachmentCaption}>{attachment.caption}</Text>
+        )}
+        <Text style={styles.attachmentDescription}>
+          Descripción: {attachment.description}
+        </Text>
+        <Text style={styles.attachmentMeta}>
+          Archivo: {attachment.originalName} · {attachment.width} × {attachment.height} px ·{' '}
+          {formatRecordAttachmentSize(attachment.sizeBytes)}
+        </Text>
+      </View>
+    );
+  };
+
   const doc = (
     <Document
       title={`${subtitle} — ${patient.lastName}, ${patient.firstName}`}
@@ -524,7 +670,8 @@ export async function exportPatientPdf(options: {
 
         <Text style={styles.coverTitle}>{subtitle}</Text>
         <Text style={styles.coverSubtitle}>
-          {items.length} {items.length === 1 ? 'entrada clínica' : 'entradas clínicas'}
+          {resolvedItems.length}{' '}
+          {resolvedItems.length === 1 ? 'entrada clínica' : 'entradas clínicas'}
           {orderDescription ? ` · ${orderDescription}` : ''}
         </Text>
         <Text style={styles.patientDetails}>
@@ -541,7 +688,7 @@ export async function exportPatientPdf(options: {
           {'\n'}Dirección: {patient.address || 'No registrada'}
         </Text>
 
-        {items.map((item, index) => (
+        {resolvedItems.map((item, index) => (
           <View key={index} style={styles.item} wrap>
             <View style={styles.itemHeader} minPresenceAhead={80}>
               <Text style={styles.itemTitle}>{item.title}</Text>
@@ -632,9 +779,20 @@ export async function exportPatientPdf(options: {
                     </View>
                   );
                 })}
+                {section.key &&
+                  item.attachments
+                    .filter((attachment) => attachment.sectionId === section.key)
+                    .map(renderAttachment)}
               </View>
             ))}
-            {/* Extensión futura: bloques de media del ExportItem, después de sus secciones. */}
+            {item.attachments.some((attachment) => attachment.sectionId === null) && (
+              <View>
+                <Text style={styles.sectionTitle}>IMÁGENES ADJUNTAS</Text>
+                {item.attachments
+                  .filter((attachment) => attachment.sectionId === null)
+                  .map(renderAttachment)}
+              </View>
+            )}
           </View>
         ))}
 

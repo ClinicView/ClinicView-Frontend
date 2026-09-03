@@ -1,12 +1,14 @@
 import {
   RECORD_SCHEMA_VERSION,
   type ClinicalRecord,
+  type ClinicalMediaAsset,
   type CorrectRecordData,
   type DeepPartial,
   type RecordDetails,
   type RecordDetailsByType,
   type RecordDraftPayload,
   type RecordPriority,
+  type RecordAttachmentInput,
   type RecordType,
   type TypedCreateRecordData,
 } from '../../../../../../features/clinical-records/types/record';
@@ -41,13 +43,24 @@ export type RecordDetailsFormState = {
   [Type in RecordType]: RecordDetailsByType[Type];
 };
 
-/** Reserva tipada para referencias de adjuntos cuando exista el contrato media. */
+export const MAX_RECORD_ATTACHMENTS = 10;
+export const MAX_RECORD_MEDIA_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_RECORD_MEDIA_TOTAL_BYTES = 30 * 1024 * 1024;
+export const MAX_ATTACHMENT_CAPTION_LENGTH = 500;
+export const MAX_ATTACHMENT_ALT_TEXT_LENGTH = 500;
+
 export interface RecordAttachmentFormReference {
   assetId: string;
-  sectionKey?: string;
-  caption?: string;
-  altText?: string;
-  sortOrder?: number;
+  sectionKey: string;
+  caption: string;
+  altText: string;
+  sortOrder: number;
+}
+
+export interface RecordMediaFileCandidate {
+  name: string;
+  type: string;
+  size: number;
 }
 
 export interface RecordEditorState extends CommonRecordFormState {
@@ -72,6 +85,7 @@ export const COMMON_FIELD_IDS = {
   preliminaryDiagnosis: 'record-preliminaryDiagnosis',
   plan: 'record-plan',
   priority: 'record-priority',
+  attachments: 'record-attachments',
 } as const;
 
 const COMMON_LABELS: Record<keyof typeof COMMON_FIELD_IDS, string> = {
@@ -85,7 +99,94 @@ const COMMON_LABELS: Record<keyof typeof COMMON_FIELD_IDS, string> = {
   preliminaryDiagnosis: 'Diagnóstico preliminar',
   plan: 'Indicaciones o plan',
   priority: 'Prioridad',
+  attachments: 'Adjuntos',
 };
+
+function attachmentText(value: string | null | undefined): string {
+  return value ?? '';
+}
+
+export function normalizeAttachmentReferences(
+  attachments: readonly RecordAttachmentInput[] = [],
+): RecordAttachmentFormReference[] {
+  const seen = new Set<string>();
+  return attachments
+    .map((attachment, index) => ({ attachment, index }))
+    .filter(({ attachment }) => {
+      const assetId = attachment.assetId.trim();
+      if (!assetId || seen.has(assetId)) return false;
+      seen.add(assetId);
+      return true;
+    })
+    .sort((left, right) => (
+      (left.attachment.sortOrder ?? left.index) - (right.attachment.sortOrder ?? right.index)
+      || left.index - right.index
+    ))
+    .slice(0, MAX_RECORD_ATTACHMENTS)
+    .map(({ attachment }, sortOrder) => ({
+      assetId: attachment.assetId.trim(),
+      sectionKey: attachmentText(attachment.sectionKey).trim(),
+      caption: attachmentText(attachment.caption),
+      altText: attachmentText(attachment.altText),
+      sortOrder,
+    }));
+}
+
+export function serializeAttachmentReferences(
+  attachments: readonly RecordAttachmentFormReference[],
+): RecordAttachmentInput[] {
+  return normalizeAttachmentReferences(attachments).map((attachment, sortOrder) => ({
+    assetId: attachment.assetId,
+    ...(attachment.sectionKey ? { sectionKey: attachment.sectionKey } : {}),
+    ...(attachment.caption.trim() ? { caption: attachment.caption.trim() } : {}),
+    ...(attachment.altText.trim() ? { altText: attachment.altText.trim() } : {}),
+    sortOrder,
+  }));
+}
+
+export function moveAttachmentReference(
+  attachments: readonly RecordAttachmentFormReference[],
+  fromIndex: number,
+  toIndex: number,
+): RecordAttachmentFormReference[] {
+  const normalized = normalizeAttachmentReferences(attachments);
+  if (
+    fromIndex < 0 || fromIndex >= normalized.length
+    || toIndex < 0 || toIndex >= normalized.length
+    || fromIndex === toIndex
+  ) return normalized;
+  const next = [...normalized];
+  const [moved] = next.splice(fromIndex, 1);
+  if (!moved) return normalized;
+  next.splice(toIndex, 0, moved);
+  return next.map((attachment, sortOrder) => ({ ...attachment, sortOrder }));
+}
+
+export function validateRecordMediaCandidate(
+  file: RecordMediaFileCandidate,
+  current: { count: number; totalBytes: number },
+): string | null {
+  if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+    return `${file.name}: selecciona una imagen JPEG o PNG.`;
+  }
+  if (!Number.isFinite(file.size) || file.size <= 0) {
+    return `${file.name}: el archivo está vacío.`;
+  }
+  if (file.size > MAX_RECORD_MEDIA_FILE_BYTES) {
+    return `${file.name}: supera el máximo de 10 MiB por imagen.`;
+  }
+  if (current.count >= MAX_RECORD_ATTACHMENTS) {
+    return `Solo puedes adjuntar ${MAX_RECORD_ATTACHMENTS} imágenes por registro.`;
+  }
+  if (current.totalBytes + file.size > MAX_RECORD_MEDIA_TOTAL_BYTES) {
+    return 'Los adjuntos superarían el máximo agregado de 30 MiB.';
+  }
+  return null;
+}
+
+export function sumRecordMediaBytes(assets: readonly ClinicalMediaAsset[]): number {
+  return assets.reduce((total, asset) => total + asset.sizeBytes, 0);
+}
 
 export function detailFieldId(type: RecordType, path: string): string {
   return `record-details-${type.toLowerCase()}-${path.replaceAll('.', '-')}`;
@@ -307,6 +408,7 @@ export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
     priority: state.priority,
     ...(state.recordType ? { schemaVersion: RECORD_SCHEMA_VERSION } : {}),
     ...(cleanedDetails ? { details: cleanedDetails } : {}),
+    attachments: serializeAttachmentReferences(state.attachments),
   };
 }
 
@@ -323,6 +425,11 @@ export function restoreEditorState(payload: RecordDraftPayload): RecordEditorSta
   next.preliminaryDiagnosis = payload.preliminaryDiagnosis ?? '';
   next.plan = payload.plan ?? '';
   next.priority = payload.priority ?? 'NORMAL';
+  next.attachments = normalizeAttachmentReferences(payload.attachments).map((attachment) => ({
+    ...attachment,
+    caption: attachment.caption.trim(),
+    altText: attachment.altText.trim(),
+  }));
 
   if (payload.recordType && payload.details) {
     const type = payload.recordType;
@@ -369,6 +476,19 @@ function validateCommon(
     add('preliminaryDiagnosis', 'Usa 300 caracteres o menos.');
   }
   if (state.plan.length > 2000) add('plan', 'Usa 2000 caracteres o menos.');
+  if (state.attachments.length > MAX_RECORD_ATTACHMENTS) {
+    add('attachments', `Admite como máximo ${MAX_RECORD_ATTACHMENTS} imágenes.`);
+  }
+  const attachmentIds = state.attachments.map(({ assetId }) => assetId);
+  if (new Set(attachmentIds).size !== attachmentIds.length) {
+    add('attachments', 'No adjuntes la misma imagen más de una vez.');
+  }
+  if (state.attachments.some(({ caption }) => caption.length > MAX_ATTACHMENT_CAPTION_LENGTH)) {
+    add('attachments', `Cada título admite ${MAX_ATTACHMENT_CAPTION_LENGTH} caracteres o menos.`);
+  }
+  if (state.attachments.some(({ altText }) => altText.length > MAX_ATTACHMENT_ALT_TEXT_LENGTH)) {
+    add('attachments', `Cada descripción admite ${MAX_ATTACHMENT_ALT_TEXT_LENGTH} caracteres o menos.`);
+  }
   return errors;
 }
 
@@ -549,6 +669,7 @@ export function toCreateRecordData(
       : {}),
     ...(state.plan.trim() ? { plan: state.plan.trim() } : {}),
     priority: state.priority,
+    attachments: serializeAttachmentReferences(state.attachments),
     ...(draftId ? { draftId } : {}),
   } as TypedCreateRecordData;
 }
@@ -556,7 +677,8 @@ export function toCreateRecordData(
 export function hasMeaningfulEditorData(state: RecordEditorState): boolean {
   if (state.recordType || state.doctorName.trim() || state.professionalLicense.trim()
     || state.service || state.summary.trim() || state.notes.trim()
-    || state.preliminaryDiagnosis.trim() || state.plan.trim()) return true;
+    || state.preliminaryDiagnosis.trim() || state.plan.trim()
+    || state.attachments.length > 0) return true;
   return false;
 }
 
@@ -583,6 +705,13 @@ export function createCorrectionEditorState(record: ClinicalRecord): RecordEdito
     details: record.details && typeof record.details === 'object' && !Array.isArray(record.details)
       ? record.details
       : {},
+    attachments: (record.attachments ?? []).map((attachment) => ({
+      assetId: attachment.assetId,
+      sectionKey: attachment.sectionKey ?? undefined,
+      caption: attachment.caption ?? undefined,
+      altText: attachment.altText ?? undefined,
+      sortOrder: attachment.sortOrder,
+    })),
   });
 }
 
@@ -620,6 +749,7 @@ export function toCorrectRecordData(
     preliminaryDiagnosis: state.preliminaryDiagnosis.trim() || null,
     plan: state.plan.trim() || null,
     priority: state.priority,
+    attachments: serializeAttachmentReferences(state.attachments),
     schemaVersion: RECORD_SCHEMA_VERSION,
     details,
   } as CorrectRecordData;
