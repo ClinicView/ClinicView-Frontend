@@ -1,0 +1,252 @@
+.root {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.section {
+  min-width: 0;
+}
+
+.section + .section {
+  border-top: 1px solid var(--gray-100);
+  padding-top: 1.5rem;
+}
+
+.sectionTitle {
+  margin: 0 0 0.875rem;
+  color: var(--gray-800);
+  font-family: var(--font-figtree), var(--font-atkinson), Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.blocks {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem 1rem;
+  margin: 0;
+}
+
+.field {
+  min-width: 0;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  padding: 0.75rem 0.875rem;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.label {
+  margin: 0 0 0.3rem;
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+}
+
+.value {
+  margin: 0;
+  color: var(--gray-800);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.listBlock,
+.tableBlock {
+  min-width: 0;
+}
+
+.list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--gray-800);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.list li {
+  padding-left: 0.125rem;
+  overflow-wrap: anywhere;
+}
+
+.tableViewport {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-clinical);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.tableViewport:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.table {
+  width: 100%;
+  min-width: 580px;
+  border-collapse: collapse;
+  color: var(--gray-800);
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.table th {
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--surface-tint);
+  color: var(--gray-700);
+  font-size: 0.75rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.table td {
+  border-bottom: 1px solid var(--gray-100);
+  line-height: 1.5;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.compact {
+  gap: 1rem;
+}
+
+.compact .section + .section {
+  padding-top: 1rem;
+}
+
+.compact .sectionTitle {
+  margin-bottom: 0.625rem;
+  color: var(--color-primary-dark);
+  font-size: 0.8125rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.compact .blocks {
+  gap: 0.75rem;
+}
+
+.compact .field {
+  background: var(--bg-surface);
+  padding: 0.625rem 0.75rem;
+}
+
+.compact .value,
+.compact .list {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 700px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldWide {
+    grid-column: auto;
+  }
+
+  .tableViewport {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .table {
+    display: block;
+    min-width: 0;
+  }
+
+  .table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .table tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--border-clinical);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+  }
+
+  .table td {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.8fr) minmax(0, 1.2fr);
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+    padding: 0.625rem 0.75rem;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    font-weight: 750;
+  }
+}
+
+@media (max-width: 480px) {
+  .value,
+  .list,
+  .table td {
+    font-size: 1rem;
+  }
+
+  .table td {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .tableViewport:focus-visible {
+    outline-color: Highlight;
+  }
+}

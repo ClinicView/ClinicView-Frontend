@@ -29,10 +29,11 @@ export function useRecord(patientId: string, recordId: string) {
   }, [load]);
 
   async function doVoid(reason: string): Promise<void> {
+    if (!record) return;
     setIsActing(true);
     setActionError(null);
     try {
-      const updated = await voidRecord(patientId, recordId, reason);
+      const updated = await voidRecord(patientId, recordId, reason, record.version);
       setRecord(updated);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Error al anular la historia.');

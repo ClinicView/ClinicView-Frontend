@@ -13,6 +13,11 @@ import type {
   Patient,
 } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
+import {
+  getRecordDetailsPresentation,
+  recordDetailsIncludeValue,
+} from '@/features/clinical-records/lib/record-details-presentation';
+import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-type-definitions';
 import { CLINICVIEW_BRAND_ASSETS } from '@/shared/brand/assets';
 import {
   CLINICAL_TIME_ZONE,
@@ -22,9 +27,15 @@ import {
 import { parseClinicalSections } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
 
+export type ExportSectionBlock =
+  | { kind: 'text'; label?: string; content: string }
+  | { kind: 'list'; label?: string; items: string[] }
+  | { kind: 'table'; label?: string; columns: string[]; rows: string[][] };
+
 export interface ExportSection {
   title: string;
-  content: string;
+  content?: string;
+  blocks?: ExportSectionBlock[];
 }
 
 export interface ExportItem {
@@ -34,6 +45,7 @@ export interface ExportItem {
   status: string;
   origin: string;
   sections: ExportSection[];
+  // Los descriptores de media se agregarán aquí cuando exista su contrato de API.
 }
 
 const DOC_STATUS_LABEL: Record<string, string> = {
@@ -43,16 +55,6 @@ const DOC_STATUS_LABEL: Record<string, string> = {
   FAILED: 'Error OCR',
   VALIDATED: 'Validado',
   REJECTED: 'Rechazado',
-};
-
-const RECORD_TYPE_LABEL: Record<string, string> = {
-  CONSULTATION: 'Consulta',
-  LAB_RESULT: 'Resultado de laboratorio',
-  PRESCRIPTION: 'Receta',
-  THERAPY_NOTE: 'Nota de terapia',
-  EVOLUTION: 'Evolución',
-  PROCEDURE: 'Procedimiento',
-  OTHER: 'Otro',
 };
 
 const RECORD_PRIORITY_LABEL: Record<string, string> = {
@@ -239,8 +241,21 @@ export function recordToExportItem(
   record: ClinicalRecord | ClinicalHistoryExportRecord,
 ): ExportItem {
   const sections: ExportSection[] = [];
-  if (record.doctorName?.trim()) {
-    sections.push({ title: 'PROFESIONAL', content: record.doctorName.trim() });
+  const details = getRecordDetailsPresentation(record.recordType, record.details);
+  const professionalName = record.professionalNameSnapshot ?? record.doctorName;
+
+  if (professionalName?.trim()) {
+    sections.push({
+      title: 'PROFESIONAL',
+      content: [
+        professionalName.trim(),
+        record.professionalLicenseSnapshot?.trim()
+          ? `Colegiatura / identificador: ${record.professionalLicenseSnapshot.trim()}`
+          : null,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join('\n'),
+    });
   }
   if (record.service?.trim()) {
     sections.push({ title: 'SERVICIO', content: record.service.trim() });
@@ -250,16 +265,46 @@ export function recordToExportItem(
     content: RECORD_PRIORITY_LABEL[record.priority] ?? record.priority,
   });
   sections.push({ title: 'RESUMEN', content: record.summary });
-  if (record.preliminaryDiagnosis?.trim()) {
+
+  for (const detailSection of details) {
+    const blocks: ExportSectionBlock[] = [];
+    for (const block of detailSection.blocks) {
+      if (block.kind === 'fields') {
+        blocks.push(
+          ...block.fields.map((field) => ({
+            kind: 'text' as const,
+            label: field.label,
+            content: field.value,
+          })),
+        );
+      } else if (block.kind === 'list') {
+        blocks.push({ kind: 'list', label: block.label, items: block.items });
+      } else {
+        blocks.push({
+          kind: 'table',
+          label: block.label,
+          columns: block.columns.map((column) => column.label),
+          rows: block.rows,
+        });
+      }
+    }
+
+    sections.push({ title: detailSection.title.toLocaleUpperCase('es-PE'), blocks });
+  }
+
+  if (
+    record.preliminaryDiagnosis?.trim() &&
+    !recordDetailsIncludeValue(details, record.preliminaryDiagnosis)
+  ) {
     sections.push({
       title: 'DIAGNÓSTICO PRELIMINAR',
       content: record.preliminaryDiagnosis.trim(),
     });
   }
-  if (record.plan?.trim()) {
+  if (record.plan?.trim() && !recordDetailsIncludeValue(details, record.plan)) {
     sections.push({ title: 'PLAN', content: record.plan.trim() });
   }
-  if (record.notes?.trim()) {
+  if (record.notes?.trim() && !recordDetailsIncludeValue(details, record.notes)) {
     sections.push({ title: 'NOTAS', content: record.notes.trim() });
   }
   if (record.voidReason?.trim()) {
@@ -273,12 +318,16 @@ export function recordToExportItem(
     'updatedBy' in record && record.updatedBy
       ? `Última actualización (ID): ${record.updatedBy}`
       : null,
+    details.length > 0 && record.schemaVersion
+      ? `Esquema clínico: versión ${record.schemaVersion}`
+      : null,
+    Number.isInteger(record.version) ? `Versión del registro: ${record.version}` : null,
     `Creado: ${formatDateTime(record.createdAt) ?? 'No registrado'}`,
     `Actualizado: ${formatDateTime(record.updatedAt) ?? 'No registrado'}`,
   ].filter((line): line is string => Boolean(line));
   sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
   return {
-    title: RECORD_TYPE_LABEL[record.recordType] ?? record.recordType,
+    title: getRecordTypeDefinition(record.recordType).label,
     date: record.attendedAt,
     dateLabel: 'Fecha de atención',
     status: record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
@@ -366,6 +415,71 @@ export async function exportPatientPdf(options: {
       marginBottom: 4,
     },
     sectionContent: { fontSize: 9.5, lineHeight: 1.55, color: PDF_COLORS.ink },
+    structuredBlock: { marginBottom: 7 },
+    blockLabel: {
+      fontSize: 8,
+      fontFamily: 'Helvetica-Bold',
+      color: PDF_COLORS.ink,
+      marginBottom: 2,
+    },
+    listRow: { flexDirection: 'row', marginBottom: 2 },
+    listBullet: { width: 12, fontSize: 9.5, color: PDF_COLORS.primary },
+    listContent: { flexGrow: 1, flexBasis: 0, fontSize: 9.5, lineHeight: 1.45 },
+    dataTable: {
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderColor: '#CBD5E1',
+    },
+    dataTableRow: { flexDirection: 'row' },
+    dataTableHeader: { backgroundColor: PDF_COLORS.surface },
+    dataTableCell: {
+      flexGrow: 1,
+      flexBasis: 0,
+      borderRightWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: '#CBD5E1',
+      paddingVertical: 4,
+      paddingHorizontal: 3,
+      fontSize: 7.5,
+      lineHeight: 1.3,
+    },
+    dataTableHeading: {
+      fontFamily: 'Helvetica-Bold',
+      color: PDF_COLORS.primary,
+    },
+    dataCards: { gap: 5 },
+    dataCard: {
+      borderWidth: 1,
+      borderColor: '#CBD5E1',
+      borderRadius: 3,
+      paddingVertical: 4,
+      paddingHorizontal: 5,
+    },
+    dataCardTitle: {
+      marginBottom: 3,
+      fontSize: 8,
+      fontFamily: 'Helvetica-Bold',
+      color: PDF_COLORS.primary,
+    },
+    dataCardField: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderColor: '#E2E8F0',
+      paddingVertical: 3,
+    },
+    dataCardLabel: {
+      width: '34%',
+      paddingRight: 4,
+      fontSize: 7.5,
+      fontFamily: 'Helvetica-Bold',
+      color: PDF_COLORS.ink,
+    },
+    dataCardValue: {
+      width: '66%',
+      fontSize: 8,
+      lineHeight: 1.35,
+      color: PDF_COLORS.ink,
+    },
     footer: {
       position: 'absolute',
       bottom: 28,
@@ -438,9 +552,89 @@ export async function exportPatientPdf(options: {
             {item.sections.map((section, sectionIndex) => (
               <View key={sectionIndex}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                <Text style={styles.sectionContent}>{section.content}</Text>
+                {section.content !== undefined && (
+                  <Text style={styles.sectionContent}>{section.content}</Text>
+                )}
+                {section.blocks?.map((block, blockIndex) => {
+                  if (block.kind === 'text') {
+                    return (
+                      <View key={blockIndex} style={styles.structuredBlock}>
+                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
+                        <Text style={styles.sectionContent}>{block.content}</Text>
+                      </View>
+                    );
+                  }
+
+                  if (block.kind === 'list') {
+                    return (
+                      <View key={blockIndex} style={styles.structuredBlock}>
+                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
+                        {block.items.map((listItem, listIndex) => (
+                          <View key={listIndex} style={styles.listRow} wrap={false}>
+                            <Text style={styles.listBullet}>•</Text>
+                            <Text style={styles.listContent}>{listItem}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  }
+
+                  if (block.columns.length > 5) {
+                    return (
+                      <View key={blockIndex} style={styles.structuredBlock}>
+                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
+                        <View style={styles.dataCards}>
+                          {block.rows.map((row, rowIndex) => (
+                            <View key={rowIndex} style={styles.dataCard} wrap={false}>
+                              <Text style={styles.dataCardTitle}>Elemento {rowIndex + 1}</Text>
+                              {row.map((cell, cellIndex) => (
+                                <View key={cellIndex} style={styles.dataCardField}>
+                                  <Text style={styles.dataCardLabel}>
+                                    {block.columns[cellIndex]}
+                                  </Text>
+                                  <Text style={styles.dataCardValue}>{cell}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View key={blockIndex} style={styles.structuredBlock}>
+                      {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
+                      <View style={styles.dataTable}>
+                        <View
+                          style={[styles.dataTableRow, styles.dataTableHeader]}
+                          wrap={false}
+                        >
+                          {block.columns.map((column, columnIndex) => (
+                            <Text
+                              key={columnIndex}
+                              style={[styles.dataTableCell, styles.dataTableHeading]}
+                            >
+                              {column}
+                            </Text>
+                          ))}
+                        </View>
+                        {block.rows.map((row, rowIndex) => (
+                          <View key={rowIndex} style={styles.dataTableRow} wrap={false}>
+                            {row.map((cell, cellIndex) => (
+                              <Text key={cellIndex} style={styles.dataTableCell}>
+                                {cell}
+                              </Text>
+                            ))}
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             ))}
+            {/* Extensión futura: bloques de media del ExportItem, después de sus secciones. */}
           </View>
         ))}
 

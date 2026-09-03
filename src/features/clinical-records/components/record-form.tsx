@@ -143,6 +143,7 @@ export function RecordForm(props: RecordFormProps) {
         return;
       }
       await props.onSubmit({
+        expectedVersion: props.original.version,
         attendedAt:
           attendedAt && attendedAt !== initialAttendedAt
             ? (dateTimeLocalToIso(attendedAt, {

@@ -5,19 +5,14 @@ import { useRouter } from 'next/navigation';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, Alert } from '@/shared/ui';
-import type { RecordType } from '../types/record';
 import { useRecord } from '../hooks/use-record';
+import {
+  getRecordDetailsPresentation,
+  recordDetailsIncludeValue,
+} from '../lib/record-details-presentation';
+import { getRecordTypeDefinition } from '../lib/record-type-definitions';
+import { RecordDetailsView } from './record-details-view';
 import styles from './record-detail.module.css';
-
-const TYPE_LABEL: Record<RecordType, string> = {
-  CONSULTATION: 'Consulta',
-  LAB_RESULT: 'Resultado de laboratorio',
-  PRESCRIPTION: 'Receta / prescripción',
-  THERAPY_NOTE: 'Nota de terapia',
-  EVOLUTION: 'Evolución',
-  PROCEDURE: 'Procedimiento',
-  OTHER: 'Otro',
-};
 
 function formatDateTime(iso: string): string {
   return formatInstant(iso, {
@@ -57,6 +52,16 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
 
   const canCorrect = can(permissions, 'records.correct') && record.status === 'ACTIVE';
   const canVoid = can(permissions, 'records.void') && record.status === 'ACTIVE';
+  const definition = getRecordTypeDefinition(record.recordType);
+  const details = getRecordDetailsPresentation(record.recordType, record.details);
+  const professionalName = record.professionalNameSnapshot ?? record.doctorName;
+  const showLegacyDiagnosis =
+    Boolean(record.preliminaryDiagnosis) &&
+    !recordDetailsIncludeValue(details, record.preliminaryDiagnosis);
+  const showLegacyPlan =
+    Boolean(record.plan) && !recordDetailsIncludeValue(details, record.plan);
+  const showLegacyNotes =
+    Boolean(record.notes) && !recordDetailsIncludeValue(details, record.notes);
 
   async function handleVoid() {
     const trimmed = voidReason.trim();
@@ -77,7 +82,7 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
     <div className={styles.card}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.typeTag}>{TYPE_LABEL[record.recordType]}</h1>
+          <h1 className={styles.typeTag}>{definition.label}</h1>
           {record.parentRecordId && (
             <button
               type="button"
@@ -115,10 +120,16 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
             {record.origin === 'MANUAL' ? 'Entrada manual' : 'Digitalizado'}
           </dd>
         </div>
-        {record.doctorName && (
+        {professionalName && (
           <div className={styles.field}>
             <dt className={styles.fieldLabel}>Médico / profesional</dt>
-            <dd className={styles.fieldValue}>{record.doctorName}</dd>
+            <dd className={styles.fieldValue}>{professionalName}</dd>
+          </div>
+        )}
+        {record.professionalLicenseSnapshot && (
+          <div className={styles.field}>
+            <dt className={styles.fieldLabel}>Colegiatura / identificador</dt>
+            <dd className={styles.fieldValue}>{record.professionalLicenseSnapshot}</dd>
           </div>
         )}
         {record.service && (
@@ -164,21 +175,30 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
         <div className={styles.textBlock}>{record.summary}</div>
       </div>
 
-      {record.notes && (
+      {details.length > 0 && (
+        <>
+          <hr className={styles.divider} />
+          <RecordDetailsView sections={details} />
+        </>
+      )}
+
+      {/* Extensión futura: galería clínica del registro, cuando exista el contrato de adjuntos. */}
+
+      {showLegacyNotes && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Notas adicionales</h2>
           <div className={styles.textBlock}>{record.notes}</div>
         </div>
       )}
 
-      {record.preliminaryDiagnosis && (
+      {showLegacyDiagnosis && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Diagnóstico preliminar</h2>
           <div className={styles.textBlock}>{record.preliminaryDiagnosis}</div>
         </div>
       )}
 
-      {record.plan && (
+      {showLegacyPlan && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Indicaciones / plan</h2>
           <div className={styles.textBlock}>{record.plan}</div>

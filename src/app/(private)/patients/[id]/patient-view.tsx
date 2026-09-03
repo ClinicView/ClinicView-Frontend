@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth';
 import { activatePatient, getClinicalHistoryExport, usePatient } from '@/features/patients';
 import type { ClinicalRecord } from '@/features/clinical-records';
+import { RecordDetailsView } from '@/features/clinical-records/components/record-details-view';
+import {
+  getRecordDetailsPresentation,
+  getRecordDetailsSearchText,
+  recordDetailsIncludeValue,
+  type RecordDetailsSection,
+} from '@/features/clinical-records/lib/record-details-presentation';
+import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-type-definitions';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import {
@@ -41,16 +49,6 @@ const DOC_STATUS_TONE: Record<string, string> = {
   VALIDATED: 'green',
   REJECTED: 'red',
 };
-const RECORD_TYPE_LABEL: Record<string, string> = {
-  CONSULTATION: 'Consulta externa',
-  LAB_RESULT: 'Resultado de laboratorio',
-  PRESCRIPTION: 'Receta',
-  THERAPY_NOTE: 'Nota de terapia',
-  EVOLUTION: 'Hoja de evolución',
-  PROCEDURE: 'Procedimiento',
-  OTHER: 'Documento clínico',
-};
-
 function formatDate(iso: string): string {
   return formatInstant(iso, {
     day: '2-digit',
@@ -84,6 +82,7 @@ interface TimelineEntry {
   searchText: string;
   document?: MedicalDocument;
   record?: ClinicalRecord;
+  recordDetails?: RecordDetailsSection[];
 }
 
 function buildTimeline(
@@ -106,21 +105,33 @@ function buildTimeline(
     document: doc,
   }));
 
-  const recordEntries: TimelineEntry[] = records.map((record) => ({
-    id: `rec-${record.id}`,
-    kind: 'record',
-    date: record.attendedAt,
-    title: RECORD_TYPE_LABEL[record.recordType] ?? record.recordType,
-    statusLabel:
-      record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
-    statusTone: record.status === 'ACTIVE' ? 'green' : record.status === 'CORRECTED' ? 'teal' : 'red',
-    service:
-      [record.doctorName, record.service].filter(Boolean).join(' · ') ||
-      (record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual'),
-    href: `/patients/${patientId}/records/${record.id}`,
-    searchText: [record.summary, record.notes ?? ''].join('\n').toLowerCase(),
-    record,
-  }));
+  const recordEntries: TimelineEntry[] = records.map((record) => {
+    const recordDetails = getRecordDetailsPresentation(record.recordType, record.details);
+    return {
+      id: `rec-${record.id}`,
+      kind: 'record',
+      date: record.attendedAt,
+      title: getRecordTypeDefinition(record.recordType).shortLabel,
+      statusLabel:
+        record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
+      statusTone: record.status === 'ACTIVE' ? 'green' : record.status === 'CORRECTED' ? 'teal' : 'red',
+      service:
+        [record.professionalNameSnapshot ?? record.doctorName, record.service]
+          .filter(Boolean)
+          .join(' · ') ||
+        (record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual'),
+      href: `/patients/${patientId}/records/${record.id}`,
+      searchText: [
+        record.summary,
+        record.notes ?? '',
+        getRecordDetailsSearchText(recordDetails),
+      ]
+        .join('\n')
+        .toLocaleLowerCase('es-PE'),
+      record,
+      recordDetails,
+    };
+  });
 
   return [...docEntries, ...recordEntries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
@@ -760,7 +771,18 @@ export function PatientView({ id }: PatientViewProps) {
                           <>
                             <h3 className={styles.sectionHeading}>Resumen</h3>
                             <p className={styles.sectionText}>{entry.record.summary}</p>
-                            {entry.record.notes && (
+                            {entry.recordDetails && entry.recordDetails.length > 0 && (
+                              <div className={styles.typedRecordDetails}>
+                                <RecordDetailsView
+                                  sections={entry.recordDetails}
+                                  headingLevel={3}
+                                  variant="compact"
+                                />
+                              </div>
+                            )}
+                            {/* Extensión futura: galería compacta, sin asumir URLs de adjuntos. */}
+                            {entry.record.notes &&
+                              !recordDetailsIncludeValue(entry.recordDetails ?? [], entry.record.notes) && (
                               <>
                                 <h3 className={styles.sectionHeading}>Notas</h3>
                                 <p className={styles.sectionText}>{entry.record.notes}</p>

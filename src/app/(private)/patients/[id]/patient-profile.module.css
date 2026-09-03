@@ -673,6 +673,10 @@ a.recentTitle:hover { color: var(--color-primary); text-decoration: underline; }
   padding: 1rem 1.125rem 1.125rem;
 }
 
+.typedRecordDetails {
+  margin-top: 1rem;
+}
+
 .sectionHeading {
   margin: 0.75rem 0 0.25rem;
   color: var(--color-primary-dark);

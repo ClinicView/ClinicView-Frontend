@@ -1,3 +1,8 @@
+import type {
+  RecordDetails,
+  RecordSchemaVersion,
+} from '../../clinical-records/types/record';
+
 export type DocumentType = 'DNI' | 'CE' | 'PAS' | 'OTHER';
 export type Sex = 'M' | 'F' | 'OTHER';
 
@@ -64,10 +69,16 @@ export interface ClinicalHistoryExportRecord {
   summary: string;
   notes: string | null;
   doctorName: string | null;
+  professionalId: string | null;
+  professionalNameSnapshot: string | null;
+  professionalLicenseSnapshot: string | null;
   service: string | null;
   preliminaryDiagnosis: string | null;
   plan: string | null;
   priority: 'URGENT' | 'PRIORITY' | 'NORMAL' | 'ELECTIVE';
+  schemaVersion: RecordSchemaVersion;
+  details: RecordDetails;
+  version: number;
   parentRecordId: string | null;
   voidReason: string | null;
   createdAt: string;

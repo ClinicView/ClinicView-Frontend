@@ -42,6 +42,10 @@ export function voidRecord(
   patientId: string,
   recordId: string,
   reason: string,
+  expectedVersion: number,
 ): Promise<ClinicalRecord> {
-  return apiPatch<ClinicalRecord>(`/patients/${patientId}/records/${recordId}/void`, { reason });
+  return apiPatch<ClinicalRecord>(`/patients/${patientId}/records/${recordId}/void`, {
+    reason,
+    expectedVersion,
+  });
 }
