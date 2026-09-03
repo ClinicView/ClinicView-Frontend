@@ -720,8 +720,7 @@
   }
 
   .brandPanel {
-    position: sticky;
-    top: 0;
+    position: relative;
     min-height: 100vh;
     min-height: 100dvh;
     padding: 1.5rem;
