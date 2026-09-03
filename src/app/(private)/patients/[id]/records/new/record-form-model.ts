@@ -1,5 +1,7 @@
 import {
   RECORD_SCHEMA_VERSION,
+  type ClinicalRecord,
+  type CorrectRecordData,
   type DeepPartial,
   type RecordDetails,
   type RecordDetailsByType,
@@ -201,6 +203,7 @@ function cleanDetailsValue(value: unknown): unknown {
 function convertDetailDateTimes(
   type: RecordType,
   details: Record<string, unknown>,
+  preserveSubMinuteFrom?: Record<string, unknown>,
 ): Record<string, unknown> {
   let converted = details;
   for (const section of RECORD_TYPE_DEFINITIONS[type].sections) {
@@ -208,11 +211,53 @@ function convertDetailDateTimes(
       if (field.kind !== 'datetime-local') continue;
       const localValue = getValueAtPath(converted, field.key);
       if (typeof localValue !== 'string' || !localValue) continue;
-      const iso = dateTimeLocalToIso(localValue);
+      const originalValue = preserveSubMinuteFrom
+        ? getValueAtPath(preserveSubMinuteFrom, field.key)
+        : undefined;
+      const iso = dateTimeLocalToIso(localValue, {
+        preserveSubMinuteFrom: typeof originalValue === 'string' ? originalValue : undefined,
+      });
       if (iso) converted = setValueAtPath(converted, field.key, iso);
     }
   }
   return converted;
+}
+
+function selectDefinedDetails(
+  type: RecordType,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  let selected: Record<string, unknown> = {};
+  for (const section of RECORD_TYPE_DEFINITIONS[type].sections) {
+    for (const field of section.fields) {
+      const value = getValueAtPath(source, field.key);
+      if (value === undefined) continue;
+      if (field.kind === 'repeatable' && Array.isArray(value)) {
+        const rows = value.map((row) => {
+          if (!row || typeof row !== 'object') return {};
+          return Object.fromEntries((field.columns ?? [])
+            .map((column) => [column.key, (row as Record<string, unknown>)[column.key]]));
+        });
+        selected = setValueAtPath(selected, field.key, rows);
+      } else {
+        selected = setValueAtPath(selected, field.key, value);
+      }
+    }
+  }
+  return selected;
+}
+
+function serializeDetails(
+  type: RecordType,
+  details: Record<string, unknown>,
+  preserveSubMinuteFrom?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const selected = selectDefinedDetails(type, details);
+  return cleanDetailsValue(convertDetailDateTimes(
+    type,
+    selected,
+    preserveSubMinuteFrom,
+  )) as Record<string, unknown> | undefined;
 }
 
 function restoreDetailDateTimes(
@@ -240,10 +285,10 @@ export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
   const attendedAt = state.attendedAt ? dateTimeLocalToIso(state.attendedAt) : null;
   const rawDetails = selectedDetails(state);
   const cleanedDetails = state.recordType && rawDetails
-    ? cleanDetailsValue(convertDetailDateTimes(
+    ? serializeDetails(
       state.recordType,
       rawDetails as unknown as Record<string, unknown>,
-    )) as DeepPartial<RecordDetails> | undefined
+    ) as DeepPartial<RecordDetails> | undefined
     : undefined;
 
   return {
@@ -282,7 +327,8 @@ export function restoreEditorState(payload: RecordDraftPayload): RecordEditorSta
   if (payload.recordType && payload.details) {
     const type = payload.recordType;
     const base = next.detailsByType[type] as unknown as Record<string, unknown>;
-    const restored = restoreDetailDateTimes(type, payload.details as Record<string, unknown>);
+    const selected = selectDefinedDetails(type, payload.details as Record<string, unknown>);
+    const restored = restoreDetailDateTimes(type, selected);
     next.detailsByType = {
       ...next.detailsByType,
       [type]: {
@@ -297,7 +343,10 @@ export function restoreEditorState(payload: RecordDraftPayload): RecordEditorSta
   return next;
 }
 
-function validateCommon(state: RecordEditorState): RecordFormError[] {
+function validateCommon(
+  state: RecordEditorState,
+  options: { mode?: 'create' | 'correct' },
+): RecordFormError[] {
   const errors: RecordFormError[] = [];
   const add = (key: keyof typeof COMMON_FIELD_IDS, message: string) => {
     errors.push({ id: COMMON_FIELD_IDS[key], label: COMMON_LABELS[key], message });
@@ -307,7 +356,9 @@ function validateCommon(state: RecordEditorState): RecordFormError[] {
   if (!state.attendedAt) add('attendedAt', 'Ingresa la fecha y hora de atención.');
   else if (!dateTimeLocalToIso(state.attendedAt)) add('attendedAt', 'Ingresa una fecha y hora válida.');
   else if (isFutureDateTimeLocal(state.attendedAt)) add('attendedAt', 'No puede estar en el futuro.');
-  if (!state.doctorName.trim()) add('doctorName', 'Ingresa el profesional responsable.');
+  if (options.mode !== 'correct' && !state.doctorName.trim()) {
+    add('doctorName', 'Ingresa el profesional responsable.');
+  }
   else if (state.doctorName.length > 120) add('doctorName', 'Usa 120 caracteres o menos.');
   if (state.professionalLicense.length > 80) add('professionalLicense', 'Usa 80 caracteres o menos.');
   if (state.service.length > 120) add('service', 'Usa 120 caracteres o menos.');
@@ -422,8 +473,11 @@ function validateRepeatable(
   return errors;
 }
 
-export function validateEditorState(state: RecordEditorState): RecordFormError[] {
-  const errors = validateCommon(state);
+export function validateEditorState(
+  state: RecordEditorState,
+  options: { mode?: 'create' | 'correct' } = {},
+): RecordFormError[] {
+  const errors = validateCommon(state, options);
   if (!state.recordType) return errors;
   const type = state.recordType;
   const details = state.detailsByType[type];
@@ -472,10 +526,10 @@ export function toCreateRecordData(
   const attendedAt = dateTimeLocalToIso(state.attendedAt);
   if (!attendedAt) return null;
   const type = state.recordType;
-  const cleaned = cleanDetailsValue(convertDetailDateTimes(
+  const cleaned = serializeDetails(
     type,
     state.detailsByType[type] as unknown as Record<string, unknown>,
-  )) as RecordDetailsByType[typeof type];
+  ) as unknown as RecordDetailsByType[typeof type];
 
   return {
     recordType: type,
@@ -504,4 +558,73 @@ export function hasMeaningfulEditorData(state: RecordEditorState): boolean {
     || state.service || state.summary.trim() || state.notes.trim()
     || state.preliminaryDiagnosis.trim() || state.plan.trim()) return true;
   return false;
+}
+
+export function createCorrectionEditorState(record: ClinicalRecord): RecordEditorState {
+  return restoreEditorState({
+    recordType: record.recordType,
+    attendedAt: record.attendedAt,
+    summary: record.summary,
+    ...(record.notes ? { notes: record.notes } : {}),
+    ...(record.professionalId ? { professionalId: record.professionalId } : {}),
+    ...((record.professionalNameSnapshot ?? record.doctorName)
+      ? { doctorName: record.professionalNameSnapshot ?? record.doctorName ?? undefined }
+      : {}),
+    ...(record.professionalLicenseSnapshot
+      ? { professionalLicense: record.professionalLicenseSnapshot }
+      : {}),
+    ...(record.service ? { service: record.service } : {}),
+    ...(record.preliminaryDiagnosis
+      ? { preliminaryDiagnosis: record.preliminaryDiagnosis }
+      : {}),
+    ...(record.plan ? { plan: record.plan } : {}),
+    priority: record.priority,
+    schemaVersion: RECORD_SCHEMA_VERSION,
+    details: record.details && typeof record.details === 'object' && !Array.isArray(record.details)
+      ? record.details
+      : {},
+  });
+}
+
+export function toCorrectRecordData(
+  state: RecordEditorState,
+  original: ClinicalRecord,
+): CorrectRecordData | null {
+  if (!state.recordType || state.recordType !== original.recordType) return null;
+  const initialAttendedAt = isoToDateTimeLocal(original.attendedAt);
+  const attendedAt = state.attendedAt === initialAttendedAt
+    ? original.attendedAt
+    : dateTimeLocalToIso(state.attendedAt, { preserveSubMinuteFrom: original.attendedAt });
+  if (!attendedAt) return null;
+  const type = state.recordType;
+  const originalDetails = original.details && typeof original.details === 'object'
+    && !Array.isArray(original.details)
+    ? original.details as unknown as Record<string, unknown>
+    : undefined;
+  const details = serializeDetails(
+    type,
+    state.detailsByType[type] as unknown as Record<string, unknown>,
+    originalDetails,
+  ) as unknown as RecordDetailsByType[typeof type];
+
+  return {
+    expectedVersion: original.version,
+    recordType: type,
+    attendedAt,
+    summary: state.summary.trim(),
+    notes: state.notes.trim() || null,
+    professionalId: state.professionalId || null,
+    doctorName: state.doctorName.trim() || null,
+    professionalLicense: state.professionalLicense.trim() || null,
+    service: state.service.trim() || null,
+    preliminaryDiagnosis: state.preliminaryDiagnosis.trim() || null,
+    plan: state.plan.trim() || null,
+    priority: state.priority,
+    schemaVersion: RECORD_SCHEMA_VERSION,
+    details,
+  } as CorrectRecordData;
+}
+
+export function recordEditorFingerprint(state: RecordEditorState): string {
+  return JSON.stringify(state);
 }

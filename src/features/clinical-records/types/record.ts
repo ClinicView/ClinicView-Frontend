@@ -228,12 +228,19 @@ export interface CreateRecordData extends CreateRecordCommonData {
   details?: RecordDetails;
 }
 
-export interface CorrectRecordData {
+export type CorrectRecordData = {
   expectedVersion: number;
-  attendedAt?: string;
+  attendedAt: string;
   summary: string;
-  notes?: string | null;
-}
+  notes: string | null;
+  professionalId: string | null;
+  doctorName: string | null;
+  professionalLicense: string | null;
+  service: string | null;
+  preliminaryDiagnosis: string | null;
+  plan: string | null;
+  priority: RecordPriority;
+} & TypedRecordDetailsPayload;
 
 export interface RecordDraftPayload {
   recordType?: RecordType;

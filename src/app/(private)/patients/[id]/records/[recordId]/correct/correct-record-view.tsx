@@ -18,9 +18,10 @@ interface CorrectRecordViewProps {
 export function CorrectRecordView({ patientId, recordId }: CorrectRecordViewProps) {
   const { user } = useSession();
   const router = useRouter();
-  const { record, isLoading: loadingRecord, error: loadError } = useRecord(patientId, recordId);
+  const { record, isLoading: loadingRecord, error: loadError, reload } = useRecord(patientId, recordId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isConflict, setIsConflict] = useState(false);
 
   if (!user) return null;
 
@@ -53,26 +54,42 @@ export function CorrectRecordView({ patientId, recordId }: CorrectRecordViewProp
   async function handleSubmit(data: CorrectRecordData) {
     setIsSubmitting(true);
     setSubmitError(null);
+    setIsConflict(false);
     try {
       const corrected = await correctRecord(patientId, recordId, data);
       router.replace(`/patients/${patientId}/records/${corrected.id}`);
     } catch (err) {
+      const conflict = err instanceof ApiError && err.status === 409;
+      setIsConflict(conflict);
       setSubmitError(
-        err instanceof ApiError ? err.message : 'Error al guardar la corrección.',
+        conflict
+          ? 'Este registro fue actualizado desde que abriste la corrección.'
+          : err instanceof ApiError
+            ? err.message
+            : 'Error al guardar la corrección.',
       );
       setIsSubmitting(false);
     }
   }
 
+  async function handleReloadConflict() {
+    setSubmitError(null);
+    setIsConflict(false);
+    await reload();
+  }
+
   return (
     <PageShell>
       <RecordForm
+        key={`${record.id}:${record.version}`}
         mode="correct"
         original={record}
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/patients/${patientId}/records/${recordId}`)}
+        onReloadConflict={handleReloadConflict}
         isLoading={isSubmitting}
         error={submitError}
+        isConflict={isConflict}
       />
     </PageShell>
   );

@@ -54,6 +54,36 @@
   line-height: 1.5;
 }
 
+.correctionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--gray-200);
+  padding-bottom: 1.1rem;
+}
+
+.correctionHeader > div {
+  min-width: 0;
+}
+
+.correctionHeader h1 {
+  margin-top: 0.15rem;
+  color: var(--color-navy-950);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.correctionHeader p {
+  max-width: 48rem;
+  margin-top: 0.35rem;
+  color: var(--gray-600);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 .headerActions {
   display: flex;
   flex-shrink: 0;
@@ -208,6 +238,35 @@
   margin-top: 1.75rem;
   border-top: 1px solid var(--gray-200);
   padding-top: 1.75rem;
+}
+
+.correctionNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-info-border);
+  border-radius: var(--radius-md);
+  background: var(--color-info-light);
+  padding: 0.75rem 0.85rem;
+  color: var(--color-primary-dark);
+}
+
+.correctionNotice svg {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.correctionNotice strong {
+  color: var(--color-navy-950);
+  font-size: 0.8rem;
+}
+
+.correctionNotice p {
+  margin-top: 0.1rem;
+  color: var(--gray-700);
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .sectionHeading {
@@ -368,6 +427,20 @@
 .draftBar button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
+}
+
+.readOnlyField {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  padding: 0.65rem 0.8rem;
+  color: var(--gray-800);
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .fieldHint,
@@ -753,6 +826,13 @@
   backdrop-filter: blur(12px);
 }
 
+.dirtyStatus {
+  margin-right: auto;
+  color: var(--gray-600);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -806,6 +886,48 @@
   color: var(--color-danger-dark);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.conflictRecovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin-top: 0.7rem;
+  border-top: 1px solid var(--color-danger-border);
+  padding-top: 0.7rem;
+}
+
+.conflictRecovery p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.conflictRecovery button {
+  min-height: 44px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 0.55rem 0.75rem;
+  color: var(--color-danger-dark);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conflictRecovery button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.conflictRecovery button:hover:not(:disabled) {
+  background: var(--color-danger-light);
+}
+
+.conflictRecovery button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .errorSummary p,
@@ -1061,8 +1183,14 @@
 }
 
 @media (max-width: 700px) {
-  .pageHeader {
+  .pageHeader,
+  .correctionHeader {
     flex-direction: column;
+  }
+
+  .correctionHeader .headerButton {
+    width: 100%;
+    flex-basis: auto;
   }
 
   .headerActions {
@@ -1113,6 +1241,10 @@
   .stickyActions .btnPrimary {
     grid-column: 1 / -1;
     grid-row: 1;
+  }
+
+  .dirtyStatus {
+    align-self: center;
   }
 }
 
