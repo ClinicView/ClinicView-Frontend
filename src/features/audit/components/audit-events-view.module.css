@@ -687,7 +687,9 @@
   white-space: nowrap;
 }
 
-@media (max-width: 1200px) {
+/* Account for the expanded 18.75rem application sidebar. At narrower desktop
+   widths the viewport is still wide, but the audit content column is not. */
+@media (max-width: 1400px) {
   .primaryFilters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
