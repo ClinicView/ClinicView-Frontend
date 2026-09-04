@@ -663,7 +663,7 @@ export function AuditEventsView() {
                   onChange={(event) =>
                     updateFilter("resourceType", event.target.value)
                   }
-                  placeholder="Ej. DOCUMENT"
+                  placeholder="Ej. MEDICAL_DOCUMENT"
                   autoComplete="off"
                   aria-invalid={filterErrors.resourceType ? true : undefined}
                   aria-describedby={
@@ -682,6 +682,7 @@ export function AuditEventsView() {
                     "ROLE",
                     "AUDIT_EVENT",
                     "DASHBOARD",
+                    "SEARCH",
                   ].map((resource) => (
                     <option key={resource} value={resource} />
                   ))}
