@@ -722,6 +722,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AuditActorResponseDto: {
+            /** @description Username institucional actual del actor. */
+            username: string;
+            /** @description Nombre completo actual del actor. */
+            fullName: string;
+            /** @description Indica si la cuenta del actor continúa activa actualmente. */
+            isActive: boolean;
+        };
         AuditEventResponseDto: {
             /** Format: uuid */
             id: string;
@@ -732,6 +740,10 @@ export interface components {
             outcome: "SUCCESS" | "DENIED" | "FAILED";
             /** Format: uuid */
             actorId?: string | null;
+            /** @description Username del actor al momento exacto del evento; nulo en eventos antiguos o anónimos. */
+            actorUsernameAtEvent?: string | null;
+            /** @description Identidad pública actual del actor; nunca incluye correo ni documento. */
+            actor?: components["schemas"]["AuditActorResponseDto"] | null;
             /** Format: uuid */
             patientId?: string | null;
             resourceType?: string | null;
@@ -1613,6 +1625,7 @@ export interface operations {
                 action?: string;
                 outcome?: "SUCCESS" | "DENIED" | "FAILED";
                 actorId?: string;
+                actorUsername?: string;
                 patientId?: string;
                 resourceType?: string;
                 resourceId?: string;

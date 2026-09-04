@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { PageShell } from '@/shared/components/page-shell';
-import { Alert, EmptyState, Icon, Spinner } from '@/shared/ui';
-import { useAuditEvents } from '../hooks/use-audit-events';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PageShell } from "@/shared/components/page-shell";
+import { Alert, EmptyState, Icon, Spinner } from "@/shared/ui";
+import { useAuditEvents } from "../hooks/use-audit-events";
 import {
   countActiveAuditFilters,
   DEFAULT_AUDIT_LIMIT,
   EMPTY_AUDIT_FILTER_DRAFT,
   parseAuditFilterDraft,
-} from '../lib/audit-query';
+} from "../lib/audit-query";
 import {
   AUDIT_ACTION_OPTIONS,
   AUDIT_OUTCOME_PRESENTATION,
@@ -17,31 +17,36 @@ import {
   formatAuditDate,
   formatAuditDuration,
   getAuditActionLabel,
+  getAuditActorPresentation,
   getAuditPageSummary,
   getAuditResourceLabel,
-} from '../lib/audit-presentation';
+} from "../lib/audit-presentation";
 import type {
   AuditEvent,
   AuditFilterDraft,
   AuditFilterErrors,
   AuditFilterField,
-} from '../types/audit';
-import styles from './audit-events-view.module.css';
+} from "../types/audit";
+import styles from "./audit-events-view.module.css";
 
 const INITIAL_FILTERS = { limit: DEFAULT_AUDIT_LIMIT } as const;
 
-const FILTER_ERROR_TARGETS: Record<AuditFilterField, { id: string; label: string }> = {
-  action: { id: 'audit-action', label: 'Acción' },
-  outcome: { id: 'audit-outcome', label: 'Resultado' },
-  actorId: { id: 'audit-actor', label: 'ID del actor' },
-  patientId: { id: 'audit-patient', label: 'ID del paciente' },
-  resourceType: { id: 'audit-resource-type', label: 'Tipo de recurso' },
-  resourceId: { id: 'audit-resource', label: 'ID del recurso' },
-  requestId: { id: 'audit-request', label: 'ID de solicitud' },
-  fromDate: { id: 'audit-from', label: 'Fecha inicial' },
-  toDate: { id: 'audit-to', label: 'Fecha final' },
-  dateRange: { id: 'audit-from', label: 'Rango de fechas' },
-  limit: { id: 'audit-limit', label: 'Resultados por página' },
+const FILTER_ERROR_TARGETS: Record<
+  AuditFilterField,
+  { id: string; label: string }
+> = {
+  action: { id: "audit-action", label: "Acción" },
+  outcome: { id: "audit-outcome", label: "Resultado" },
+  actorUsername: { id: "audit-actor-username", label: "Usuario del actor" },
+  actorId: { id: "audit-actor", label: "ID del actor" },
+  patientId: { id: "audit-patient", label: "ID del paciente" },
+  resourceType: { id: "audit-resource-type", label: "Tipo de recurso" },
+  resourceId: { id: "audit-resource", label: "ID del recurso" },
+  requestId: { id: "audit-request", label: "ID de solicitud" },
+  fromDate: { id: "audit-from", label: "Fecha inicial" },
+  toDate: { id: "audit-to", label: "Fecha final" },
+  dateRange: { id: "audit-from", label: "Rango de fechas" },
+  limit: { id: "audit-limit", label: "Resultados por página" },
 };
 
 interface CopyableIdProps {
@@ -50,12 +55,18 @@ interface CopyableIdProps {
 }
 
 function CopyableId({ label, value }: CopyableIdProps) {
-  const [feedback, setFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [feedback, setFeedback] = useState<"idle" | "copied" | "failed">(
+    "idle",
+  );
   const resetTimerRef = useRef<number | null>(null);
 
-  useEffect(() => () => {
-    if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current !== null)
+        window.clearTimeout(resetTimerRef.current);
+    },
+    [],
+  );
 
   if (!value) return <span className={styles.notAvailable}>No disponible</span>;
   const copyValue = value;
@@ -63,34 +74,52 @@ function CopyableId({ label, value }: CopyableIdProps) {
   async function copyId() {
     try {
       await navigator.clipboard.writeText(copyValue);
-      setFeedback('copied');
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = window.setTimeout(() => setFeedback('idle'), 1_800);
+      setFeedback("copied");
+      if (resetTimerRef.current !== null)
+        window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = window.setTimeout(
+        () => setFeedback("idle"),
+        1_800,
+      );
     } catch {
-      setFeedback('failed');
+      setFeedback("failed");
     }
   }
 
   return (
     <span className={styles.copyableId}>
       <code className={styles.compactId} title={value}>
-        <span className={styles.visuallyHidden}>{label}: {value}</span>
+        <span className={styles.visuallyHidden}>
+          {label}: {value}
+        </span>
         <span aria-hidden="true">{compactAuditId(value)}</span>
       </code>
       <button
-        className={`${styles.copyButton} ${feedback === 'failed' ? styles.copyButtonError : ''}`}
+        className={`${styles.copyButton} ${feedback === "failed" ? styles.copyButtonError : ""}`}
         type="button"
         onClick={() => void copyId()}
         aria-label={`Copiar ${label}: ${copyValue}`}
-        title={feedback === 'failed'
-          ? 'No se pudo copiar. El identificador completo está en el detalle técnico.'
-          : undefined}
+        title={
+          feedback === "failed"
+            ? "No se pudo copiar. El identificador completo está en el detalle técnico."
+            : undefined
+        }
       >
-        {feedback === 'copied' ? 'Copiado' : feedback === 'failed' ? 'Reintentar' : 'Copiar'}
+        {feedback === "copied"
+          ? "Copiado"
+          : feedback === "failed"
+            ? "Reintentar"
+            : "Copiar"}
       </button>
-      <span className={styles.visuallyHidden} aria-live="polite" aria-atomic="true">
-        {feedback === 'copied' ? `${label} copiado.` : ''}
-        {feedback === 'failed' ? `No se pudo copiar ${label}; está disponible completo en el detalle técnico.` : ''}
+      <span
+        className={styles.visuallyHidden}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {feedback === "copied" ? `${label} copiado.` : ""}
+        {feedback === "failed"
+          ? `No se pudo copiar ${label}; está disponible completo en el detalle técnico.`
+          : ""}
       </span>
     </span>
   );
@@ -98,7 +127,11 @@ function CopyableId({ label, value }: CopyableIdProps) {
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
-  return <span id={id} className={styles.fieldError}>{message}</span>;
+  return (
+    <span id={id} className={styles.fieldError}>
+      {message}
+    </span>
+  );
 }
 
 function TechnicalDetails({ event }: { event: AuditEvent }) {
@@ -107,37 +140,62 @@ function TechnicalDetails({ event }: { event: AuditEvent }) {
       <summary>Detalle técnico</summary>
       <div className={styles.technicalBody}>
         <p className={styles.technicalNotice}>
-          Las huellas seudonimizadas sirven solo para correlación técnica. No revelan la
-          dirección IP ni el navegador original y permanecen ocultas hasta abrir este detalle.
+          Las huellas seudonimizadas sirven solo para correlación técnica. No
+          revelan la dirección IP ni el navegador original y permanecen ocultas
+          hasta abrir este detalle.
         </p>
         <dl className={styles.technicalList}>
           <div>
             <dt>ID del evento</dt>
-            <dd><code>{event.id}</code></dd>
+            <dd>
+              <code>{event.id}</code>
+            </dd>
           </div>
           <div>
             <dt>ID de solicitud</dt>
-            <dd><code>{event.requestId}</code></dd>
+            <dd>
+              <code>{event.requestId}</code>
+            </dd>
           </div>
           <div>
             <dt>ID del actor</dt>
-            <dd><code>{event.actorId ?? 'No disponible'}</code></dd>
+            <dd>
+              <code>{event.actorId ?? "No disponible"}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Usuario en el evento</dt>
+            <dd>
+              <code>
+                {event.actorUsernameAtEvent
+                  ? `@${event.actorUsernameAtEvent}`
+                  : "No disponible"}
+              </code>
+            </dd>
           </div>
           <div>
             <dt>ID del paciente</dt>
-            <dd><code>{event.patientId ?? 'No disponible'}</code></dd>
+            <dd>
+              <code>{event.patientId ?? "No disponible"}</code>
+            </dd>
           </div>
           <div>
             <dt>ID del recurso</dt>
-            <dd><code>{event.resourceId ?? 'No disponible'}</code></dd>
+            <dd>
+              <code>{event.resourceId ?? "No disponible"}</code>
+            </dd>
           </div>
           <div>
             <dt>Huella de red</dt>
-            <dd><code>{event.ipHash ?? 'No disponible'}</code></dd>
+            <dd>
+              <code>{event.ipHash ?? "No disponible"}</code>
+            </dd>
           </div>
           <div>
             <dt>Huella del agente</dt>
-            <dd><code>{event.userAgentHash ?? 'No disponible'}</code></dd>
+            <dd>
+              <code>{event.userAgentHash ?? "No disponible"}</code>
+            </dd>
           </div>
         </dl>
       </div>
@@ -145,9 +203,63 @@ function TechnicalDetails({ event }: { event: AuditEvent }) {
   );
 }
 
+function ActorIdentity({ event }: { event: AuditEvent }) {
+  const actor = getAuditActorPresentation(event);
+  const visibleUsername = actor.usernameAtEvent ?? actor.currentUsername;
+  const explanation =
+    actor.kind === "ANONYMOUS"
+      ? "La solicitud no tuvo una identidad autenticada."
+      : actor.kind === "SYSTEM"
+        ? "Operación sin una cuenta de usuario asociada."
+        : actor.kind === "LEGACY"
+          ? "Evento anterior al snapshot; se muestra la identidad actual."
+          : actor.kind === "UNAVAILABLE"
+            ? "El evento conserva el identificador técnico, pero no tiene una identidad legible disponible."
+            : null;
+
+  return (
+    <div
+      className={styles.actorIdentity}
+      role="group"
+      aria-label={`Actor: ${actor.displayName}${visibleUsername ? `, usuario ${visibleUsername}` : ""}`}
+    >
+      <span className={styles.actorName}>{actor.displayName}</span>
+      {visibleUsername && actor.displayName !== `@${visibleUsername}` && (
+        <code className={styles.actorUsername}>
+          @{visibleUsername}
+          {actor.usernameAtEvent && (
+            <span className={styles.visuallyHidden}>
+              {" "}
+              al momento del evento
+            </span>
+          )}
+        </code>
+      )}
+      <span className={styles.actorMeta}>
+        {actor.identityChanged && actor.currentUsername && (
+          <span className={styles.identityChange}>
+            Ahora @{actor.currentUsername}
+          </span>
+        )}
+        {actor.isInactive && (
+          <span className={styles.inactiveBadge}>Cuenta inactiva</span>
+        )}
+      </span>
+      {explanation && (
+        <span className={styles.actorExplanation}>{explanation}</span>
+      )}
+    </div>
+  );
+}
+
 function OutcomeBadge({ event }: { event: AuditEvent }) {
   const presentation = AUDIT_OUTCOME_PRESENTATION[event.outcome];
-  const icon = event.outcome === 'SUCCESS' ? 'check' : event.outcome === 'DENIED' ? 'lock' : 'warning';
+  const icon =
+    event.outcome === "SUCCESS"
+      ? "check"
+      : event.outcome === "DENIED"
+        ? "lock"
+        : "warning";
 
   return (
     <span
@@ -170,7 +282,9 @@ function AuditEventRow({ event }: { event: AuditEvent }) {
         <span className={styles.timeZone}>Hora de Lima</span>
       </td>
       <td data-label="Evento">
-        <span className={styles.actionLabel}>{getAuditActionLabel(event.action)}</span>
+        <span className={styles.actionLabel}>
+          {getAuditActionLabel(event.action)}
+        </span>
         <code className={styles.actionCode}>{event.action}</code>
       </td>
       <td data-label="Resultado">
@@ -178,12 +292,14 @@ function AuditEventRow({ event }: { event: AuditEvent }) {
         <span className={styles.statusCode}>HTTP {event.statusCode}</span>
       </td>
       <td data-label="Actor">
-        <CopyableId label="ID del actor" value={event.actorId} />
+        <ActorIdentity event={event} />
       </td>
       <td data-label="Contexto">
-        <span className={styles.resourceType}>{getAuditResourceLabel(event.resourceType)}</span>
+        <span className={styles.resourceType}>
+          {getAuditResourceLabel(event.resourceType)}
+        </span>
         <CopyableId
-          label={event.patientId ? 'ID del paciente' : 'ID del recurso'}
+          label={event.patientId ? "ID del paciente" : "ID del recurso"}
           value={event.patientId ?? event.resourceId}
         />
       </td>
@@ -192,7 +308,9 @@ function AuditEventRow({ event }: { event: AuditEvent }) {
           <strong>{event.method}</strong>
           <code>{event.route}</code>
         </span>
-        <span className={styles.duration}>{formatAuditDuration(event.durationMs)}</span>
+        <span className={styles.duration}>
+          {formatAuditDuration(event.durationMs)}
+        </span>
       </td>
       <td data-label="Más información">
         <TechnicalDetails event={event} />
@@ -224,14 +342,19 @@ export function AuditEventsView() {
 
   const summary = useMemo(() => getAuditPageSummary(events), [events]);
   const activeFilterCount = countActiveAuditFilters(filters);
-  const filterErrorItems = (Object.entries(filterErrors) as Array<[AuditFilterField, string]>)
-    .map(([field, message]) => ({ ...FILTER_ERROR_TARGETS[field], field, message }));
+  const filterErrorItems = (
+    Object.entries(filterErrors) as Array<[AuditFilterField, string]>
+  ).map(([field, message]) => ({
+    ...FILTER_ERROR_TARGETS[field],
+    field,
+    message,
+  }));
   const advancedHasErrors = Boolean(
-    filterErrors.actorId
-    || filterErrors.patientId
-    || filterErrors.resourceType
-    || filterErrors.resourceId
-    || filterErrors.requestId,
+    filterErrors.actorId ||
+    filterErrors.patientId ||
+    filterErrors.resourceType ||
+    filterErrors.resourceId ||
+    filterErrors.requestId,
   );
 
   useEffect(() => {
@@ -240,15 +363,22 @@ export function AuditEventsView() {
     }
   }, [advancedHasErrors]);
 
-  function updateFilter<K extends keyof AuditFilterDraft>(key: K, value: AuditFilterDraft[K]) {
+  function updateFilter<K extends keyof AuditFilterDraft>(
+    key: K,
+    value: AuditFilterDraft[K],
+  ) {
     setFilterDraft((current) => ({ ...current, [key]: value }));
     setFilterErrors((current) => {
-      if (!current[key] && !(key === 'fromDate' || key === 'toDate') && !current.dateRange) {
+      if (
+        !current[key] &&
+        !(key === "fromDate" || key === "toDate") &&
+        !current.dateRange
+      ) {
         return current;
       }
       const next = { ...current };
       delete next[key];
-      if (key === 'fromDate' || key === 'toDate') delete next.dateRange;
+      if (key === "fromDate" || key === "toDate") delete next.dateRange;
       return next;
     });
   }
@@ -259,11 +389,11 @@ export function AuditEventsView() {
     setFilterErrors(parsed.errors);
     if (!parsed.filters) {
       if (
-        parsed.errors.actorId
-        || parsed.errors.patientId
-        || parsed.errors.resourceType
-        || parsed.errors.resourceId
-        || parsed.errors.requestId
+        parsed.errors.actorId ||
+        parsed.errors.patientId ||
+        parsed.errors.resourceType ||
+        parsed.errors.resourceId ||
+        parsed.errors.requestId
       ) {
         if (advancedFiltersRef.current) advancedFiltersRef.current.open = true;
       }
@@ -279,7 +409,9 @@ export function AuditEventsView() {
     setFilterDraft({ ...EMPTY_AUDIT_FILTER_DRAFT });
     setFilterErrors({});
     applyFilters({ limit: DEFAULT_AUDIT_LIMIT });
-    requestAnimationFrame(() => document.getElementById('audit-action')?.focus());
+    requestAnimationFrame(() =>
+      document.getElementById("audit-action")?.focus(),
+    );
   }
 
   return (
@@ -292,22 +424,29 @@ export function AuditEventsView() {
           <p className={styles.eyebrow}>Seguridad y trazabilidad</p>
           <h1 className={styles.title}>Auditoría del sistema</h1>
           <p className={styles.subtitle}>
-            Consulta el historial técnico inmutable de accesos y operaciones. Los actores se
-            identifican por UUID para no exponer datos del directorio de usuarios.
+            Consulta el historial técnico inmutable de accesos y operaciones. La
+            identidad muestra el nombre actual y conserva el usuario
+            institucional registrado al momento del evento.
           </p>
         </div>
       </header>
 
-      <section className={styles.filterPanel} aria-labelledby="audit-filters-title">
+      <section
+        className={styles.filterPanel}
+        aria-labelledby="audit-filters-title"
+      >
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="audit-filters-title">Filtrar eventos</h2>
-            <p>Las fechas se interpretan como días completos en la zona horaria de Lima.</p>
+            <p>
+              Las fechas se interpretan como días completos en la zona horaria
+              de Lima.
+            </p>
           </div>
           <span className={styles.filterCount} aria-live="polite">
             {activeFilterCount === 0
-              ? 'Sin filtros activos'
-              : `${activeFilterCount} filtro${activeFilterCount === 1 ? '' : 's'} activo${activeFilterCount === 1 ? '' : 's'}`}
+              ? "Sin filtros activos"
+              : `${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} activo${activeFilterCount === 1 ? "" : "s"}`}
           </span>
         </div>
 
@@ -320,7 +459,9 @@ export function AuditEventsView() {
               tabIndex={-1}
               aria-labelledby="audit-filter-errors-title"
             >
-              <p id="audit-filter-errors-title">Revisa los filtros antes de continuar:</p>
+              <p id="audit-filter-errors-title">
+                Revisa los filtros antes de continuar:
+              </p>
               <ul>
                 {filterErrorItems.map((item) => (
                   <li key={item.field}>
@@ -341,16 +482,48 @@ export function AuditEventsView() {
                 type="text"
                 list="audit-actions"
                 value={filterDraft.action}
-                onChange={(event) => updateFilter('action', event.target.value)}
+                onChange={(event) => updateFilter("action", event.target.value)}
                 placeholder="Ej. PATIENT_VIEWED"
                 autoComplete="off"
                 aria-invalid={filterErrors.action ? true : undefined}
-                aria-describedby={filterErrors.action ? 'audit-action-error' : undefined}
+                aria-describedby={
+                  filterErrors.action ? "audit-action-error" : undefined
+                }
               />
               <datalist id="audit-actions">
-                {AUDIT_ACTION_OPTIONS.map((action) => <option key={action} value={action} />)}
+                {AUDIT_ACTION_OPTIONS.map((action) => (
+                  <option key={action} value={action} />
+                ))}
               </datalist>
-              <FieldError id="audit-action-error" message={filterErrors.action} />
+              <FieldError
+                id="audit-action-error"
+                message={filterErrors.action}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="audit-actor-username">Usuario del actor</label>
+              <input
+                id="audit-actor-username"
+                type="text"
+                value={filterDraft.actorUsername}
+                onChange={(event) =>
+                  updateFilter("actorUsername", event.target.value)
+                }
+                placeholder="Ej. @mlopez"
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={filterErrors.actorUsername ? true : undefined}
+                aria-describedby={
+                  filterErrors.actorUsername
+                    ? "audit-actor-username-error"
+                    : undefined
+                }
+              />
+              <FieldError
+                id="audit-actor-username-error"
+                message={filterErrors.actorUsername}
+              />
             </div>
 
             <div className={styles.field}>
@@ -358,7 +531,12 @@ export function AuditEventsView() {
               <select
                 id="audit-outcome"
                 value={filterDraft.outcome}
-                onChange={(event) => updateFilter('outcome', event.target.value as AuditFilterDraft['outcome'])}
+                onChange={(event) =>
+                  updateFilter(
+                    "outcome",
+                    event.target.value as AuditFilterDraft["outcome"],
+                  )
+                }
               >
                 <option value="">Todos los resultados</option>
                 <option value="SUCCESS">Correcto</option>
@@ -373,9 +551,13 @@ export function AuditEventsView() {
                 id="audit-from"
                 type="date"
                 value={filterDraft.fromDate}
-                onChange={(event) => updateFilter('fromDate', event.target.value)}
+                onChange={(event) =>
+                  updateFilter("fromDate", event.target.value)
+                }
                 aria-invalid={filterErrors.dateRange ? true : undefined}
-                aria-describedby={filterErrors.dateRange ? 'audit-date-error' : undefined}
+                aria-describedby={
+                  filterErrors.dateRange ? "audit-date-error" : undefined
+                }
               />
             </div>
 
@@ -385,11 +567,16 @@ export function AuditEventsView() {
                 id="audit-to"
                 type="date"
                 value={filterDraft.toDate}
-                onChange={(event) => updateFilter('toDate', event.target.value)}
+                onChange={(event) => updateFilter("toDate", event.target.value)}
                 aria-invalid={filterErrors.dateRange ? true : undefined}
-                aria-describedby={filterErrors.dateRange ? 'audit-date-error' : undefined}
+                aria-describedby={
+                  filterErrors.dateRange ? "audit-date-error" : undefined
+                }
               />
-              <FieldError id="audit-date-error" message={filterErrors.dateRange} />
+              <FieldError
+                id="audit-date-error"
+                message={filterErrors.dateRange}
+              />
             </div>
 
             <div className={styles.field}>
@@ -397,9 +584,11 @@ export function AuditEventsView() {
               <select
                 id="audit-limit"
                 value={filterDraft.limit}
-                onChange={(event) => updateFilter('limit', event.target.value)}
+                onChange={(event) => updateFilter("limit", event.target.value)}
                 aria-invalid={filterErrors.limit ? true : undefined}
-                aria-describedby={filterErrors.limit ? 'audit-limit-error' : undefined}
+                aria-describedby={
+                  filterErrors.limit ? "audit-limit-error" : undefined
+                }
               >
                 <option value="10">10</option>
                 <option value="25">25</option>
@@ -413,7 +602,9 @@ export function AuditEventsView() {
           <details ref={advancedFiltersRef} className={styles.advancedFilters}>
             <summary>
               <span>Filtros técnicos</span>
-              <span className={styles.advancedHint}>UUID y tipo de recurso</span>
+              <span className={styles.advancedHint}>
+                UUID y tipo de recurso
+              </span>
             </summary>
             <div className={styles.advancedGrid}>
               <div className={styles.field}>
@@ -422,14 +613,21 @@ export function AuditEventsView() {
                   id="audit-actor"
                   type="text"
                   value={filterDraft.actorId}
-                  onChange={(event) => updateFilter('actorId', event.target.value)}
+                  onChange={(event) =>
+                    updateFilter("actorId", event.target.value)
+                  }
                   placeholder="UUID del usuario"
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={filterErrors.actorId ? true : undefined}
-                  aria-describedby={filterErrors.actorId ? 'audit-actor-error' : undefined}
+                  aria-describedby={
+                    filterErrors.actorId ? "audit-actor-error" : undefined
+                  }
                 />
-                <FieldError id="audit-actor-error" message={filterErrors.actorId} />
+                <FieldError
+                  id="audit-actor-error"
+                  message={filterErrors.actorId}
+                />
               </div>
 
               <div className={styles.field}>
@@ -438,14 +636,21 @@ export function AuditEventsView() {
                   id="audit-patient"
                   type="text"
                   value={filterDraft.patientId}
-                  onChange={(event) => updateFilter('patientId', event.target.value)}
+                  onChange={(event) =>
+                    updateFilter("patientId", event.target.value)
+                  }
                   placeholder="UUID del paciente"
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={filterErrors.patientId ? true : undefined}
-                  aria-describedby={filterErrors.patientId ? 'audit-patient-error' : undefined}
+                  aria-describedby={
+                    filterErrors.patientId ? "audit-patient-error" : undefined
+                  }
                 />
-                <FieldError id="audit-patient-error" message={filterErrors.patientId} />
+                <FieldError
+                  id="audit-patient-error"
+                  message={filterErrors.patientId}
+                />
               </div>
 
               <div className={styles.field}>
@@ -455,25 +660,36 @@ export function AuditEventsView() {
                   type="text"
                   list="audit-resource-types"
                   value={filterDraft.resourceType}
-                  onChange={(event) => updateFilter('resourceType', event.target.value)}
+                  onChange={(event) =>
+                    updateFilter("resourceType", event.target.value)
+                  }
                   placeholder="Ej. DOCUMENT"
                   autoComplete="off"
                   aria-invalid={filterErrors.resourceType ? true : undefined}
-                  aria-describedby={filterErrors.resourceType ? 'audit-resource-type-error' : undefined}
+                  aria-describedby={
+                    filterErrors.resourceType
+                      ? "audit-resource-type-error"
+                      : undefined
+                  }
                 />
                 <datalist id="audit-resource-types">
                   {[
-                    'USER',
-                    'PATIENT',
-                    'CLINICAL_RECORD',
-                    'MEDICAL_DOCUMENT',
-                    'CLINICAL_MEDIA',
-                    'ROLE',
-                    'AUDIT_EVENT',
-                    'DASHBOARD',
-                  ].map((resource) => <option key={resource} value={resource} />)}
+                    "USER",
+                    "PATIENT",
+                    "CLINICAL_RECORD",
+                    "MEDICAL_DOCUMENT",
+                    "CLINICAL_MEDIA",
+                    "ROLE",
+                    "AUDIT_EVENT",
+                    "DASHBOARD",
+                  ].map((resource) => (
+                    <option key={resource} value={resource} />
+                  ))}
                 </datalist>
-                <FieldError id="audit-resource-type-error" message={filterErrors.resourceType} />
+                <FieldError
+                  id="audit-resource-type-error"
+                  message={filterErrors.resourceType}
+                />
               </div>
 
               <div className={styles.field}>
@@ -482,14 +698,21 @@ export function AuditEventsView() {
                   id="audit-resource"
                   type="text"
                   value={filterDraft.resourceId}
-                  onChange={(event) => updateFilter('resourceId', event.target.value)}
+                  onChange={(event) =>
+                    updateFilter("resourceId", event.target.value)
+                  }
                   placeholder="UUID del recurso"
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={filterErrors.resourceId ? true : undefined}
-                  aria-describedby={filterErrors.resourceId ? 'audit-resource-error' : undefined}
+                  aria-describedby={
+                    filterErrors.resourceId ? "audit-resource-error" : undefined
+                  }
                 />
-                <FieldError id="audit-resource-error" message={filterErrors.resourceId} />
+                <FieldError
+                  id="audit-resource-error"
+                  message={filterErrors.resourceId}
+                />
               </div>
 
               <div className={styles.field}>
@@ -498,14 +721,21 @@ export function AuditEventsView() {
                   id="audit-request"
                   type="text"
                   value={filterDraft.requestId}
-                  onChange={(event) => updateFilter('requestId', event.target.value)}
+                  onChange={(event) =>
+                    updateFilter("requestId", event.target.value)
+                  }
                   placeholder="UUID de correlación"
                   autoComplete="off"
                   spellCheck={false}
                   aria-invalid={filterErrors.requestId ? true : undefined}
-                  aria-describedby={filterErrors.requestId ? 'audit-request-error' : undefined}
+                  aria-describedby={
+                    filterErrors.requestId ? "audit-request-error" : undefined
+                  }
                 />
-                <FieldError id="audit-request-error" message={filterErrors.requestId} />
+                <FieldError
+                  id="audit-request-error"
+                  message={filterErrors.requestId}
+                />
               </div>
             </div>
           </details>
@@ -515,25 +745,47 @@ export function AuditEventsView() {
               <Icon name="search" size={17} />
               Aplicar filtros
             </button>
-            <button className={styles.secondaryButton} type="button" onClick={clearFilters}>
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              onClick={clearFilters}
+            >
               Limpiar filtros
             </button>
           </div>
         </form>
       </section>
 
-      <section className={styles.resultsPanel} aria-labelledby="audit-results-title" aria-busy={isLoading}>
+      <section
+        className={styles.resultsPanel}
+        aria-labelledby="audit-results-title"
+        aria-busy={isLoading}
+      >
         <div className={styles.resultsHeader}>
           <div>
             <h2 id="audit-results-title">Eventos registrados</h2>
-            <p>Mostrando la página {page} en orden del más reciente al más antiguo.</p>
+            <p>
+              Mostrando la página {page} en orden del más reciente al más
+              antiguo.
+            </p>
           </div>
           {!isLoading && !error && (
-            <div className={styles.pageSummary} aria-label="Resumen de la página actual">
-              <span><strong>{summary.total}</strong> eventos</span>
-              <span className={styles.summarySuccess}><strong>{summary.success}</strong> correctos</span>
-              <span className={styles.summaryDenied}><strong>{summary.denied}</strong> denegados</span>
-              <span className={styles.summaryFailed}><strong>{summary.failed}</strong> fallidos</span>
+            <div
+              className={styles.pageSummary}
+              aria-label="Resumen de la página actual"
+            >
+              <span>
+                <strong>{summary.total}</strong> eventos
+              </span>
+              <span className={styles.summarySuccess}>
+                <strong>{summary.success}</strong> correctos
+              </span>
+              <span className={styles.summaryDenied}>
+                <strong>{summary.denied}</strong> denegados
+              </span>
+              <span className={styles.summaryFailed}>
+                <strong>{summary.failed}</strong> fallidos
+              </span>
             </div>
           )}
         </div>
@@ -543,7 +795,11 @@ export function AuditEventsView() {
             <Alert variant="error">
               <strong>No se pudo cargar la auditoría.</strong> {error}
             </Alert>
-            <button className={styles.retryButton} type="button" onClick={retry}>
+            <button
+              className={styles.retryButton}
+              type="button"
+              onClick={retry}
+            >
               Volver a intentar
             </button>
           </div>
@@ -556,21 +812,33 @@ export function AuditEventsView() {
             <EmptyState
               icon="shield"
               title="No se encontraron eventos"
-              description={activeFilterCount > 0
-                ? 'Prueba con un rango más amplio o elimina alguno de los filtros.'
-                : 'Todavía no hay eventos visibles en el registro de auditoría.'}
+              description={
+                activeFilterCount > 0
+                  ? "Prueba con un rango más amplio o elimina alguno de los filtros."
+                  : "Todavía no hay eventos visibles en el registro de auditoría."
+              }
             />
             {activeFilterCount > 0 && (
-              <button className={styles.secondaryButton} type="button" onClick={clearFilters}>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={clearFilters}
+              >
                 Limpiar filtros
               </button>
             )}
           </div>
         ) : (
-          <div className={styles.tableRegion} role="region" aria-label="Eventos de auditoría" tabIndex={0}>
+          <div
+            className={styles.tableRegion}
+            role="region"
+            aria-label="Eventos de auditoría"
+            tabIndex={0}
+          >
             <table className={styles.table}>
               <caption className={styles.visuallyHidden}>
-                Eventos de auditoría, resultado, actor, recurso, solicitud y detalle técnico
+                Eventos de auditoría, resultado, actor, recurso, solicitud y
+                detalle técnico
               </caption>
               <thead>
                 <tr>
@@ -584,14 +852,19 @@ export function AuditEventsView() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((event) => <AuditEventRow key={event.id} event={event} />)}
+                {events.map((event) => (
+                  <AuditEventRow key={event.id} event={event} />
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
         {!isLoading && !error && events.length > 0 && (
-          <nav className={styles.pagination} aria-label="Paginación de auditoría">
+          <nav
+            className={styles.pagination}
+            aria-label="Paginación de auditoría"
+          >
             <button
               className={styles.paginationButton}
               type="button"
@@ -600,7 +873,9 @@ export function AuditEventsView() {
             >
               Anterior
             </button>
-            <span aria-live="polite" aria-atomic="true">Página {page}</span>
+            <span aria-live="polite" aria-atomic="true">
+              Página {page}
+            </span>
             <button
               className={styles.paginationButton}
               type="button"

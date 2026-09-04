@@ -1,20 +1,24 @@
-import type { components, operations } from '../../../shared/types/api.generated';
+import type {
+  components,
+  operations,
+} from "../../../shared/types/api.generated";
 
 type GeneratedAuditQuery = NonNullable<
-  operations['AuditController_findMany']['parameters']['query']
+  operations["AuditController_findMany"]["parameters"]["query"]
 >;
 
-export type AuditEvent = components['schemas']['AuditEventResponseDto'];
+export type AuditEvent = components["schemas"]["AuditEventResponseDto"];
 
-export type AuditOutcome = AuditEvent['outcome'];
+export type AuditOutcome = AuditEvent["outcome"];
 
-export type AuditEventsPage = components['schemas']['AuditEventsPageDto'];
+export type AuditEventsPage = components["schemas"]["AuditEventsPageDto"];
 
-export type AuditFilters = Omit<GeneratedAuditQuery, 'cursor'>;
+export type AuditFilters = Omit<GeneratedAuditQuery, "cursor">;
 
 export interface AuditFilterDraft {
   action: string;
-  outcome: '' | AuditOutcome;
+  outcome: "" | AuditOutcome;
+  actorUsername: string;
   actorId: string;
   patientId: string;
   resourceType: string;
@@ -25,5 +29,5 @@ export interface AuditFilterDraft {
   limit: string;
 }
 
-export type AuditFilterField = keyof AuditFilterDraft | 'dateRange';
+export type AuditFilterField = keyof AuditFilterDraft | "dateRange";
 export type AuditFilterErrors = Partial<Record<AuditFilterField, string>>;

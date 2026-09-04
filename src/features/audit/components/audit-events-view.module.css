@@ -138,7 +138,10 @@
 
 .primaryFilters {
   display: grid;
-  grid-template-columns: minmax(13rem, 1.45fr) repeat(3, minmax(9rem, 1fr)) minmax(8rem, 0.65fr);
+  grid-template-columns: minmax(13rem, 1.4fr) minmax(11rem, 1fr) minmax(
+      9rem,
+      0.85fr
+    ) repeat(2, minmax(9rem, 0.9fr)) minmax(8rem, 0.65fr);
   align-items: start;
   gap: 0.75rem;
 }
@@ -167,7 +170,10 @@
   padding: 0 0.75rem;
   color: var(--gray-800);
   font-size: 0.875rem;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .field input:hover,
@@ -181,8 +187,8 @@
   box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
-.field input[aria-invalid='true'],
-.field select[aria-invalid='true'] {
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"] {
   border-color: var(--color-danger);
   background: var(--color-danger-light);
 }
@@ -211,7 +217,9 @@
   font-size: 0.8125rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .advancedFilters summary:hover {
@@ -257,7 +265,11 @@
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .primaryButton {
@@ -318,9 +330,15 @@
   white-space: nowrap;
 }
 
-.pageSummary .summarySuccess { color: var(--color-success); }
-.pageSummary .summaryDenied { color: var(--color-warning); }
-.pageSummary .summaryFailed { color: var(--color-danger); }
+.pageSummary .summarySuccess {
+  color: var(--color-success);
+}
+.pageSummary .summaryDenied {
+  color: var(--color-warning);
+}
+.pageSummary .summaryFailed {
+  color: var(--color-danger);
+}
 
 .loadingState,
 .errorState,
@@ -427,6 +445,71 @@
   color: var(--gray-500);
   font-size: 0.6875rem;
   overflow-wrap: anywhere;
+}
+
+.actorIdentity {
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.22rem;
+}
+
+.actorName {
+  max-width: 16rem;
+  color: var(--gray-800);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.actorUsername {
+  color: var(--color-primary-dark);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.actorMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.actorMeta:empty {
+  display: none;
+}
+
+.identityChange,
+.inactiveBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.48rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.identityChange {
+  border: 1px solid var(--color-info-border);
+  background: var(--color-info-light);
+  color: var(--color-primary-dark);
+}
+
+.inactiveBadge {
+  border: 1px solid var(--color-control-border);
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.actorExplanation {
+  max-width: 18rem;
+  color: var(--gray-500);
+  font-size: 0.71875rem;
+  line-height: 1.4;
 }
 
 .outcomeBadge {
