@@ -133,8 +133,8 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  return parseResponse<T>(await doFetch(path, { method: 'GET' }));
+export async function apiGet<T>(path: string, init: Omit<RequestInit, 'method'> = {}): Promise<T> {
+  return parseResponse<T>(await doFetch(path, { ...init, method: 'GET' }));
 }
 
 export async function apiBlob(path: string): Promise<Blob> {

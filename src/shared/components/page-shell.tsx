@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { NotificationsBell } from '@/features/notifications';
+import { GlobalSearch } from '@/features/global-search';
 import { BrandLogo, Icon, type IconName } from '@/shared/ui';
 import { can, canAll, canAny, getLandingPath } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
@@ -56,9 +57,7 @@ export function PageShell({ children }: PageShellProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLElement>(null);
@@ -171,25 +170,6 @@ export function PageShell({ children }: PageShellProps) {
     };
   }, [isMobileOpen, isMobileViewport]);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (
-        (event.ctrlKey || event.metaKey)
-        && event.key.toLowerCase() === 'k'
-        && searchRef.current
-        && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')
-      ) {
-        event.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
   function handleLogout() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
@@ -197,13 +177,6 @@ export function PageShell({ children }: PageShellProps) {
     clearSession();
     router.replace('/login');
     void request;
-  }
-
-  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) return;
-    router.push(`/patients?q=${encodeURIComponent(query)}`);
   }
 
   function openMobileMenu() {
@@ -292,7 +265,6 @@ export function PageShell({ children }: PageShellProps) {
 
   const roleLabel = getSessionRole(user.permissions);
   const homeHref = getLandingPath(user.permissions);
-  const canSearchPatients = can(user.permissions, 'patients.read');
   const shellClass = [
     styles.shell,
     isCollapsed ? styles.shellCollapsed : '',
@@ -428,24 +400,7 @@ export function PageShell({ children }: PageShellProps) {
             <span className={styles.routeTitle}>{getRouteLabel(pathname)}</span>
           </div>
 
-          {canSearchPatients && (
-            <form className={styles.searchForm} role="search" onSubmit={handleSearchSubmit}>
-              <span className={styles.searchIcon} aria-hidden="true">
-                <Icon name="search" size={17} />
-              </span>
-              <input
-                ref={searchRef}
-                className={styles.searchInput}
-                type="search"
-                placeholder="Buscar pacientes o documentos"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                aria-label="Búsqueda global"
-                aria-keyshortcuts="Control+K Meta+K"
-              />
-              <kbd className={styles.searchKbd} aria-hidden="true">Ctrl K</kbd>
-            </form>
-          )}
+          <GlobalSearch permissions={user.permissions} />
 
           <div className={styles.topbarRight}>
             <NotificationsBell />
