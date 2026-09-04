@@ -186,6 +186,23 @@
   list-style: none;
 }
 
+.inlineAssignmentBtn {
+  min-height: 44px;
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  border: 1px solid var(--color-primary-border);
+  border-radius: 10px;
+  background: var(--color-primary-light);
+  padding: 0.45rem 0.7rem;
+  color: var(--color-primary-dark);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inlineAssignmentBtn:disabled { cursor: wait; opacity: 0.6; }
+
 .stepItem {
   min-width: 0;
   display: flex;
@@ -1298,6 +1315,7 @@
 .entityRemove:focus-visible,
 .checkBox:focus-visible,
 .rejectTextarea:focus-visible,
+.inlineAssignmentBtn:focus-visible,
 .btn:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;

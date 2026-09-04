@@ -14,6 +14,10 @@ import {
   saveDocumentCorrection,
   validateDocument,
 } from '../services/documents.service';
+import {
+  claimReviewDocument,
+  releaseReviewDocument,
+} from '@/features/review/services/review.service';
 
 export function useDocument(patientId: string, docId: string) {
   const [document, setDocument] = useState<MedicalDocument | null>(null);
@@ -77,6 +81,26 @@ export function useDocument(patientId: string, docId: string) {
     }
   }
 
+  async function updateAssignment(
+    fn: (current: MedicalDocument) => Promise<unknown>,
+  ): Promise<boolean> {
+    if (!document) return false;
+    setIsActing(true);
+    setActionError(null);
+    setActionErrorStatus(null);
+    try {
+      await fn(document);
+      await load();
+      return true;
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Error al actualizar la asignacion.');
+      setActionErrorStatus(err instanceof ApiError ? err.status : null);
+      return false;
+    } finally {
+      setIsActing(false);
+    }
+  }
+
   return {
     document,
     isLoading,
@@ -103,6 +127,12 @@ export function useDocument(patientId: string, docId: string) {
       document
         ? act(() => rejectDocument(patientId, docId, reason, document.version))
         : Promise.resolve(null),
+    claimAssignment: () => updateAssignment(
+      (current) => claimReviewDocument(current.id, current.version),
+    ),
+    releaseAssignment: () => updateAssignment(
+      (current) => releaseReviewDocument(current.id, current.version),
+    ),
     reload: load,
   };
 }

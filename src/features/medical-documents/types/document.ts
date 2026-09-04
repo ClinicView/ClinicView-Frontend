@@ -61,6 +61,13 @@ export interface OcrMetrics {
 
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
+export interface DocumentReviewAssignee {
+  id: string;
+  username: string;
+  fullName: string;
+  profession: string | null;
+}
+
 export interface MedicalDocument {
   id: string;
   patientId: string;
@@ -83,6 +90,10 @@ export interface MedicalDocument {
   validationChecklist: ValidationChecklistSnapshot | null;
   validationAttested: boolean;
   validationAttestedAt: string | null;
+  reviewPriority: 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
+  assignedReviewerId: string | null;
+  assignedAt: string | null;
+  assignedReviewer: DocumentReviewAssignee | null;
   updatedAt: string;
   version: number;
   /** Opcionales — los expone el backend cuando el servicio IA v2 los devuelve. */

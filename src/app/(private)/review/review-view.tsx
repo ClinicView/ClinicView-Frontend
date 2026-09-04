@@ -20,7 +20,7 @@ export function ReviewView() {
 
   return (
     <PageShell>
-      <ReviewQueue permissions={user.permissions} />
+      <ReviewQueue permissions={user.permissions} userId={user.sub} />
     </PageShell>
   );
 }

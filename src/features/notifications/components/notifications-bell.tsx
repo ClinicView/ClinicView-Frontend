@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, type IconName } from '@/shared/ui';
 import { useNotifications } from '../hooks/use-notifications';
-import type { AppNotification } from '../types/notification';
+import type { AppNotification, NotificationType } from '../types/notification';
 import styles from './notifications-bell.module.css';
 
-const TYPE_META: Record<string, { icon: IconName; tone: string }> = {
+const TYPE_META: Record<NotificationType, { icon: IconName; tone: string }> = {
   DOCUMENT_PROCESSED: { icon: 'check', tone: 'green' },
   DOCUMENT_FAILED: { icon: 'alert', tone: 'red' },
   DOCUMENT_VALIDATED: { icon: 'shield', tone: 'green' },
+  DOCUMENT_REVIEW_ASSIGNED: { icon: 'review', tone: 'blue' },
   SYSTEM: { icon: 'bell', tone: 'blue' },
 };
 

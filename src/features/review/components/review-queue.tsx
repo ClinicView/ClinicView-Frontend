@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, Icon } from '@/shared/ui';
 import { useReviewQueue } from '../hooks/use-review-queue';
+import type { ReviewPriority, ReviewQueueItem, ReviewQueueScope } from '../types/review';
 import styles from './review-queue.module.css';
 
 function formatDate(iso: string | null): string {
@@ -29,12 +31,57 @@ function getFileType(mimeType: string): string {
   return mimeType.split('/')[1]?.toUpperCase() || 'ARCHIVO';
 }
 
-interface ReviewQueueProps {
-  permissions: string[];
+const PRIORITY_LABEL: Record<ReviewPriority, string> = {
+  URGENT: 'Urgente',
+  HIGH: 'Alta',
+  NORMAL: 'Normal',
+  LOW: 'Baja',
+};
+
+function formatQueueAge(iso: string | null, fallback: string): string {
+  const timestamp = Date.parse(iso ?? fallback);
+  if (!Number.isFinite(timestamp)) return 'Antiguedad no disponible';
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (minutes < 60) return `En cola ${Math.max(1, minutes)} min`;
+  if (minutes < 1_440) return `En cola ${Math.floor(minutes / 60)} h`;
+  const days = Math.floor(minutes / 1_440);
+  return `En cola ${days} dia${days === 1 ? '' : 's'}`;
 }
 
-export function ReviewQueue({ permissions }: ReviewQueueProps) {
-  const { data, total, page, totalPages, isLoading, error, onPageChange, reload } = useReviewQueue();
+interface ReviewQueueProps {
+  permissions: string[];
+  userId: string;
+}
+
+export function ReviewQueue({ permissions, userId }: ReviewQueueProps) {
+  const router = useRouter();
+  const canAssign = can(permissions, 'review.assign');
+  const {
+    data,
+    total,
+    page,
+    totalPages,
+    isLoading,
+    error,
+    actionError,
+    actingDocumentId,
+    scope,
+    priority,
+    assignees,
+    isLoadingAssignees,
+    assigneesError,
+    assigneeQuery,
+    onPageChange,
+    reload,
+    retryAssignees,
+    setAssigneeQuery,
+    setScope,
+    setPriority,
+    claim,
+    assign,
+    release,
+    updatePriority,
+  } = useReviewQueue(canAssign);
   const listTitleRef = useRef<HTMLHeadingElement>(null);
   const previousPageRef = useRef(page);
 
@@ -49,6 +96,12 @@ export function ReviewQueue({ permissions }: ReviewQueueProps) {
     : `${total} historia${total !== 1 ? 's' : ''} por revisar`;
   const canOpenDocuments = can(permissions, 'documents.read');
   const canValidateDocuments = can(permissions, 'documents.validate');
+
+  async function handleClaimAndOpen(item: ReviewQueueItem) {
+    if (await claim(item)) {
+      router.push(`/patients/${item.patient.id}/documents/${item.id}`);
+    }
+  }
 
   return (
     <section className={styles.container} aria-labelledby="review-queue-title">
@@ -110,6 +163,29 @@ export function ReviewQueue({ permissions }: ReviewQueueProps) {
         </div>
       )}
 
+      {actionError && (
+        <div className={styles.alertWrap} role="status">
+          <Alert variant="error">{actionError}</Alert>
+          <button className={styles.retryBtn} type="button" onClick={reload} disabled={isLoading}>
+            Actualizar cola
+          </button>
+        </div>
+      )}
+
+      {canAssign && assigneesError && (
+        <div className={styles.alertWrap}>
+          <Alert variant="error">No se pudo cargar la lista de revisores.</Alert>
+          <button
+            className={styles.retryBtn}
+            type="button"
+            onClick={retryAssignees}
+            disabled={isLoadingAssignees}
+          >
+            {isLoadingAssignees ? 'Reintentando…' : 'Reintentar revisores'}
+          </button>
+        </div>
+      )}
+
       <section
         className={styles.queuePanel}
         aria-labelledby="review-list-title"
@@ -139,6 +215,61 @@ export function ReviewQueue({ permissions }: ReviewQueueProps) {
             </span>
           )}
         </header>
+
+        <div className={styles.filters} aria-label="Filtros de la cola">
+          <label className={styles.filterField}>
+            <span>Asignacion</span>
+            <select
+              value={scope}
+              onChange={(event) => setScope(event.target.value as ReviewQueueScope)}
+              disabled={isLoading}
+            >
+              <option value="AVAILABLE">Disponibles para mi</option>
+              <option value="MINE">Mis asignados</option>
+              <option value="UNASSIGNED">Sin asignar</option>
+              <option value="ALL">Todos</option>
+            </select>
+          </label>
+
+          <label className={styles.filterField}>
+            <span>Prioridad</span>
+            <select
+              value={priority}
+              onChange={(event) => setPriority(event.target.value as ReviewPriority | '')}
+              disabled={isLoading}
+            >
+              <option value="">Todas</option>
+              <option value="URGENT">Urgente</option>
+              <option value="HIGH">Alta</option>
+              <option value="NORMAL">Normal</option>
+              <option value="LOW">Baja</option>
+            </select>
+          </label>
+
+          {canAssign && (
+            <label className={styles.filterField}>
+              <span>Buscar revisor</span>
+              <input
+                type="search"
+                value={assigneeQuery}
+                onChange={(event) => setAssigneeQuery(event.target.value)}
+                placeholder="Nombre o usuario"
+                maxLength={50}
+                autoComplete="off"
+              />
+            </label>
+          )}
+
+          <p className={styles.filtersHint} role="status" aria-live="polite">
+            {canAssign && assigneeQuery.trim()
+              ? isLoadingAssignees
+                ? 'Buscando revisores…'
+                : assigneesError
+                  ? 'Búsqueda de revisores no disponible.'
+                  : `${assignees.length} revisor${assignees.length === 1 ? '' : 'es'} encontrado${assignees.length === 1 ? '' : 's'}.`
+              : '“Disponibles” reúne documentos libres y los que ya tomaste.'}
+          </p>
+        </div>
 
         {isLoading ? (
           <div className={styles.loadingState}>
@@ -170,14 +301,18 @@ export function ReviewQueue({ permissions }: ReviewQueueProps) {
                   <tr>
                     <th scope="col">Paciente</th>
                     <th scope="col">Documento digitalizado</th>
-                    <th scope="col">Procesado</th>
-                    <th scope="col">Subido</th>
+                    <th scope="col">Prioridad</th>
+                    <th scope="col">Responsable</th>
+                    <th scope="col">Antigüedad</th>
                     <th scope="col"><span className={styles.srOnly}>Acciones</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((item) => {
                     const patientName = `${item.patient.lastName}, ${item.patient.firstName}`;
+                    const assigneeOptions = item.assignee && !assignees.some(({ id }) => id === item.assignee?.id)
+                      ? [item.assignee, ...assignees]
+                      : assignees;
 
                     return (
                       <tr key={item.id}>
@@ -210,30 +345,114 @@ export function ReviewQueue({ permissions }: ReviewQueueProps) {
                             </span>
                           </span>
                         </td>
-                        <td className={styles.dateCell} data-label="Procesado">
-                          <span className={styles.dateValue}>
-                            <Icon name="check" size={15} />
-                            <time dateTime={item.processedAt ?? undefined}>
-                              {formatDate(item.processedAt)}
-                            </time>
-                          </span>
+                        <td className={styles.priorityCell} data-label="Prioridad">
+                          {canAssign ? (
+                            <select
+                              className={`${styles.compactSelect} ${styles[`priority_${item.reviewPriority}`]}`}
+                              value={item.reviewPriority}
+                              onChange={(event) => void updatePriority(item, event.target.value as ReviewPriority)}
+                              disabled={actingDocumentId === item.id}
+                              aria-label={`Cambiar prioridad de ${item.originalName}`}
+                            >
+                              <option value="URGENT">Urgente</option>
+                              <option value="HIGH">Alta</option>
+                              <option value="NORMAL">Normal</option>
+                              <option value="LOW">Baja</option>
+                            </select>
+                          ) : (
+                            <span className={`${styles.priorityBadge} ${styles[`priority_${item.reviewPriority}`]}`}>
+                              {PRIORITY_LABEL[item.reviewPriority]}
+                            </span>
+                          )}
                         </td>
-                        <td className={styles.dateCell} data-label="Subido">
-                          <span className={styles.dateValue}>
-                            <Icon name="calendar" size={15} />
-                            <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
+                        <td className={styles.assigneeCell} data-label="Responsable">
+                          <span className={styles.assigneeState}>
+                            <strong>
+                              {item.assignmentState === 'MINE'
+                                ? 'Asignado a ti'
+                                : item.assignee?.fullName ?? 'Sin asignar'}
+                            </strong>
+                            <span>
+                              {item.assignee ? `@${item.assignee.username}` : 'Disponible para tomar'}
+                            </span>
                           </span>
+                          {canAssign && (
+                            <select
+                              className={styles.assigneeSelect}
+                              value={item.assignee?.id ?? ''}
+                              onChange={(event) => {
+                                const assigneeId = event.target.value;
+                                if (assigneeId) void assign(item, assigneeId);
+                              }}
+                              disabled={
+                                actingDocumentId === item.id ||
+                                isLoadingAssignees ||
+                                Boolean(assigneesError) ||
+                                assignees.length === 0
+                              }
+                              aria-label={`Asignar ${item.originalName} a un revisor`}
+                            >
+                              <option value="">
+                                {isLoadingAssignees
+                                  ? 'Cargando revisores…'
+                                  : assigneesError
+                                    ? 'Revisores no disponibles'
+                                    : assignees.length === 0
+                                      ? 'Sin revisores elegibles'
+                                      : 'Asignar revisor…'}
+                              </option>
+                              {assigneeOptions.map((assignee) => (
+                                <option key={assignee.id} value={assignee.id}>
+                                  {assignee.id === userId ? 'Yo' : assignee.fullName} (@{assignee.username})
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                        <td className={styles.ageCell} data-label="Antigüedad">
+                          <span className={styles.dateValue}>
+                            <Icon name="clock" size={15} />
+                            <span>{formatQueueAge(item.processedAt, item.createdAt)}</span>
+                          </span>
+                          <time className={styles.dateDetail} dateTime={item.processedAt ?? item.createdAt}>
+                            Desde {formatDate(item.processedAt ?? item.createdAt)}
+                          </time>
                         </td>
                         <td className={styles.actionCell}>
-                          {canOpenDocuments ? (
-                            <Link
+                          {item.assignmentState === 'UNASSIGNED' && canAssign && canOpenDocuments ? (
+                            <button
                               className={styles.actionBtn}
-                              href={`/patients/${item.patient.id}/documents/${item.id}`}
-                              aria-label={`${canValidateDocuments ? 'Revisar' : 'Ver'} digitalización ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
+                              type="button"
+                              onClick={() => void handleClaimAndOpen(item)}
+                              disabled={actingDocumentId === item.id}
+                              aria-label={`Tomar y revisar ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
                             >
-                              {canValidateDocuments ? 'Revisar digitalización' : 'Ver digitalización'}
+                              {actingDocumentId === item.id ? 'Asignando…' : 'Tomar y revisar'}
                               <Icon name="arrow-right" size={16} />
-                            </Link>
+                            </button>
+                          ) : canOpenDocuments ? (
+                            <div className={styles.actionStack}>
+                              <Link
+                                className={styles.actionBtn}
+                                href={`/patients/${item.patient.id}/documents/${item.id}`}
+                                aria-label={`${canValidateDocuments ? 'Revisar' : 'Ver'} digitalización ${item.originalName} de ${item.patient.firstName} ${item.patient.lastName}`}
+                              >
+                                {item.assignmentState === 'MINE' && canValidateDocuments
+                                  ? 'Continuar revisión'
+                                  : 'Ver digitalización'}
+                                <Icon name="arrow-right" size={16} />
+                              </Link>
+                              {canAssign && item.assignee && (
+                                <button
+                                  className={styles.releaseBtn}
+                                  type="button"
+                                  onClick={() => void release(item)}
+                                  disabled={actingDocumentId === item.id}
+                                >
+                                  Liberar
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span className={styles.actionUnavailable}>
                               <Icon name="lock" size={15} />

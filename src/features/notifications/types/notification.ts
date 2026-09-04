@@ -2,6 +2,7 @@ export type NotificationType =
   | 'DOCUMENT_PROCESSED'
   | 'DOCUMENT_FAILED'
   | 'DOCUMENT_VALIDATED'
+  | 'DOCUMENT_REVIEW_ASSIGNED'
   | 'SYSTEM';
 
 export interface AppNotification {

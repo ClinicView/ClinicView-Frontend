@@ -90,6 +90,8 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     saveCorrection,
     validate,
     reject,
+    claimAssignment,
+    releaseAssignment,
     reload,
   } = useDocument(patientId, docId);
   const { user } = useSession();
@@ -168,11 +170,17 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const canProcess =
     can(permissions, 'documents.upload') &&
     (document.status === 'PENDING' || document.status === 'FAILED');
-  const canCorrect = can(permissions, 'documents.validate') && document.status === 'PROCESSED';
-  const canValidate = can(permissions, 'documents.validate') && document.status === 'PROCESSED';
+  const isAssignedToCurrentUser = document.assignedReviewerId === user?.sub;
+  const canManageAssignment = can(permissions, 'review.assign');
+  const canCorrect =
+    can(permissions, 'documents.validate') &&
+    document.status === 'PROCESSED' &&
+    isAssignedToCurrentUser;
+  const canValidate = canCorrect;
   const canReject =
     can(permissions, 'documents.reject') &&
-    (document.status === 'PENDING' || document.status === 'PROCESSED');
+    (document.status === 'PENDING' ||
+      (document.status === 'PROCESSED' && isAssignedToCurrentUser));
 
   const needsProcessing = document.status === 'PENDING' || document.status === 'FAILED';
 
@@ -215,6 +223,13 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       setShowRejectForm(false);
       setRejectReason('');
     }
+  }
+
+  async function handleReleaseAssignment() {
+    if (isDirty && !window.confirm('Liberar la revisión descartará los cambios que no hayas guardado. ¿Deseas continuar?')) {
+      return;
+    }
+    await releaseAssignment();
   }
 
   async function handleReloadLatest() {
@@ -324,15 +339,48 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
           </span>
         </div>
 
-        {user && (
-          <div className={styles.headerField}>
-            <span className={styles.headerFieldLabel}>Asignado a</span>
-            <span className={styles.headerFieldValue}>{user.email}</span>
-          </div>
-        )}
+        <div className={styles.headerField}>
+          <span className={styles.headerFieldLabel}>Responsable de revisión</span>
+          <span className={styles.headerFieldValue}>
+            {isAssignedToCurrentUser
+              ? 'Asignado a ti'
+              : document.assignedReviewer?.fullName ?? 'Sin asignar'}
+          </span>
+          <span className={styles.headerFieldSub}>
+            {document.assignedReviewer
+              ? `@${document.assignedReviewer.username}`
+              : `Prioridad ${document.reviewPriority.toLocaleLowerCase('es-PE')}`}
+          </span>
+          {document.status === 'PROCESSED' && canManageAssignment && document.assignedReviewerId && (
+              <button
+                className={styles.inlineAssignmentBtn}
+                type="button"
+                onClick={() => void handleReleaseAssignment()}
+                disabled={isActing}
+              >
+                Liberar revisión
+              </button>
+          )}
+        </div>
 
         <DocumentStepper document={document} />
       </section>
+
+      {!canCorrect && !canValidate && actionError && (
+        <div className={styles.actionErrorGroup} role="alert">
+          <span className={styles.actionError}>{actionError}</span>
+          {actionErrorStatus === 409 && (
+            <button
+              className={`${styles.btn} ${styles.retryButton}`}
+              type="button"
+              onClick={() => void handleReloadLatest()}
+              disabled={isActing}
+            >
+              Recargar versión actual
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Banners de estado */}
       {needsProcessing && (
@@ -382,6 +430,38 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
             <p className={styles.bannerText}>
               Puedes transcribir el contenido manualmente y completar la revisión clínica sin
               perder el archivo original.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {document.status === 'PROCESSED' && !document.assignedReviewerId && (
+        <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
+          <div>
+            <p className={styles.bannerTitle}>La revisión todavía no tiene responsable.</p>
+            <p className={styles.bannerText}>
+              Toma el documento antes de corregir, validar o rechazar su contenido.
+            </p>
+          </div>
+          {canManageAssignment && (
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              type="button"
+              onClick={() => void claimAssignment()}
+              disabled={isActing}
+            >
+              {isActing ? 'Asignando…' : 'Tomar revisión'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {document.status === 'PROCESSED' && document.assignedReviewerId && !isAssignedToCurrentUser && (
+        <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">
+          <div>
+            <p className={styles.bannerTitle}>Documento asignado a otro revisor.</p>
+            <p className={styles.bannerText}>
+              Puedes consultar el contenido, pero solo la persona responsable puede modificar o finalizar la revisión.
             </p>
           </div>
         </div>
@@ -623,9 +703,6 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         </footer>
       )}
 
-      {!canCorrect && !canValidate && actionError && (
-        <p className={styles.actionError} role="alert">{actionError}</p>
-      )}
     </div>
   );
 }
