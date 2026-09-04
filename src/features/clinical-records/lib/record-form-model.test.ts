@@ -1,6 +1,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import type { ClinicalMediaAsset, ClinicalRecord, RecordDetails, RecordType } from '../types/record';
+import type {
+  ClinicalMediaAsset,
+  ClinicalRecord,
+  RecordDetails,
+  RecordType,
+} from '../types/record';
 import {
   MAX_RECORD_ATTACHMENTS,
   MAX_RECORD_MEDIA_FILE_BYTES,
@@ -225,6 +230,18 @@ test('el alta envía referencias limpias y en el orden visible', () => {
     { assetId: 'asset-a', altText: 'Vista frontal', sortOrder: 0 },
     { assetId: 'asset-b', caption: 'Segunda vista', sortOrder: 1 },
   ]);
+});
+
+test('el alta consume el borrador con su id y versión exactos', () => {
+  const state = validCommon('CONSULTATION');
+  state.detailsByType.CONSULTATION.chiefComplaint = 'Control clínico';
+
+  const payload = toCreateRecordData(state, {
+    id: 'draft-1',
+    version: 7,
+  });
+  assert.equal(payload?.draftId, 'draft-1');
+  assert.equal(payload?.expectedDraftVersion, 7);
 });
 
 test('inicializa registros legacy sin details ni profesional sin bloquear la corrección', () => {

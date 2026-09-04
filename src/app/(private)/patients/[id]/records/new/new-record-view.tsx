@@ -424,7 +424,7 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
       window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
       return;
     }
-    const data = toCreateRecordData(form, draftState.draft?.id);
+    const data = toCreateRecordData(form, draftState.draft ?? undefined);
     if (!data) return;
     setIsSubmitting(true);
     setSubmitError(null);

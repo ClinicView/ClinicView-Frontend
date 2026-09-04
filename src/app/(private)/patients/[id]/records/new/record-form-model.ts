@@ -7,6 +7,7 @@ import {
   type RecordDetails,
   type RecordDetailsByType,
   type RecordDraftPayload,
+  type RecordDraftResponse,
   type RecordPriority,
   type RecordAttachmentInput,
   type RecordType,
@@ -640,7 +641,7 @@ export function validateEditorState(
 
 export function toCreateRecordData(
   state: RecordEditorState,
-  draftId?: string,
+  draft?: Pick<RecordDraftResponse, 'id' | 'version'>,
 ): TypedCreateRecordData | null {
   if (!state.recordType) return null;
   const attendedAt = dateTimeLocalToIso(state.attendedAt);
@@ -670,7 +671,7 @@ export function toCreateRecordData(
     ...(state.plan.trim() ? { plan: state.plan.trim() } : {}),
     priority: state.priority,
     attachments: serializeAttachmentReferences(state.attachments),
-    ...(draftId ? { draftId } : {}),
+    ...(draft ? { draftId: draft.id, expectedDraftVersion: draft.version } : {}),
   } as TypedCreateRecordData;
 }
 

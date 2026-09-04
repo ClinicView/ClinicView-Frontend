@@ -255,6 +255,7 @@ export interface CreateRecordCommonData {
   priority?: RecordPriority;
   attachments?: RecordAttachmentInput[];
   draftId?: string;
+  expectedDraftVersion?: number;
 }
 
 export type TypedCreateRecordData = CreateRecordCommonData & TypedRecordDetailsPayload;
