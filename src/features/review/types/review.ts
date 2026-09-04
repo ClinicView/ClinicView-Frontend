@@ -1,48 +1,32 @@
-export interface ReviewPatientSummary {
-  id: string;
-  firstName: string;
-  lastName: string;
-  documentType: string;
-  documentNumber: string;
-}
+import type { components, operations } from '@/shared/types/api.generated';
 
-export type ReviewPriority = 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
-export type ReviewQueueScope = 'AVAILABLE' | 'MINE' | 'UNASSIGNED' | 'ALL';
-export type ReviewAssignmentState = 'UNASSIGNED' | 'MINE' | 'ASSIGNED';
+type ReviewQueueQuery = NonNullable<
+  operations['ReviewController_getQueue']['parameters']['query']
+>;
 
-export interface ReviewAssignee {
-  id: string;
-  username: string;
-  fullName: string;
-  profession: string | null;
-}
+type GeneratedReviewAssignee = components['schemas']['ReviewAssigneeDto'];
+type GeneratedReviewQueueItem = components['schemas']['ReviewQueueItemDto'];
+type GeneratedReviewAssignmentResponse =
+  components['schemas']['ReviewAssignmentResponseDto'];
 
-export interface ReviewQueueItem {
-  id: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-  processedAt: string | null;
-  createdAt: string;
-  reviewPriority: ReviewPriority;
-  version: number;
-  assignmentState: ReviewAssignmentState;
-  assignedAt: string | null;
-  assignee: ReviewAssignee | null;
-  patient: ReviewPatientSummary;
-}
+export type ReviewAssignee = Omit<GeneratedReviewAssignee, 'profession'> &
+  Required<Pick<GeneratedReviewAssignee, 'profession'>>;
+export type ReviewPatientSummary = components['schemas']['ReviewPatientSummaryDto'];
+export type ReviewQueueItem = Omit<
+  GeneratedReviewQueueItem,
+  'processedAt' | 'assignedAt' | 'assignee'
+> &
+  Required<Pick<GeneratedReviewQueueItem, 'processedAt' | 'assignedAt' | 'assignee'>>;
+export type ReviewQueuePage = Omit<
+  components['schemas']['ReviewQueuePageDto'],
+  'data'
+> & { data: ReviewQueueItem[] };
+export type ReviewAssignmentResponse = Omit<
+  GeneratedReviewAssignmentResponse,
+  'assignedAt' | 'assignee'
+> &
+  Required<Pick<GeneratedReviewAssignmentResponse, 'assignedAt' | 'assignee'>>;
 
-export interface ReviewQueuePage {
-  data: ReviewQueueItem[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export interface ReviewAssignmentResponse {
-  documentId: string;
-  reviewPriority: ReviewPriority;
-  version: number;
-  assignedAt: string | null;
-  assignee: ReviewAssignee | null;
-}
+export type ReviewPriority = GeneratedReviewQueueItem['reviewPriority'];
+export type ReviewAssignmentState = GeneratedReviewQueueItem['assignmentState'];
+export type ReviewQueueScope = NonNullable<ReviewQueueQuery['scope']>;

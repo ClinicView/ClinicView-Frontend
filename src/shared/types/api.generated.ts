@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cambiar mi contraseña verificando la credencial actual */
+        patch: operations["UsersController_changeMyPassword"];
+        trace?: never;
+    };
     "/api/users/{id}": {
         parameters: {
             query?: never;
@@ -87,7 +104,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Actualizar perfil profesional o contraseña del usuario */
+        /** Actualizar identidad y perfil profesional del usuario */
         patch: operations["UsersController_update"];
         trace?: never;
     };
@@ -108,6 +125,23 @@ export interface paths {
         patch: operations["UsersController_deactivate"];
         trace?: never;
     };
+    "/api/users/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reactivar una cuenta de usuario y mantener sus sesiones revocadas */
+        patch: operations["UsersController_reactivate"];
+        trace?: never;
+    };
     "/api/users/{id}/role": {
         parameters: {
             query?: never;
@@ -123,6 +157,23 @@ export interface paths {
         head?: never;
         /** Asignar o reemplazar el rol de un usuario */
         patch: operations["UsersController_assignRole"];
+        trace?: never;
+    };
+    "/api/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Establecer una nueva contraseña y revocar todas las sesiones */
+        patch: operations["UsersController_resetPassword"];
         trace?: never;
     };
     "/api/auth/me": {
@@ -203,6 +254,24 @@ export interface paths {
         /** Listar todos los roles con sus permisos */
         get: operations["RolesController_findAll"];
         put?: never;
+        /** Crear un rol personalizado sin permisos iniciales */
+        post: operations["RolesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar el catálogo de permisos disponibles */
+        get: operations["RolesController_findPermissions"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -220,6 +289,25 @@ export interface paths {
         /** Obtener un rol por ID con sus permisos */
         get: operations["RolesController_findOne"];
         put?: never;
+        post?: never;
+        /** Eliminar un rol personalizado que no esté asignado */
+        delete: operations["RolesController_delete"];
+        options?: never;
+        head?: never;
+        /** Editar nombre o descripción de un rol */
+        patch: operations["RolesController_update"];
+        trace?: never;
+    };
+    "/api/roles/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Reemplazar de forma atómica la matriz de permisos de un rol */
+        put: operations["RolesController_replacePermissions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -708,8 +796,116 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Cola de revisión — documentos procesados pendientes de validación clínica */
+        /**
+         * Cola de revisión — documentos procesados pendientes de validación clínica
+         * @description Todo usuario con review.read puede consultar los alcances AVAILABLE, MINE, UNASSIGNED y ALL. La visibilidad es de solo lectura; tomar, asignar, liberar o priorizar exige review.assign.
+         */
         get: operations["ReviewController_getQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Buscar revisores activos habilitados para abrir y validar documentos
+         * @description Un revisor elegible debe conservar review.read, documents.read y documents.validate.
+         */
+        get: operations["ReviewController_listAssignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/documents/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tomar para el usuario actual un documento sin asignar */
+        post: operations["ReviewController_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/documents/{id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Asignar o reasignar un documento a un revisor habilitado */
+        patch: operations["ReviewController_assign"];
+        trace?: never;
+    };
+    "/api/review/documents/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Liberar la asignacion actual y devolver el documento a la cola */
+        post: operations["ReviewController_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/documents/{id}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cambiar la prioridad de un documento pendiente de revision */
+        patch: operations["ReviewController_updatePriority"];
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Buscar pacientes y documentos segun los permisos efectivos de la sesion */
+        get: operations["GlobalSearchController_search"];
         put?: never;
         post?: never;
         delete?: never;
@@ -723,9 +919,15 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AuditActorResponseDto: {
-            /** @description Username institucional actual del actor. */
+            /**
+             * @description Username institucional actual del actor.
+             * @example mlopez
+             */
             username: string;
-            /** @description Nombre completo actual del actor. */
+            /**
+             * @description Nombre completo actual del actor.
+             * @example María López
+             */
             fullName: string;
             /** @description Indica si la cuenta del actor continúa activa actualmente. */
             isActive: boolean;
@@ -740,7 +942,10 @@ export interface components {
             outcome: "SUCCESS" | "DENIED" | "FAILED";
             /** Format: uuid */
             actorId?: string | null;
-            /** @description Username del actor al momento exacto del evento; nulo en eventos antiguos o anónimos. */
+            /**
+             * @description Username del actor al momento exacto del evento; nulo en eventos antiguos o anónimos.
+             * @example mlopez
+             */
             actorUsernameAtEvent?: string | null;
             /** @description Identidad pública actual del actor; nunca incluye correo ni documento. */
             actor?: components["schemas"]["AuditActorResponseDto"] | null;
@@ -805,7 +1010,7 @@ export interface components {
              * @example MEDICO
              */
             roleKey?: string;
-            /** @description Contraseña (mínimo 8 caracteres). No se devuelve en ninguna respuesta. */
+            /** @description Contraseña inicial (mínimo 12 caracteres, una letra y un número). Nunca se devuelve. */
             password: string;
         };
         UserRoleSummaryDto: {
@@ -844,6 +1049,12 @@ export interface components {
             updatedAt: string;
             roles: components["schemas"]["UserRoleSummaryDto"][];
         };
+        ChangeMyPasswordDto: {
+            /** @description Nueva contraseña administrativa. Debe tener al menos 12 caracteres, una letra y un número. */
+            newPassword: string;
+            /** @description Contraseña actual. */
+            currentPassword: string;
+        };
         UpdateUserDto: {
             /**
              * @description Nombres del profesional.
@@ -856,16 +1067,15 @@ export interface components {
              */
             lastName?: string;
             /**
+             * @description Email institucional único del usuario.
+             * @example maria.lopez@hospital.org
+             */
+            email?: string;
+            /**
              * @description Nombre de usuario único para identificación interna.
              * @example mlopez
              */
             username?: string;
-            /**
-             * @description Tipo de documento de identidad del profesional.
-             * @example DNI
-             * @enum {string}
-             */
-            documentType?: "DNI" | "CE" | "PAS" | "OTHER";
             /**
              * @description Número de documento de identidad del profesional.
              * @example 12345678
@@ -876,8 +1086,11 @@ export interface components {
              * @example Médico pediatra
              */
             profession?: string;
-            /** @description Contraseña (mínimo 8 caracteres). No se devuelve en ninguna respuesta. */
-            password?: string;
+            /**
+             * @description Tipo de documento; null elimina el valor previamente registrado.
+             * @enum {string|null}
+             */
+            documentType?: "DNI" | "CE" | "PAS" | "OTHER" | null;
         };
         AssignRoleDto: {
             /**
@@ -885,6 +1098,10 @@ export interface components {
              * @example MEDICO
              */
             roleKey: string;
+        };
+        ResetUserPasswordDto: {
+            /** @description Nueva contraseña administrativa. Debe tener al menos 12 caracteres, una letra y un número. */
+            newPassword: string;
         };
         LoginDto: {
             /** @example admin@hospital.org */
@@ -909,16 +1126,57 @@ export interface components {
         PermissionResponseDto: {
             id: string;
             key: string;
-            description?: Record<string, never> | null;
+            description?: string | null;
         };
         RoleResponseDto: {
             id: string;
             key: string;
             name: string;
-            description?: Record<string, never> | null;
+            description?: string | null;
             permissions: components["schemas"]["PermissionResponseDto"][];
+            /** @description Los roles base no pueden eliminarse ni cambiar su clave. */
+            isSystem: boolean;
+            /** @description Cantidad de usuarios que tienen asignado el rol. */
+            userCount: number;
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateRoleDto: {
+            /**
+             * @description Clave estable del rol en MAYUSCULAS_CON_GUIONES_BAJOS.
+             * @example ENFERMERIA
+             */
+            key: string;
+            /** @example Enfermería */
+            name: string;
+            description?: string | null;
+        };
+        UpdateRoleDto: {
+            /** @example Enfermería */
+            name?: string;
+            description?: string | null;
+            /**
+             * Format: date-time
+             * @description Marca de versión recibida al cargar el rol; evita sobrescribir cambios ajenos.
+             */
+            expectedUpdatedAt: string;
+        };
+        UpdateRolePermissionsDto: {
+            /**
+             * @description Conjunto completo de permisos que conservará el rol.
+             * @example [
+             *       "patients.read",
+             *       "records.read"
+             *     ]
+             */
+            permissionKeys: string[];
+            /**
+             * Format: date-time
+             * @description Marca de versión para control de concurrencia optimista.
+             */
+            expectedUpdatedAt: string;
         };
         CreatePatientDto: {
             /**
@@ -1347,6 +1605,8 @@ export interface components {
              * @description Borrador del actor que se consumirá atómicamente al crear el registro.
              */
             draftId?: string;
+            /** @description Versión observada del borrador. Es obligatoria cuando se envía draftId y se consume mediante CAS. */
+            expectedDraftVersion?: number;
         };
         RecordResponseDto: {
             id: string;
@@ -1477,6 +1737,12 @@ export interface components {
             locale: string;
             items: components["schemas"]["ValidationChecklistSnapshotItemDto"][];
         };
+        DocumentReviewAssigneeDto: {
+            id: string;
+            username: string;
+            fullName: string;
+            profession?: string | null;
+        };
         DocumentResponseDto: {
             id: string;
             patientId: string;
@@ -1531,6 +1797,11 @@ export interface components {
             validationChecklist?: components["schemas"]["ValidationChecklistSnapshotDto"] | null;
             validationAttested: boolean;
             validationAttestedAt?: string | null;
+            /** @enum {string} */
+            reviewPriority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
+            assignedReviewerId?: string | null;
+            assignedAt?: string | null;
+            assignedReviewer?: components["schemas"]["DocumentReviewAssigneeDto"] | null;
             /** Format: date-time */
             updatedAt: string;
             version: number;
@@ -1568,6 +1839,12 @@ export interface components {
             /** @description Motivo del rechazo */
             reason: string;
         };
+        ReviewAssigneeDto: {
+            id: string;
+            username: string;
+            fullName: string;
+            profession?: string | null;
+        };
         ReviewPatientSummaryDto: {
             id: string;
             firstName: string;
@@ -1583,6 +1860,13 @@ export interface components {
             processedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** @enum {string} */
+            reviewPriority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
+            version: number;
+            /** @enum {string} */
+            assignmentState: "UNASSIGNED" | "MINE" | "ASSIGNED";
+            assignedAt?: string | null;
+            assignee?: components["schemas"]["ReviewAssigneeDto"] | null;
             patient: components["schemas"]["ReviewPatientSummaryDto"];
         };
         ReviewQueuePageDto: {
@@ -1590,6 +1874,71 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        ReviewAssigneesResponseDto: {
+            data: components["schemas"]["ReviewAssigneeDto"][];
+        };
+        ReleaseReviewDocumentDto: {
+            /** @description Version observada para control de concurrencia. */
+            expectedVersion: number;
+        };
+        ReviewAssignmentResponseDto: {
+            documentId: string;
+            /** @enum {string} */
+            reviewPriority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
+            version: number;
+            assignedAt?: string | null;
+            assignee?: components["schemas"]["ReviewAssigneeDto"] | null;
+        };
+        AssignReviewDocumentDto: {
+            /** @description Usuario activo y habilitado para validar documentos. */
+            assigneeId: string;
+            /** @description Version observada para control de concurrencia. */
+            expectedVersion: number;
+        };
+        UpdateReviewPriorityDto: {
+            /** @enum {string} */
+            priority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
+            /** @description Version observada para control de concurrencia. */
+            expectedVersion: number;
+        };
+        Object: Record<string, never>;
+        GlobalPatientSearchResultDto: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            /** @enum {string} */
+            documentType: "DNI" | "CE" | "PAS" | "OTHER";
+            documentNumber: string;
+        };
+        GlobalPatientSearchCategoryDto: {
+            data: components["schemas"]["GlobalPatientSearchResultDto"][];
+            hasMore: boolean;
+        };
+        GlobalDocumentPatientDto: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        };
+        GlobalDocumentSearchResultDto: {
+            id: string;
+            patientId: string;
+            originalName: string;
+            /** @enum {string} */
+            status: "PENDING" | "PROCESSING" | "PROCESSED" | "FAILED" | "VALIDATED" | "REJECTED";
+            /** Format: date-time */
+            createdAt: string;
+            snippet?: string | null;
+            patient?: components["schemas"]["GlobalDocumentPatientDto"] | null;
+        };
+        GlobalDocumentSearchCategoryDto: {
+            data: components["schemas"]["GlobalDocumentSearchResultDto"][];
+            hasMore: boolean;
+        };
+        GlobalSearchResponseDto: {
+            query: string;
+            patients: components["schemas"]["GlobalPatientSearchCategoryDto"];
+            documents: components["schemas"]["GlobalDocumentSearchCategoryDto"];
         };
     };
     responses: never;
@@ -1625,6 +1974,7 @@ export interface operations {
                 action?: string;
                 outcome?: "SUCCESS" | "DENIED" | "FAILED";
                 actorId?: string;
+                /** @description Username histórico o actual del actor (coincidencia exacta). */
                 actorUsername?: string;
                 patientId?: string;
                 resourceType?: string;
@@ -1704,6 +2054,13 @@ export interface operations {
                     "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
+            /** @description El actor no puede asignar el rol inicial solicitado. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description El email ya está registrado en el sistema. */
             409: {
                 headers: {
@@ -1725,6 +2082,35 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UsersController_changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeMyPasswordDto"];
+            };
+        };
+        responses: {
+            /** @description Contraseña actualizada y sesiones revocadas. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credencial actual incorrecta o nueva contraseña repetida. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1790,9 +2176,58 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Email, usuario o documento ya utilizado. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     UsersController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+            /** @description No se permite desactivar la cuenta propia. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usuario no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Debe permanecer al menos un administrador activo. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UsersController_reactivate: {
         parameters: {
             query?: never;
             header?: never;
@@ -1843,7 +2278,67 @@ export interface operations {
                     "application/json": components["schemas"]["UserResponseDto"];
                 };
             };
+            /** @description Cuenta propia o rol con permisos superiores a los del actor. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Usuario o rol no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Debe permanecer al menos un administrador activo. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UsersController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetUserPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponseDto"];
+                };
+            };
+            /** @description La nueva contraseña coincide con la actual. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description La cuenta propia usa el endpoint de cambio verificado. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usuario no encontrado. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1975,6 +2470,55 @@ export interface operations {
             };
         };
     };
+    RolesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoleDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+            /** @description La clave del rol ya existe. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RolesController_findPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionResponseDto"][];
+                };
+            };
+        };
+    };
     RolesController_findOne: {
         parameters: {
             query?: never;
@@ -1996,6 +2540,121 @@ export interface operations {
             };
             /** @description Rol no encontrado. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RolesController_delete: {
+        parameters: {
+            query: {
+                /** @description Versión conocida del rol. */
+                expectedUpdatedAt: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rol eliminado. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rol base protegido o asignado a usuarios. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RolesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+            /** @description Rol no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description La versión conocida del rol está obsoleta. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    RolesController_replacePermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRolePermissionsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+            /** @description La solicitud contiene permisos no reconocidos. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Intento de gestionar permisos superiores a los propios. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El rol Administrador perdería permisos críticos. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2769,9 +3428,14 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    "Cache-Control"?: string;
+                    Pragma?: string;
+                    "X-Content-Type-Options"?: string;
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": string;
+                };
             };
         };
     };
@@ -2952,6 +3616,9 @@ export interface operations {
     ReviewController_getQueue: {
         parameters: {
             query?: {
+                /** @description AVAILABLE incluye documentos sin asignar y los asignados al usuario actual. */
+                scope?: "AVAILABLE" | "MINE" | "UNASSIGNED" | "ALL";
+                priority?: "URGENT" | "HIGH" | "NORMAL" | "LOW";
                 page?: number;
                 limit?: number;
             };
@@ -2968,6 +3635,214 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewQueuePageDto"];
                 };
+            };
+        };
+    };
+    ReviewController_listAssignees: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssigneesResponseDto"];
+                };
+            };
+        };
+    };
+    ReviewController_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseReviewDocumentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssignmentResponseDto"];
+                };
+            };
+            /** @description Documento no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El documento fue asignado o modificado concurrentemente. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignReviewDocumentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssignmentResponseDto"];
+                };
+            };
+            /** @description Documento no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Revisor no elegible o version desactualizada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewController_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseReviewDocumentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssignmentResponseDto"];
+                };
+            };
+            /** @description Documento no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El documento ya no esta asignado o cambio de version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewController_updatePriority: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReviewPriorityDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssignmentResponseDto"];
+                };
+            };
+            /** @description Documento no encontrado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description El documento ya no esta pendiente o cambio de version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GlobalSearchController_search: {
+        parameters: {
+            query: {
+                /** @description Texto libre para buscar pacientes y documentos autorizados. */
+                q: string;
+                /** @description Cantidad maxima de resultados por categoria. */
+                limit?: components["schemas"]["Object"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSearchResponseDto"];
+                };
+            };
+            /** @description No posee permisos de lectura en ninguna categoria. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

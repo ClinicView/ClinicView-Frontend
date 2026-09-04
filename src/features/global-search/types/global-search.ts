@@ -1,23 +1,10 @@
-export interface GlobalPatientSearchResult {
-  id: string;
-  firstName: string;
-  lastName: string;
-  documentType: string;
-  documentNumber: string;
-}
+import type { components } from '@/shared/types/api.generated';
 
-export interface GlobalDocumentSearchResult {
-  id: string;
-  patientId: string;
-  originalName: string;
-  status: 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED' | 'VALIDATED' | 'REJECTED';
-  createdAt: string;
-  snippet: string | null;
-  patient: { id: string; firstName: string; lastName: string } | null;
-}
+export type GlobalPatientSearchResult =
+  components['schemas']['GlobalPatientSearchResultDto'];
 
-export interface GlobalSearchResponse {
-  query: string;
-  patients: { data: GlobalPatientSearchResult[]; hasMore: boolean };
-  documents: { data: GlobalDocumentSearchResult[]; hasMore: boolean };
-}
+export type GlobalDocumentSearchResult =
+  components['schemas']['GlobalDocumentSearchResultDto'];
+
+export type GlobalSearchResponse =
+  components['schemas']['GlobalSearchResponseDto'];
