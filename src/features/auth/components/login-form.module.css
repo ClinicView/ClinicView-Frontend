@@ -473,6 +473,21 @@
   line-height: 1.5;
 }
 
+.success {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  background: var(--color-success-light);
+  padding: 0.75rem;
+  color: var(--color-success);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.success svg { flex-shrink: 0; margin-top: 0.05rem; }
+
 .error svg {
   flex: 0 0 auto;
   margin-top: 0.1rem;

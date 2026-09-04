@@ -9,6 +9,8 @@ import { useProfile } from '@/features/profile';
 import { can } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
 import { Icon, type IconName } from '@/shared/ui';
+import { changeMyPassword } from '@/features/profile/services/profile.service';
+import { ApiError } from '@/shared/services/api-client';
 import styles from './profile.module.css';
 
 function getSessionRole(permissions: string[]): string {
@@ -83,6 +85,11 @@ export function ProfileView() {
   const { profile, isLoading, error } = useProfile();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   if (!user) return null;
 
@@ -93,6 +100,31 @@ export function ProfileView() {
     clearSession();
     router.replace('/login');
     void request;
+  }
+
+  async function handlePasswordChange(event: React.FormEvent) {
+    event.preventDefault();
+    setPasswordError(null);
+    if (newPassword.length < 12 || !/(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) {
+      setPasswordError('La nueva contraseña debe tener al menos 12 caracteres, una letra y un número.');
+      return;
+    }
+    if (newPassword !== passwordConfirmation) {
+      setPasswordError('La confirmación no coincide con la nueva contraseña.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await changeMyPassword(currentPassword, newPassword);
+      void logoutRequest();
+      clearSession();
+      router.replace('/login?passwordChanged=1');
+    } catch (reason) {
+      setPasswordError(
+        reason instanceof ApiError ? reason.message : 'No se pudo cambiar la contraseña.',
+      );
+      setIsChangingPassword(false);
+    }
   }
 
   const permissions = user.permissions;
@@ -110,6 +142,7 @@ export function ProfileView() {
     { label: 'Revisión y validación', icon: 'review', href: '/review', show: can(permissions, 'review.read') },
     { label: 'Registro manual de atención', icon: 'records', href: '/patients', show: can(permissions, 'records.create') },
     { label: 'Administración de usuarios', icon: 'admin', href: '/admin/users', show: can(permissions, 'users.read') },
+    { label: 'Roles y permisos', icon: 'shield', href: '/admin/roles', show: can(permissions, 'roles.read') },
     { label: 'Auditoría del sistema', icon: 'shield', href: '/admin/audit', show: can(permissions, 'admin.audit.read') },
   ];
   const accessLinks = allAccessLinks.filter((item) => item.show);
@@ -302,6 +335,31 @@ export function ProfileView() {
                 </span>
               </span>
             </div>
+          </section>
+          <section className={styles.sideCard} aria-labelledby="password-title">
+            <h2 id="password-title" className={styles.cardTitle}>
+              <Icon name="lock" size={17} /> Seguridad de la cuenta
+            </h2>
+            <form className={styles.passwordForm} onSubmit={(event) => void handlePasswordChange(event)}>
+              {passwordError && <p className={styles.passwordError} role="alert">{passwordError}</p>}
+              <label className={styles.passwordField}>
+                Contraseña actual
+                <input type="password" autoComplete="current-password" maxLength={100} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required />
+              </label>
+              <label className={styles.passwordField}>
+                Nueva contraseña
+                <input type="password" autoComplete="new-password" minLength={12} maxLength={100} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required />
+                <small>Mínimo 12 caracteres, una letra y un número.</small>
+              </label>
+              <label className={styles.passwordField}>
+                Confirmar nueva contraseña
+                <input type="password" autoComplete="new-password" minLength={12} maxLength={100} value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} required />
+              </label>
+              <button className={styles.passwordButton} type="submit" disabled={isChangingPassword || !currentPassword || !newPassword || !passwordConfirmation}>
+                {isChangingPassword ? 'Actualizando…' : 'Cambiar contraseña'}
+              </button>
+              <p className={styles.passwordHint}>Al guardar, se cerrarán todas tus sesiones para proteger la cuenta.</p>
+            </form>
           </section>
         </aside>
       </div>

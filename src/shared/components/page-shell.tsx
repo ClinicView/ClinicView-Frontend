@@ -42,6 +42,7 @@ function getRouteLabel(pathname: string): string {
   if (pathname === '/dashboard') return 'Centro operativo';
   if (pathname.startsWith('/review')) return 'Revisión digital';
   if (pathname.startsWith('/admin/audit')) return 'Auditoría';
+  if (pathname.startsWith('/admin/roles')) return 'Roles y permisos';
   if (pathname.startsWith('/admin')) return 'Administración';
   if (pathname.startsWith('/profile')) return 'Mi perfil';
   if (pathname.includes('/documents')) return 'Documentos clínicos';
@@ -233,12 +234,15 @@ export function PageShell({ children }: PageShellProps) {
       });
     }
 
-    if (can(permissions, 'users.read')) {
+    if (can(permissions, 'users.read') || can(permissions, 'roles.read')) {
       items.push({
-        href: '/admin/users',
+        href: can(permissions, 'users.read') ? '/admin/users' : '/admin/roles',
         label: 'Administración',
         icon: 'admin',
-        isActive: pathname === '/admin' || pathname.startsWith('/admin/users'),
+        isActive:
+          pathname === '/admin'
+          || pathname.startsWith('/admin/users')
+          || pathname.startsWith('/admin/roles'),
       });
     }
 

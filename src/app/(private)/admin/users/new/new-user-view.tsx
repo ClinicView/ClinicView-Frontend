@@ -7,6 +7,7 @@ import { UserCreateForm, createUser, listRoles } from '@/features/admin';
 import type { AdminRole, CreateAdminUserData } from '@/features/admin';
 import { PageShell } from '@/shared/components/page-shell';
 import { ApiError } from '@/shared/services/api-client';
+import { can } from '@/shared/permissions/can';
 
 export function NewUserView() {
   const { user } = useSession();
@@ -14,12 +15,25 @@ export function NewUserView() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roles, setRoles] = useState<AdminRole[]>([]);
+  const canAssignInitialRole = Boolean(
+    user
+    && can(user.permissions, 'roles.read')
+    && can(user.permissions, 'admin.users.manage'),
+  );
 
   useEffect(() => {
+    if (!canAssignInitialRole) {
+      setRoles([]);
+      return;
+    }
     let mounted = true;
     listRoles()
       .then((items) => {
-        if (mounted) setRoles(items);
+        if (!mounted || !user) return;
+        const actorPermissions = new Set(user.permissions);
+        setRoles(items.filter((role) =>
+          role.permissions.every(({ key }) => actorPermissions.has(key)),
+        ));
       })
       .catch(() => {
         if (mounted) setRoles([]);
@@ -27,7 +41,7 @@ export function NewUserView() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [canAssignInitialRole, user]);
 
   if (!user) return null;
 
@@ -51,6 +65,7 @@ export function NewUserView() {
         isLoading={isLoading}
         error={error}
         roles={roles}
+        canAssignRole={canAssignInitialRole}
       />
     </PageShell>
   );

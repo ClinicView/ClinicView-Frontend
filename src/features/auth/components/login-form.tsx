@@ -9,7 +9,11 @@ import { BrandLogo, Icon, Spinner } from '@/shared/ui';
 import { useLogin } from '../hooks/use-login';
 import styles from './login-form.module.css';
 
-export function LoginForm() {
+interface LoginFormProps {
+  passwordChanged?: boolean;
+}
+
+export function LoginForm({ passwordChanged = false }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -142,6 +146,12 @@ export function LoginForm() {
           </div>
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate aria-busy={isLoading}>
+            {passwordChanged && (
+              <p className={styles.success} role="status">
+                <Icon name="check" size={17} />
+                Contraseña actualizada. Inicia sesión nuevamente.
+              </p>
+            )}
             {hasValidationErrors && (
               <div
                 ref={validationSummaryRef}

@@ -50,6 +50,7 @@ export function getLandingPath(permissions: readonly string[]): string {
   if (permissions.includes('patients.read')) return '/patients';
   if (permissions.includes('review.read')) return '/review';
   if (permissions.includes('users.read')) return '/admin/users';
+  if (permissions.includes('roles.read')) return '/admin/roles';
   if (permissions.includes('admin.audit.read')) return '/admin/audit';
   return '/profile';
 }

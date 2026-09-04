@@ -10,6 +10,8 @@ import { can } from '@/shared/permissions/can';
 import { Icon, type IconName } from '@/shared/ui';
 import styles from './admin-users.module.css';
 
+const EMPTY_PERMISSIONS: string[] = [];
+
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('es-PE', {
@@ -55,10 +57,13 @@ function StatCard({ icon, tone, label, value, hint, hintPositive }: StatCardProp
 export function UsersView() {
   const { user } = useSession();
   const router = useRouter();
-  const permissions = user?.permissions ?? [];
+  const permissions = user?.permissions ?? EMPTY_PERMISSIONS;
   const canReadRoles = can(permissions, 'roles.read');
-  const canCreateUsers = can(permissions, 'users.create') && canReadRoles;
+  const canCreateUsers = can(permissions, 'users.create');
+  const canEditUsers = can(permissions, 'users.update');
   const canDeactivateUsers = can(permissions, 'users.deactivate');
+  const canReactivateUsers = can(permissions, 'admin.users.manage');
+  const canResetCredentials = can(permissions, 'admin.users.manage');
   const canAssignRoles = can(permissions, 'admin.users.manage') && canReadRoles;
   const {
     users,
@@ -68,6 +73,7 @@ export function UsersView() {
     rolesError,
     actionError,
     deactivate,
+    reactivate,
     assignRole,
   } = useAdminUsers({ loadRoles: canReadRoles });
 
@@ -76,6 +82,12 @@ export function UsersView() {
   const [stateFilter, setStateFilter] = useState('');
   const [pendingDeactivate, setPendingDeactivate] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const assignableRoles = useMemo(() => {
+    const actorPermissions = new Set(permissions);
+    return roles.filter((role) =>
+      role.permissions.every(({ key }) => actorPermissions.has(key)),
+    );
+  }, [permissions, roles]);
 
   const stats = useMemo(() => {
     const total = users.length;
@@ -139,13 +151,34 @@ export function UsersView() {
 
   async function handleRoleChange(userId: string, roleKey: string) {
     if (!roleKey || !canAssignRoles) return;
+    const target = users.find((candidate) => candidate.id === userId);
+    const nextRole = roles.find((role) => role.key === roleKey);
+    if (
+      !target
+      || !nextRole
+      || !window.confirm(
+        `¿Cambiar el rol de ${target.fullName} a ${nextRole.name}? Sus sesiones activas serán revocadas.`,
+      )
+    ) return;
     setActingId(userId);
     await assignRole(userId, roleKey);
     setActingId(null);
   }
 
+  async function handleReactivate(id: string) {
+    if (!canReactivateUsers) return;
+    setActingId(id);
+    await reactivate(id);
+    setActingId(null);
+  }
+
   function renderRow(u: AdminUser) {
-    const isSelf = u.email === user?.email;
+    const isSelf = u.id === user?.sub;
+    const currentRole = roles.find((role) => role.key === u.roles[0]?.key);
+    const actorPermissions = new Set(permissions);
+    const canManageCurrentRole = !currentRole || currentRole.permissions.every(
+      ({ key }) => actorPermissions.has(key),
+    );
     return (
       <tr key={u.id}>
         <td data-label="Usuario">
@@ -153,7 +186,7 @@ export function UsersView() {
             <span className={styles.avatar} aria-hidden="true">{getInitials(u.fullName)}</span>
             <div className={styles.userIdentity}>
               <p className={styles.userName}>{u.fullName}</p>
-              <p className={styles.userEmail}>{u.email}</p>
+              <p className={styles.userEmail}>@{u.username} · {u.email}</p>
             </div>
           </div>
         </td>
@@ -162,7 +195,7 @@ export function UsersView() {
           {u.documentType && u.documentNumber ? `${u.documentType} ${u.documentNumber}` : '—'}
         </td>
         <td data-label="Rol">
-          {u.isActive && canAssignRoles ? (
+          {u.isActive && canAssignRoles && canManageCurrentRole && !isSelf ? (
             <select
               className={styles.roleSelect}
               value={u.roles[0]?.key ?? ''}
@@ -170,8 +203,8 @@ export function UsersView() {
               disabled={actingId === u.id}
               aria-label={`Rol de ${u.fullName}`}
             >
-              <option value="">Sin rol</option>
-              {roles.map((role) => (
+              <option value="" disabled>Seleccionar rol</option>
+              {assignableRoles.map((role) => (
                 <option key={role.key} value={role.key}>{role.name}</option>
               ))}
             </select>
@@ -189,6 +222,17 @@ export function UsersView() {
         </td>
         <td data-label="Acciones">
           <div className={styles.actions} role="group" aria-label={`Acciones para ${u.fullName}`}>
+            {(canEditUsers || canResetCredentials) && (
+              <button
+                className={`${styles.iconBtn} ${styles.editBtn}`}
+                type="button"
+                title="Editar usuario"
+                aria-label={`Editar a ${u.fullName}`}
+                onClick={() => router.push(`/admin/users/${u.id}/edit`)}
+              >
+                <Icon name="edit" size={16} />
+              </button>
+            )}
             {canDeactivateUsers && u.isActive && !isSelf && pendingDeactivate !== u.id && (
               <button
                 id={`deactivate-${u.id}`}
@@ -223,6 +267,17 @@ export function UsersView() {
                 </button>
               </>
             )}
+            {canReactivateUsers && !u.isActive && (
+              <button
+                className={styles.reactivateBtn}
+                type="button"
+                onClick={() => void handleReactivate(u.id)}
+                disabled={actingId === u.id}
+              >
+                <Icon name="check" size={15} />
+                {actingId === u.id ? 'Reactivando…' : 'Reactivar'}
+              </button>
+            )}
           </div>
         </td>
       </tr>
@@ -236,12 +291,20 @@ export function UsersView() {
           <h1 className={styles.title}>Gestión de usuarios</h1>
           <p className={styles.subtitle}>Administra accesos, roles y estado del personal del sistema.</p>
         </div>
-        {canCreateUsers && (
-          <button className={styles.newBtn} type="button" onClick={() => router.push('/admin/users/new')}>
-            <Icon name="patient" size={16} />
-            Nuevo usuario
-          </button>
-        )}
+        <div className={styles.headerActions}>
+          {canReadRoles && (
+            <button className={styles.secondaryBtn} type="button" onClick={() => router.push('/admin/roles')}>
+              <Icon name="shield" size={16} />
+              Roles y permisos
+            </button>
+          )}
+          {canCreateUsers && (
+            <button className={styles.newBtn} type="button" onClick={() => router.push('/admin/users/new')}>
+              <Icon name="patient" size={16} />
+              Nuevo usuario
+            </button>
+          )}
+        </div>
       </div>
 
       <section className={styles.statsGrid} aria-label="Indicadores de usuarios">

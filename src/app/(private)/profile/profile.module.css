@@ -429,6 +429,17 @@
   }
 }
 
+.sideCard + .sideCard { margin-top: 1.25rem; }
+
+.passwordForm { display: grid; gap: .875rem; }
+.passwordField { display: grid; gap: .375rem; color: var(--gray-700); font-size: .78125rem; font-weight: 700; }
+.passwordField input { width: 100%; min-height: 44px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: #fff; padding: .625rem .75rem; color: var(--gray-900); font: inherit; font-size: 1rem; font-weight: 400; }
+.passwordField input:focus { border-color: var(--color-primary); outline: 3px solid var(--color-focus-ring); outline-offset: 1px; }
+.passwordField small, .passwordHint { color: var(--gray-500); font-size: .71875rem; font-weight: 400; line-height: 1.45; }
+.passwordButton { min-height: 44px; border: 1px solid var(--color-primary); border-radius: var(--radius-md); background: var(--color-primary); color: #fff; font: inherit; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.passwordButton:disabled { opacity: .55; cursor: not-allowed; }
+.passwordError { border-radius: var(--radius-sm); background: var(--color-danger-light); padding: .625rem .75rem; color: var(--color-danger); font-size: .75rem; line-height: 1.45; }
+
 @media (max-width: 360px) {
   .nameRow {
     align-items: flex-start;

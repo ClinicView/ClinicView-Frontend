@@ -1,0 +1,38 @@
+.header { display: grid; gap: .75rem; margin-bottom: 1.25rem; }
+.backButton { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; gap: .35rem; border: 0; background: transparent; color: var(--color-primary); font: inherit; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.backButton svg { transform: rotate(180deg); }
+.title { color: var(--gray-900); font-size: 1.5rem; font-weight: 800; outline: none; }
+.subtitle { margin-top: .25rem; color: var(--gray-500); font-size: .875rem; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(18rem, .8fr); gap: 1.25rem; align-items: start; }
+.sideColumn { min-width: 0; }
+.card { min-width: 0; border: 1px solid var(--border-clinical); border-radius: var(--radius-lg); background: var(--bg-surface); box-shadow: var(--shadow-xs); padding: 1.25rem; }
+.cardHeader { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+.cardHeader h2 { color: var(--gray-900); font-size: 1rem; }
+.cardHeader p { margin-top: .125rem; color: var(--gray-500); font-size: .75rem; overflow-wrap: anywhere; }
+.cardIcon { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border-radius: var(--radius-md); background: var(--color-primary-light); color: var(--color-primary); }
+.fieldset { min-width: 0; border: 0; padding: 0; }
+.fieldset:disabled { opacity: .72; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.field { display: grid; gap: .375rem; color: var(--gray-700); font-size: .8125rem; font-weight: 700; }
+.field input, .field select { width: 100%; min-height: 44px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: #fff; padding: .625rem .75rem; color: var(--gray-900); font: inherit; font-size: 1rem; font-weight: 400; }
+.field input:focus, .field select:focus { border-color: var(--color-primary); outline: 3px solid var(--color-focus-ring); outline-offset: 1px; }
+.field small { color: var(--gray-500); font-size: .71875rem; font-weight: 400; line-height: 1.4; }
+.fullWidth { grid-column: 1 / -1; }
+.passwordFields { display: grid; gap: .875rem; }
+.revealButton { min-height: 44px; margin: -.5rem 0 .75rem auto; display: block; border: 0; background: transparent; color: var(--color-primary); font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
+.revealButton:focus-visible { border-radius: var(--radius-sm); outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+.primaryButton, .secondaryButton, .warningButton { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); padding: 0 1rem; font: inherit; font-size: .8125rem; font-weight: 700; cursor: pointer; }
+.primaryButton { border: 1px solid var(--color-primary); background: var(--color-primary); color: #fff; }
+.secondaryButton { border: 1px solid var(--gray-200); background: #fff; color: var(--gray-700); }
+.warningButton { width: 100%; margin-top: 1rem; border: 1px solid var(--color-danger-border); background: var(--color-danger-light); color: var(--color-danger); }
+.primaryButton:disabled, .warningButton:disabled { opacity: .55; cursor: not-allowed; }
+.error, .notice { margin-bottom: 1rem; border-radius: var(--radius-md); padding: .75rem 1rem; font-size: .875rem; }
+.error { border: 1px solid var(--color-danger-border); background: var(--color-danger-light); color: var(--color-danger); }
+.notice { border: 1px solid var(--color-success-border); background: var(--color-success-light); color: var(--color-success); }
+.helpText { color: var(--gray-600); font-size: .8125rem; line-height: 1.55; }
+.inlineError { margin-bottom: .875rem; border: 1px solid var(--color-danger-border); border-radius: var(--radius-sm); background: var(--color-danger-light); padding: .625rem .75rem; color: var(--color-danger); font-size: .75rem; line-height: 1.45; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .grid { grid-template-columns: 1fr; } .fullWidth { grid-column: auto; } .card { padding: 1rem; } .actions > * { flex: 1 1 10rem; } }
+@media (forced-colors: active) { .field input:focus, .field select:focus { outline-color: Highlight; } }

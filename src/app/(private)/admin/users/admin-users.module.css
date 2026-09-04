@@ -21,6 +21,13 @@
   font-size: 0.875rem;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .visuallyHidden {
   position: absolute;
   width: 1px;
@@ -210,6 +217,32 @@
   overflow-x: auto;
   border-radius: var(--radius-sm);
 }
+
+.secondaryBtn,
+.reactivateBtn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  padding: 0 1rem;
+  color: var(--color-primary-dark);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover:not(:disabled),
+.reactivateBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.reactivateBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .tableRegion:focus-visible {
   outline: 3px solid var(--color-focus-ring);
@@ -471,7 +504,9 @@
 
 @media (max-width: 760px) {
   .pageHeader { align-items: stretch; flex-direction: column; }
-  .newBtn { width: 100%; justify-content: center; }
+  .headerActions { width: 100%; }
+  .newBtn,
+  .secondaryBtn { flex: 1 1 12rem; }
   .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .toolbar { align-items: stretch; flex-direction: column; }
@@ -532,6 +567,12 @@
   .roleSelect { width: 100%; max-width: 18rem; }
   .actions { flex-wrap: wrap; }
   .mainPanel { padding: 1rem; }
+}
+
+.editBtn:hover:not(:disabled) {
+  border-color: var(--color-primary-border);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
 }
 
 @media (max-width: 420px) {

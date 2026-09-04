@@ -1,6 +1,19 @@
 export interface AdminRole {
+  id: string;
   key: string;
   name: string;
+  description: string | null;
+  permissions: AdminPermission[];
+  isSystem: boolean;
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPermission {
+  id: string;
+  key: string;
+  description: string | null;
 }
 
 export interface AdminUser {
@@ -17,7 +30,12 @@ export interface AdminUser {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
-  roles: AdminRole[];
+  roles: AdminUserRole[];
+}
+
+export interface AdminUserRole {
+  key: string;
+  name: string;
 }
 
 export interface CreateAdminUserData {
@@ -30,4 +48,25 @@ export interface CreateAdminUserData {
   profession?: string;
   roleKey?: string;
   password: string;
+}
+
+export interface UpdateAdminUserData {
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  documentType?: 'DNI' | 'CE' | 'PAS' | 'OTHER' | null;
+  documentNumber?: string;
+  profession?: string;
+}
+
+export interface CreateAdminRoleData {
+  key: string;
+  name: string;
+  description?: string;
+}
+
+export interface UpdateAdminRoleData {
+  name?: string;
+  description?: string;
 }

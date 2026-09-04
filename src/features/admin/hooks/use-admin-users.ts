@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminRole, AdminUser } from '../types/admin';
-import { assignRole, deactivateUser, listRoles, listUsers } from '../services/admin.service';
+import {
+  assignRole,
+  deactivateUser,
+  listRoles,
+  listUsers,
+  reactivateUser,
+} from '../services/admin.service';
 
 export function useAdminUsers({ loadRoles = true }: { loadRoles?: boolean } = {}) {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -64,6 +70,16 @@ export function useAdminUsers({ loadRoles = true }: { loadRoles?: boolean } = {}
     }
   }
 
+  async function doReactivate(id: string): Promise<void> {
+    setActionError(null);
+    try {
+      const updated = await reactivateUser(id);
+      setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Error al reactivar usuario.');
+    }
+  }
+
   return {
     users,
     roles,
@@ -73,6 +89,7 @@ export function useAdminUsers({ loadRoles = true }: { loadRoles?: boolean } = {}
     actionError,
     reload: load,
     deactivate: doDeactivate,
+    reactivate: doReactivate,
     assignRole: doAssignRole,
   };
 }

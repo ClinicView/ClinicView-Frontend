@@ -17,6 +17,10 @@ export default function AdminPage() {
       router.replace('/admin/users');
       return;
     }
+    if (can(user.permissions, 'roles.read')) {
+      router.replace('/admin/roles');
+      return;
+    }
     if (can(user.permissions, 'admin.audit.read')) {
       router.replace('/admin/audit');
       return;

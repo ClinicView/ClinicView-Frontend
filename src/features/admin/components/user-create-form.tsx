@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import type { AdminRole, CreateAdminUserData } from '../types/admin';
+import { useUnsavedChangesGuard } from '../hooks/use-unsaved-changes-guard';
 import styles from '../../patients/components/patient-form.module.css';
 
 interface FieldErrors {
@@ -17,7 +18,7 @@ const FIELD_LABELS: Record<keyof FieldErrors, string> = {
   lastName: 'Apellidos',
   email: 'Email institucional',
   username: 'Usuario',
-  password: 'Contraseña temporal',
+  password: 'Contraseña inicial',
 };
 
 function normalizeUsername(firstName?: string, lastName?: string): string {
@@ -39,7 +40,8 @@ function validate(d: Partial<CreateAdminUserData>): FieldErrors {
   if (!d.username?.trim()) e.username = 'Requerido';
   else if (!/^[a-zA-Z0-9._-]{3,50}$/.test(d.username)) e.username = '3 a 50 caracteres: letras, números, punto, guion o guion bajo';
   if (!d.password) e.password = 'Requerido';
-  else if (d.password.length < 8) e.password = 'Mínimo 8 caracteres';
+  else if (d.password.length < 12) e.password = 'Mínimo 12 caracteres';
+  else if (!/(?=.*[A-Za-z])(?=.*\d)/.test(d.password)) e.password = 'Incluye al menos una letra y un número';
   return e;
 }
 
@@ -49,14 +51,27 @@ interface UserCreateFormProps {
   isLoading: boolean;
   error: string | null;
   roles: AdminRole[];
+  canAssignRole?: boolean;
 }
 
-export function UserCreateForm({ onSubmit, onCancel, isLoading, error, roles }: UserCreateFormProps) {
+export function UserCreateForm({
+  onSubmit,
+  onCancel,
+  isLoading,
+  error,
+  roles,
+  canAssignRole = false,
+}: UserCreateFormProps) {
   const [form, setForm] = useState<Partial<CreateAdminUserData>>({});
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState(false);
   const [usernameTouched, setUsernameTouched] = useState(false);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const isDirty = Object.values(form).some((value) => Boolean(value));
+  useUnsavedChangesGuard(
+    isDirty,
+    'Hay datos del nuevo usuario sin guardar. ¿Deseas salir y descartarlos?',
+  );
 
   function set<K extends keyof CreateAdminUserData>(key: K, value: string) {
     const next = { ...form, [key]: value };
@@ -102,7 +117,12 @@ export function UserCreateForm({ onSubmit, onCancel, isLoading, error, roles }: 
   }
 
   return (
-    <form className={styles.form} onSubmit={(e) => void handleSubmit(e)} noValidate>
+    <form
+      className={styles.form}
+      data-unsaved-guard-submit="allow"
+      onSubmit={(e) => void handleSubmit(e)}
+      noValidate
+    >
       <h1 className={styles.title}>Nuevo usuario del sistema</h1>
 
       {error && <p className={styles.formError} role="alert">{error}</p>}
@@ -243,7 +263,7 @@ export function UserCreateForm({ onSubmit, onCancel, isLoading, error, roles }: 
           />
         </div>
 
-        <div className={styles.field}>
+        {canAssignRole && <div className={styles.field}>
           <label className={styles.label} htmlFor="user-roleKey">Rol inicial</label>
           <select
             id="user-roleKey"
@@ -256,10 +276,10 @@ export function UserCreateForm({ onSubmit, onCancel, isLoading, error, roles }: 
               <option key={role.key} value={role.key}>{role.name}</option>
             ))}
           </select>
-        </div>
+        </div>}
 
         <div className={`${styles.field} ${styles.fullWidth}`}>
-          <label className={`${styles.label} ${styles.required}`} htmlFor="user-password">Contraseña temporal (mín. 8 car.)</label>
+          <label className={`${styles.label} ${styles.required}`} htmlFor="user-password">Contraseña inicial (mín. 12 car.)</label>
           <input
             id="user-password"
             className={`${styles.input} ${fieldErrors.password ? styles.inputError : ''}`}
