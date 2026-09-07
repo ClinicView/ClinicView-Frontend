@@ -22,6 +22,16 @@ const FIELD_LABELS: Record<keyof FieldErrors, string> = {
   dateOfBirth: 'Fecha de nacimiento',
 };
 
+const CONTEXT_FIELDS = [
+  ['medicalRecordNumber', 'Número de historia clínica', 50],
+  ['insuranceName', 'Seguro / financiador', 100],
+  ['insuranceNumber', 'Número de afiliación', 80],
+  ['emergencyContactName', 'Contacto de emergencia', 150],
+  ['emergencyContactPhone', 'Teléfono de emergencia', 30],
+  ['emergencyContactRelationship', 'Parentesco / relación', 80],
+  ['representativeName', 'Representante o responsable', 150],
+] as const;
+
 function validate(data: UpdatePatientData): FieldErrors {
   const e: FieldErrors = {};
   if (!data.firstName?.trim()) e.firstName = 'Requerido';
@@ -48,6 +58,14 @@ export function PatientEditForm({
   error,
 }: PatientEditFormProps) {
   const [form, setForm] = useState<UpdatePatientData>({
+    expectedVersion: patient.version,
+    medicalRecordNumber: patient.medicalRecordNumber ?? '',
+    emergencyContactName: patient.emergencyContactName ?? '',
+    emergencyContactPhone: patient.emergencyContactPhone ?? '',
+    emergencyContactRelationship: patient.emergencyContactRelationship ?? '',
+    representativeName: patient.representativeName ?? '',
+    insuranceName: patient.insuranceName ?? '',
+    insuranceNumber: patient.insuranceNumber ?? '',
     firstName: patient.firstName,
     lastName: patient.lastName,
     dateOfBirth: toDateOnlyInputValue(patient.dateOfBirth),
@@ -77,13 +95,14 @@ export function PatientEditForm({
     }
 
     const payload: UpdatePatientData = {
+      ...form,
       firstName: form.firstName?.trim(),
       lastName: form.lastName?.trim(),
       dateOfBirth: form.dateOfBirth,
       sex: form.sex,
-      phone: form.phone?.trim() || undefined,
-      email: form.email?.trim() || undefined,
-      address: form.address?.trim() || undefined,
+      phone: form.phone?.trim() || null,
+      email: form.email?.trim() || null,
+      address: form.address?.trim() || null,
     };
     await onSubmit(payload);
   }
@@ -96,7 +115,8 @@ export function PatientEditForm({
       form.sex !== patient.sex ||
       (form.phone ?? '') !== (patient.phone ?? '') ||
       (form.email ?? '') !== (patient.email ?? '') ||
-      (form.address ?? '') !== (patient.address ?? '');
+      (form.address ?? '') !== (patient.address ?? '') ||
+      CONTEXT_FIELDS.some(([key]) => (form[key] ?? '') !== (patient[key] ?? ''));
     if (hasChanges && !window.confirm('Hay cambios sin guardar. ¿Deseas salir del formulario?')) return;
     onCancel();
   }
@@ -234,6 +254,20 @@ export function PatientEditForm({
         </div>
       </div>
 
+      <fieldset className={styles.contextSection}>
+        <legend>Identificación institucional y contacto</legend>
+        <p>Datos opcionales. El número de historia clínica es único; no reemplaza el documento de identidad.</p>
+        <div className={styles.grid}>
+          {CONTEXT_FIELDS.map(([key, label, maxLength]) => (
+            <div className={styles.field} key={key}>
+              <label className={styles.label} htmlFor={`patient-edit-${key}`}>{label}</label>
+              <input id={`patient-edit-${key}`} className={styles.input} maxLength={maxLength}
+                type={key === 'emergencyContactPhone' ? 'tel' : 'text'}
+                value={form[key] ?? ''} onChange={(e) => set(key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+      </fieldset>
       <div className={styles.actions}>
         <button type="button" className={styles.cancelBtn} onClick={handleCancel} disabled={isLoading}>
           Cancelar

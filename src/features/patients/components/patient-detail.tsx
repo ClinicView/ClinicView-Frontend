@@ -32,7 +32,7 @@ export function PatientDetail({ patient, permissions }: PatientDetailProps) {
     setIsDeactivating(true);
     setDeactivateError(null);
     try {
-      await deactivatePatient(patient.id);
+      await deactivatePatient(patient.id, patient.version);
       router.replace('/patients');
     } catch (err) {
       setDeactivateError(err instanceof Error ? err.message : 'Error al desactivar el paciente.');

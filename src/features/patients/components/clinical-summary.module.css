@@ -1,0 +1,210 @@
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-primary-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  margin-bottom: 1.25rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.identity,
+.safety {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.identity strong {
+  font-size: 1rem;
+  color: var(--gray-900);
+}
+.band a {
+  color: var(--color-primary);
+  text-underline-offset: 3px;
+}
+.safety {
+  max-width: min(100%, 600px);
+}
+.warning {
+  color: var(--color-danger-dark);
+}
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  min-width: 0;
+  scroll-margin-top: 1rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.header {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+.header h2 {
+  font-size: 1.2rem;
+  color: var(--gray-900);
+}
+.header p,
+.hint {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin: 1rem 0;
+}
+.columns h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.columns ul {
+  padding-left: 1.25rem;
+}
+.columns li {
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+}
+.columns p {
+  white-space: pre-wrap;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.button,
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--gray-800);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.primary {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.button:disabled,
+.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.error {
+  padding: 1rem;
+  border: 1px solid var(--color-danger-border);
+  background: var(--color-danger-light);
+  color: var(--color-danger-dark);
+  border-radius: var(--radius-sm);
+  margin: 0.75rem 0;
+}
+.editFields {
+  border: 0;
+  min-width: 0;
+}
+.group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  min-width: 0;
+}
+.group > legend,
+.entry > legend {
+  font-weight: 700;
+  padding: 0 0.5rem;
+}
+.group .hint {
+  margin-top: 0.75rem;
+}
+.entry {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin-top: 1rem;
+  padding: 1rem 0;
+  min-width: 0;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 0;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font: inherit;
+  font-weight: 400;
+  color: var(--gray-900);
+  background: var(--bg-surface);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem;
+}
+.field textarea {
+  resize: vertical;
+}
+.history {
+  border-top: 1px solid var(--color-border);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+.history summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0.75rem 0;
+  color: var(--color-primary);
+}
+@media (max-width: 850px) {
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+@media (max-width: 600px) {
+  .panel {
+    padding: 1rem;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .band {
+    padding: 0.875rem;
+  }
+  .actions > button {
+    flex: 1 1 auto;
+  }
+}

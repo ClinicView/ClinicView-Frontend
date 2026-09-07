@@ -61,7 +61,7 @@ export function EditPatientView({ patientId }: EditPatientViewProps) {
     setIsDeactivating(true);
     setDeactivateError(null);
     try {
-      await deactivatePatient(patientId);
+      await deactivatePatient(patientId, patient!.version);
       router.replace('/patients');
     } catch (err) {
       setDeactivateError(

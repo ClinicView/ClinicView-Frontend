@@ -3,11 +3,23 @@ import type {
   RecordDetails,
   RecordSchemaVersion,
 } from '../../clinical-records/types/record';
+import type { ClinicalSummary } from './clinical-summary';
 
 export type DocumentType = 'DNI' | 'CE' | 'PAS' | 'OTHER';
 export type Sex = 'M' | 'F' | 'OTHER';
 
-export interface Patient {
+export interface PatientContext {
+  medicalRecordNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
+  representativeName?: string | null;
+  insuranceName?: string | null;
+  insuranceNumber?: string | null;
+}
+
+export interface Patient extends PatientContext {
+  version: number;
   id: string;
   documentType: DocumentType;
   documentNumber: string;
@@ -30,7 +42,7 @@ export interface PatientsPage {
   limit: number;
 }
 
-export interface CreatePatientData {
+export interface CreatePatientData extends PatientContext {
   documentType: DocumentType;
   documentNumber: string;
   firstName: string;
@@ -71,14 +83,15 @@ export interface SavePatientRegistrationDraftData {
   payload: PatientRegistrationDraftPayload;
 }
 
-export interface UpdatePatientData {
+export interface UpdatePatientData extends PatientContext {
+  expectedVersion: number;
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
   sex?: Sex;
-  phone?: string;
-  email?: string;
-  address?: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
 }
 
 export type ClinicalHistoryRecordType =
@@ -144,6 +157,7 @@ export interface ClinicalHistoryExportDocument {
 }
 
 export interface ClinicalHistoryExport {
+  clinicalSummaryRevisions: ClinicalSummary[];
   patient: Pick<
     Patient,
     | 'id'
@@ -156,6 +170,13 @@ export interface ClinicalHistoryExport {
     | 'phone'
     | 'email'
     | 'address'
+    | 'medicalRecordNumber'
+    | 'emergencyContactName'
+    | 'emergencyContactPhone'
+    | 'emergencyContactRelationship'
+    | 'representativeName'
+    | 'insuranceName'
+    | 'insuranceNumber'
   >;
   records: ClinicalHistoryExportRecord[];
   documents: ClinicalHistoryExportDocument[];

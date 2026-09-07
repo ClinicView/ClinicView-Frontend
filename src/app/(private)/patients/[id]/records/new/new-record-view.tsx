@@ -18,9 +18,7 @@ import {
 import { usePatient } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
 import {
-  ageFromDateOnly,
   currentDateTimeLocal,
-  formatDateOnly,
 } from '@/shared/lib/date-time';
 import { ApiError } from '@/shared/services/api-client';
 import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
@@ -69,12 +67,6 @@ function errorDescription(errors: ReadonlyMap<string, RecordFormError>, id: stri
   return errors.has(id) ? `${id}-error` : undefined;
 }
 
-function patientSex(value: 'M' | 'F' | 'OTHER'): string {
-  if (value === 'M') return 'Masculino';
-  if (value === 'F') return 'Femenino';
-  return 'Otro';
-}
-
 interface NewRecordViewProps {
   patientId: string;
 }
@@ -111,7 +103,6 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
   const doctorWrapRef = useRef<HTMLDivElement>(null);
 
   const errorsById = useMemo(() => errorMap(validationErrors), [validationErrors]);
-  const patientAge = useMemo(() => ageFromDateOnly(patient?.dateOfBirth), [patient]);
   const mediaSections = useMemo(() => form.recordType
     ? getRecordTypeDefinition(form.recordType).sections
     : [], [form.recordType]);
@@ -488,23 +479,6 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
           </button>
         </div>
       </header>
-
-      <section className={styles.patientStrip} aria-labelledby="record-patient-name">
-        <span className={styles.avatar} aria-hidden="true">
-          {(patient.firstName[0] ?? '') + (patient.lastName[0] ?? '')}
-        </span>
-        <div className={styles.patientIdentity}>
-          <h2 id="record-patient-name">{patient.lastName}, {patient.firstName}</h2>
-          <div className={styles.patientIdentifiers}>
-            <span><strong>{patient.documentType}</strong> {patient.documentNumber}</span>
-            <span><strong>Nacimiento</strong> {formatDateOnly(patient.dateOfBirth)}{patientAge != null ? ` · ${patientAge} años` : ''}</span>
-            <span><strong>Sexo</strong> {patientSex(patient.sex)}</span>
-          </div>
-        </div>
-        <span className={`${styles.patientStatus} ${patient.isActive ? styles.patientActive : styles.patientInactive}`}>
-          {patient.isActive ? 'Paciente activo' : 'Paciente inactivo'}
-        </span>
-      </section>
 
       <form
         className={styles.formCard}

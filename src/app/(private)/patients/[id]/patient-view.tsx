@@ -20,6 +20,7 @@ import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import {
   clinicalHistoryDocumentToExportItem,
+  clinicalSummaryToExportItem,
   documentToExportItem,
   exportPatientPdf,
   recordToExportItem,
@@ -30,6 +31,7 @@ import { PageShell } from '@/shared/components/page-shell';
 import { ageFromDateOnly, formatDateOnly, formatInstant } from '@/shared/lib/date-time';
 import { Alert, Icon, Spinner } from '@/shared/ui';
 import { usePatientOverview } from './use-patient-overview';
+import { ClinicalSummaryPanel } from '@/features/patients/components/clinical-summary-panel';
 import styles from './patient-profile.module.css';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
@@ -269,7 +271,7 @@ export function PatientView({ id }: PatientViewProps) {
   async function handleActivate() {
     setIsActivating(true);
     try {
-      await activatePatient(id);
+      await activatePatient(id, patient!.version);
       window.location.reload();
     } catch {
       setIsActivating(false);
@@ -361,6 +363,7 @@ export function PatientView({ id }: PatientViewProps) {
             a.id.localeCompare(b.id),
         )
         .map((entry) => entry.item);
+      items.unshift(...(history.clinicalSummaryRevisions ?? []).map((revision, index) => clinicalSummaryToExportItem(revision, index === 0)));
 
       if (items.length === 0) {
         setExportError('Este paciente todavía no tiene entradas clínicas para exportar.');
@@ -519,6 +522,8 @@ export function PatientView({ id }: PatientViewProps) {
           )}
         </div>
       )}
+
+      {canReadRecords && <ClinicalSummaryPanel patientId={id} canEdit={patient.isActive && can(permissions, 'records.create')} />}
 
       {/* ─── Cards resumen ─── */}
       <section className={styles.summaryGrid} aria-label="Resumen del paciente">

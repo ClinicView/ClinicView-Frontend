@@ -76,10 +76,10 @@ export function updatePatient(id: string, data: UpdatePatientData): Promise<Pati
   return apiPatch<Patient>(`/patients/${id}`, data);
 }
 
-export function deactivatePatient(id: string): Promise<Patient> {
-  return apiPatch<Patient>(`/patients/${id}/deactivate`);
+export function deactivatePatient(id: string, expectedVersion: number): Promise<Patient> {
+  return apiPatch<Patient>(`/patients/${id}/deactivate`, { expectedVersion });
 }
 
-export function activatePatient(id: string): Promise<Patient> {
-  return apiPatch<Patient>(`/patients/${id}/activate`);
+export function activatePatient(id: string, expectedVersion: number): Promise<Patient> {
+  return apiPatch<Patient>(`/patients/${id}/activate`, { expectedVersion });
 }

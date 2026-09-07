@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { NotificationsBell } from '@/features/notifications';
 import { GlobalSearch } from '@/features/global-search';
+import { PatientSafetyBand } from '@/features/patients/components/patient-safety-band';
+import { ContextHelp } from '@/shared/ui/context-help';
 import { BrandLogo, Icon, type IconName } from '@/shared/ui';
 import { can, canAll, canAny, getLandingPath } from '@/shared/permissions/can';
 import { logoutRequest } from '@/shared/session/logout';
@@ -407,6 +409,12 @@ export function PageShell({ children }: PageShellProps) {
           <GlobalSearch permissions={user.permissions} />
 
           <div className={styles.topbarRight}>
+            <ContextHelp title={getRouteLabel(pathname)} compact>
+              <p>Comprueba la identidad del paciente antes de consultar, registrar o exportar información. La banda del paciente muestra su documento y los datos clínicos revisados según tus permisos.</p>
+              <p>Un documento digitalizado conserva su archivo original y requiere revisión humana. Un registro clínico reúne una atención estructurada. Subir un documento no equivale a registrar una nueva atención.</p>
+              <p>Los borradores son privados. Para corregir un registro guardado, utiliza la opción de corrección: la versión anterior se conserva por trazabilidad.</p>
+              <p>Si aparece un conflicto de versión, revisa los cambios recientes antes de volver a guardar. No compartas tu cuenta ni exportes información fuera del uso autorizado.</p>
+            </ContextHelp>
             <NotificationsBell />
 
             <Link
@@ -425,6 +433,9 @@ export function PageShell({ children }: PageShellProps) {
         </header>
 
         <main ref={contentRef} id="main-content" className={styles.content} tabIndex={-1}>
+          {can(user.permissions, 'patients.read') && /^\/patients\/[0-9a-f-]{36}(?:\/|$)/i.test(pathname) && (
+            <PatientSafetyBand key={pathname} patientId={pathname.split('/')[2]} canReadClinical={can(user.permissions, 'records.read')} />
+          )}
           {children}
         </main>
       </div>

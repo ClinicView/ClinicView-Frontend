@@ -37,6 +37,8 @@ import {
 } from '@/shared/lib/date-time';
 import { parseClinicalSections } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
+import type { ClinicalSummary } from '@/features/patients/types/clinical-summary';
+import { clinicalSummarySections } from '@/features/patients/lib/clinical-summary-presentation';
 
 export type ExportSectionBlock =
   | { kind: 'text'; label?: string; content: string }
@@ -61,6 +63,18 @@ export interface ExportItem {
   origin: string;
   sections: ExportSection[];
   attachments: ExportAttachment[];
+}
+
+export function clinicalSummaryToExportItem(revision: ClinicalSummary, current: boolean): ExportItem {
+  return {
+    title: `Información longitudinal · Revisión ${revision.version}`,
+    date: revision.createdAt ?? '', dateLabel: 'Fecha de revisión (no es una atención)',
+    origin: 'Revisión humana', status: current ? 'Vigente al exportar' : 'Revisión anterior; no vigente',
+    attachments: [], sections: [
+      { title: 'Trazabilidad de la revisión', content: `Registrado por: ${revision.recordedByName ?? 'No registrado'}\nMotivo / fuente: ${revision.reason ?? 'No registrado'}` },
+      ...clinicalSummarySections(revision.payload),
+    ],
+  };
 }
 
 interface ResolvedExportItem extends Omit<ExportItem, 'attachments'> {
@@ -422,6 +436,13 @@ export async function exportPatientPdf(options: {
     | 'phone'
     | 'email'
     | 'address'
+    | 'medicalRecordNumber'
+    | 'emergencyContactName'
+    | 'emergencyContactPhone'
+    | 'emergencyContactRelationship'
+    | 'representativeName'
+    | 'insuranceName'
+    | 'insuranceNumber'
   >;
   items: ExportItem[];
   subtitle: string;
@@ -686,6 +707,10 @@ export async function exportPatientPdf(options: {
           {'\n'}Contacto:{' '}
           {[patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado'}
           {'\n'}Dirección: {patient.address || 'No registrada'}
+          {'\n'}Historia clínica institucional: {patient.medicalRecordNumber || 'No asignada'}
+          {'\n'}Contacto de emergencia: {[patient.emergencyContactName, patient.emergencyContactPhone, patient.emergencyContactRelationship].filter(Boolean).join(' · ') || 'No registrado'}
+          {'\n'}Representante: {patient.representativeName || 'No registrado'}
+          {'\n'}Seguro: {[patient.insuranceName, patient.insuranceNumber].filter(Boolean).join(' · ') || 'No registrado'}
         </Text>
 
         {resolvedItems.map((item, index) => (
