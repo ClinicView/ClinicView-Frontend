@@ -15,6 +15,7 @@ import { getRecordTypeDefinition } from '../lib/record-type-definitions';
 import { RecordAttachmentsGallery } from './record-attachments-gallery';
 import { RecordDetailsView } from './record-details-view';
 import { RecordConfirmationPanel } from './record-confirmation-panel';
+import { RecordEpisodePanel } from './record-episode-panel';
 import styles from './record-detail.module.css';
 
 function formatDateTime(iso: string): string {
@@ -53,8 +54,8 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
   if (error) return <Alert variant="error">{error}</Alert>;
   if (!record) return null;
 
-  const canCorrect = can(permissions, 'records.correct') && record.status === 'ACTIVE';
-  const canVoid = can(permissions, 'records.void') && record.status === 'ACTIVE';
+  const canCorrect = can(permissions, 'records.correct') && record.status === 'ACTIVE' && record.episode?.status !== 'CLOSED';
+  const canVoid = can(permissions, 'records.void') && record.status === 'ACTIVE' && record.episode?.status !== 'CLOSED';
   const definition = getRecordTypeDefinition(record.recordType);
   const details = getRecordDetailsPresentation(record.recordType, record.details);
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
@@ -219,6 +220,7 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
       <hr className={styles.divider} />
 
       <RecordConfirmationPanel key={`${record.id}-${record.version}`} record={record} permissions={permissions} onConfirmed={reload} />
+      <RecordEpisodePanel key={`episode-${record.id}-${record.version}`} record={record} permissions={permissions} onChanged={reload} />
       <div className={styles.actions}>
         <button type="button" className={styles.btn} onClick={() => router.back()}>
           Volver

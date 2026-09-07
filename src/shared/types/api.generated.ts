@@ -646,6 +646,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/patients/{patientId}/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalEpisodesController_list"];
+        put?: never;
+        post: operations["ClinicalEpisodesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/episodes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ClinicalEpisodesController_update"];
+        trace?: never;
+    };
+    "/api/patients/{patientId}/episodes/{id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ClinicalEpisodesController_transition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/records/{id}/episode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ClinicalEpisodesController_assign"];
+        trace?: never;
+    };
+    "/api/patients/{patientId}/episodes/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalEpisodesController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/stats": {
         parameters: {
             query?: never;
@@ -1461,6 +1541,19 @@ export interface components {
             email?: string | null;
             address?: string | null;
         };
+        EpisodeDto: {
+            id: string;
+            patientId: string;
+            title: string;
+            description?: string | null;
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "CLOSED";
+            version: number;
+        };
         RecordConfirmationDto: {
             recordVersion: number;
             actorId: string;
@@ -1526,6 +1619,7 @@ export interface components {
             asset: components["schemas"]["ClinicalMediaAssetResponseDto"];
         };
         ClinicalHistoryExportRecordDto: {
+            episode?: components["schemas"]["EpisodeDto"] | null;
             confirmation?: components["schemas"]["RecordConfirmationDto"] | null;
             id: string;
             /** @enum {string} */
@@ -1863,6 +1957,7 @@ export interface components {
             expectedDraftVersion?: number;
         };
         RecordResponseDto: {
+            episode?: components["schemas"]["EpisodeDto"] | null;
             confirmation?: components["schemas"]["RecordConfirmationDto"] | null;
             id: string;
             patientId: string;
@@ -2059,6 +2154,75 @@ export interface components {
              */
             attested: true;
             note?: string;
+        };
+        EpisodeOverviewDto: {
+            id: string;
+            patientId: string;
+            title: string;
+            description?: string | null;
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "CLOSED";
+            version: number;
+            recordsCount: number;
+            activeCount: number;
+            pendingConfirmationCount: number;
+        };
+        EpisodesPageDto: {
+            data: components["schemas"]["EpisodeOverviewDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        CreateEpisodeDto: {
+            title: string;
+            description?: string;
+            /** Format: date */
+            startedOn: string;
+            reason: string;
+        };
+        UpdateEpisodeDto: {
+            title: string;
+            description?: string;
+            /** Format: date */
+            startedOn: string;
+            reason: string;
+            expectedVersion: number;
+        };
+        EpisodeTransitionDto: {
+            expectedVersion: number;
+            /** @enum {string} */
+            action: "CLOSE" | "REOPEN";
+            /** Format: date */
+            endedOn?: string;
+            reason: string;
+            /** @enum {number} */
+            attested: true;
+        };
+        AssignEpisodeDto: {
+            /** Format: uuid */
+            episodeId: string | null;
+            expectedRecordVersion: number;
+            reason: string;
+        };
+        EpisodeEventDto: {
+            id: string;
+            action: string;
+            actorName: string;
+            reason: string;
+            recordId?: string | null;
+            payload: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        EpisodeEventsPageDto: {
+            data: components["schemas"]["EpisodeEventDto"][];
+            total: number;
+            page: number;
+            limit: number;
         };
         ValidationChecklistSnapshotItemDto: {
             id: string;
@@ -3398,6 +3562,7 @@ export interface operations {
     ClinicalRecordsController_findAll: {
         parameters: {
             query?: {
+                episodeId?: string;
                 sourceDocumentId?: string;
                 recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
                 status?: "ACTIVE" | "CORRECTED" | "VOIDED" | "ALL";
@@ -3768,6 +3933,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    ClinicalEpisodesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                status?: "OPEN" | "CLOSED";
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpisodesPageDto"];
+                };
+            };
+        };
+    };
+    ClinicalEpisodesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEpisodeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpisodeDto"];
+                };
+            };
+        };
+    };
+    ClinicalEpisodesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEpisodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpisodeDto"];
+                };
+            };
+        };
+    };
+    ClinicalEpisodesController_transition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EpisodeTransitionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpisodeDto"];
+                };
+            };
+        };
+    };
+    ClinicalEpisodesController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignEpisodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalEpisodesController_history: {
+        parameters: {
+            query?: {
+                page?: number;
+                status?: "OPEN" | "CLOSED";
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EpisodeEventsPageDto"];
                 };
             };
         };

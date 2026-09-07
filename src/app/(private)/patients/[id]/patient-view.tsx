@@ -534,6 +534,7 @@ export function PatientView({ id }: PatientViewProps) {
       )}
 
       {canReadRecords && <ClinicalSummaryPanel patientId={id} canEdit={patient.isActive && can(permissions, 'records.create')} />}
+      {canReadRecords && <Link className="viewBack" href={`/patients/${id}/episodes`}>Episodios clínicos · agrupar y dar seguimiento a las atenciones →</Link>}
 
       {/* ─── Cards resumen ─── */}
       <section className={styles.summaryGrid} aria-label="Resumen del paciente">

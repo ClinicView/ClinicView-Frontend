@@ -292,6 +292,7 @@ export function recordToExportItem(
     record.attachments ?? [],
   );
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
+  if (record.episode) sections.push({ title: 'EPISODIO CLÍNICO', content: [record.episode.title, `ID ${record.episode.id} · ${record.episode.status === 'OPEN' ? 'Abierto' : 'Cerrado'}`, `Desde ${record.episode.startedOn}${record.episode.endedOn ? ` hasta ${record.episode.endedOn}` : ''}`, record.episode.description].filter(Boolean).join('\n') });
   sections.push({ title: 'CONFIRMACIÓN CLÍNICA DE ESTA VERSIÓN', content: record.confirmation ? [
     record.status === 'ACTIVE' ? 'Versión confirmada.' : 'Confirmación histórica de una versión que ya no está vigente.',
     `${record.confirmation.actorName} · @${record.confirmation.actorUsername} · ${record.confirmation.capacity === 'ORIGINAL_PROFESSIONAL' ? 'Cuenta del profesional original' : 'Revisor autorizado'}`,

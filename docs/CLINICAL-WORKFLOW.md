@@ -34,3 +34,19 @@ su confirmación como histórica. Toda corrección vuelve a requerir confirmaci�
 La ayuda explica las responsabilidades y que no es una firma digital certificada.
 Requiere la migración 20260907140000_record_confirmation y refrescar la sesión
 para recibir el permiso nuevo de los roles base clínicos/administrador.
+
+## Episodios
+
+La ficha del paciente enlaza a /patients/:id/episodes: crear, editar, filtrar,
+consultar atenciones y revisar el historial de agrupación. Los cambios de estado
+quedan detrás de una confirmación explícita; la fecha de cierre no se inventa.
+
+En el detalle de cada atención se puede seleccionar un episodio abierto o quitar
+la agrupación, siempre con motivo y control de versión. Las opciones y las listas
+permiten cargar páginas adicionales. Los conteos de cada episodio son globales,
+no calculados solo sobre tarjetas visibles. La exportación identifica el episodio
+de cada versión; las anteriores mantienen su agrupación histórica.
+
+Los controles clínicos explican cuándo hace falta reabrir un episodio. Se conserva
+el diseño actual, ayuda contextual, etiquetas, controles nativos y áreas de 44px.
+Backend requerido: migración 20260907150000_clinical_episodes.
