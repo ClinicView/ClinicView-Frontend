@@ -574,8 +574,24 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Anular una historia clínica activa */
         patch: operations["ClinicalRecordsController_void"];
+        trace?: never;
+    };
+    "/api/patients/{patientId}/records/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirmar una versión clínica revisada (no firma digital certificada) */
+        post: operations["ClinicalRecordsController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/patients/{patientId}/record-media": {
@@ -1445,6 +1461,18 @@ export interface components {
             email?: string | null;
             address?: string | null;
         };
+        RecordConfirmationDto: {
+            recordVersion: number;
+            actorId: string;
+            actorName: string;
+            actorUsername: string;
+            /** @enum {string} */
+            capacity: "ORIGINAL_PROFESSIONAL" | "REVIEWER";
+            note?: string | null;
+            contentHash: string;
+            /** Format: date-time */
+            confirmedAt: string;
+        };
         RecordSourceDto: {
             documentId: string;
             documentVersion: number;
@@ -1498,6 +1526,7 @@ export interface components {
             asset: components["schemas"]["ClinicalMediaAssetResponseDto"];
         };
         ClinicalHistoryExportRecordDto: {
+            confirmation?: components["schemas"]["RecordConfirmationDto"] | null;
             id: string;
             /** @enum {string} */
             recordType: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
@@ -1834,6 +1863,7 @@ export interface components {
             expectedDraftVersion?: number;
         };
         RecordResponseDto: {
+            confirmation?: components["schemas"]["RecordConfirmationDto"] | null;
             id: string;
             patientId: string;
             /** @enum {string} */
@@ -2020,6 +2050,15 @@ export interface components {
             expectedVersion: number;
             /** @description Motivo de anulación */
             reason: string;
+        };
+        ConfirmRecordDto: {
+            expectedVersion: number;
+            /**
+             * @description Revisión explícita de esta versión; no es firma digital certificada.
+             * @enum {number}
+             */
+            attested: true;
+            note?: string;
         };
         ValidationChecklistSnapshotItemDto: {
             id: string;
@@ -3584,6 +3623,32 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalRecordsController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRecordDto"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

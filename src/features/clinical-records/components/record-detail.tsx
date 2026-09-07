@@ -14,6 +14,7 @@ import {
 import { getRecordTypeDefinition } from '../lib/record-type-definitions';
 import { RecordAttachmentsGallery } from './record-attachments-gallery';
 import { RecordDetailsView } from './record-details-view';
+import { RecordConfirmationPanel } from './record-confirmation-panel';
 import styles from './record-detail.module.css';
 
 function formatDateTime(iso: string): string {
@@ -33,7 +34,7 @@ interface RecordDetailProps {
 }
 
 export function RecordDetail({ patientId, recordId, permissions }: RecordDetailProps) {
-  const { record, isLoading, error, actionError, isActing, void: doVoid } = useRecord(
+  const { record, isLoading, error, actionError, isActing, void: doVoid, reload } = useRecord(
     patientId,
     recordId,
   );
@@ -129,7 +130,7 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
         </div>
         {professionalName && (
           <div className={styles.field}>
-            <dt className={styles.fieldLabel}>Médico / profesional</dt>
+            <dt className={styles.fieldLabel}>Profesional original de la atención</dt>
             <dd className={styles.fieldValue}>{professionalName}</dd>
           </div>
         )}
@@ -217,6 +218,7 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
 
       <hr className={styles.divider} />
 
+      <RecordConfirmationPanel key={`${record.id}-${record.version}`} record={record} permissions={permissions} onConfirmed={reload} />
       <div className={styles.actions}>
         <button type="button" className={styles.btn} onClick={() => router.back()}>
           Volver

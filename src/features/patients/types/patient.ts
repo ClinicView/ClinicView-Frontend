@@ -105,6 +105,7 @@ export type ClinicalHistoryRecordType =
   | 'OTHER';
 
 export interface ClinicalHistoryExportRecord {
+  confirmation?: import('../../../shared/types/api.generated').components['schemas']['RecordConfirmationDto'] | null;
   attendancePrecision?: 'INSTANT' | 'DAY';
   createdByNameSnapshot?: string | null;
   source?: import('../../../shared/types/api.generated').components['schemas']['RecordSourceDto'] | null;

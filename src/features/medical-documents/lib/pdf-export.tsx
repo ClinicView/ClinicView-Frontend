@@ -292,6 +292,14 @@ export function recordToExportItem(
     record.attachments ?? [],
   );
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
+  sections.push({ title: 'CONFIRMACIÓN CLÍNICA DE ESTA VERSIÓN', content: record.confirmation ? [
+    record.status === 'ACTIVE' ? 'Versión confirmada.' : 'Confirmación histórica de una versión que ya no está vigente.',
+    `${record.confirmation.actorName} · @${record.confirmation.actorUsername} · ${record.confirmation.capacity === 'ORIGINAL_PROFESSIONAL' ? 'Cuenta del profesional original' : 'Revisor autorizado'}`,
+    `${formatDateTime(record.confirmation.confirmedAt) ?? 'Fecha no registrada'} · Versión revisada ${record.confirmation.recordVersion}`,
+    record.confirmation.note,
+    `Huella SHA-256: ${record.confirmation.contentHash}`,
+    'Cierre interno; no es firma digital certificada.',
+  ].filter(Boolean).join('\n') : 'Sin confirmación clínica explícita registrada. No es firma digital certificada.' });
   if (record.source) sections.push({ title: 'DOCUMENTO ORIGINAL DE ESTA ATENCIÓN', content: [
     `${record.source.documentName} · ID ${record.source.documentId}`,
     `Páginas ${record.source.pageFrom}–${record.source.pageTo} · Versión del original ${record.source.documentVersion}`,
@@ -301,7 +309,7 @@ export function recordToExportItem(
 
   if (professionalName?.trim()) {
     sections.push({
-      title: 'PROFESIONAL',
+      title: 'PROFESIONAL ORIGINAL DE LA ATENCIÓN',
       content: [
         professionalName.trim(),
         record.professionalLicenseSnapshot?.trim()

@@ -14,6 +14,7 @@ export type Permission =
   | 'records.create'
   | 'records.correct'
   | 'records.void'
+  | 'records.confirm'
   | 'documents.upload'
   | 'documents.read'
   | 'documents.validate'

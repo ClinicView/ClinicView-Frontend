@@ -20,3 +20,17 @@ El doble envío no crea otra atención; ante conflicto se debe revisar el histor
 Permisos para publicar: patients.read, records.read/create y documents.read/validate.
 Backend requerido: migración 20260907130000_clinical_record_sources.
 La confirmación de transcripción no es cierre profesional ni firma certificada.
+
+## Confirmación clínica
+
+Al pie del contenido y los adjuntos aparece «Revisión y cierre de esta versión».
+Con records.confirm, una casilla explícita permite confirmar la versión abierta.
+La observación es opcional y no modifica el contenido clínico. Ante conflicto,
+recargar y revisar de nuevo; no se confirma automáticamente la versión nueva.
+
+El panel y el PDF separan profesional original, ingresante y confirmante con
+nombre/usuario, fecha y huella de contenido. Las versiones no vigentes muestran
+su confirmación como histórica. Toda corrección vuelve a requerir confirmación.
+La ayuda explica las responsabilidades y que no es una firma digital certificada.
+Requiere la migración 20260907140000_record_confirmation y refrescar la sesión
+para recibir el permiso nuevo de los roles base clínicos/administrador.
