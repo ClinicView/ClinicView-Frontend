@@ -1,3 +1,5 @@
+import type { DocumentClinicalMetadata } from '../lib/document-metadata';
+
 export type DocumentStatus =
   | 'PENDING'
   | 'PROCESSING'
@@ -69,6 +71,7 @@ export interface DocumentReviewAssignee {
 }
 
 export interface MedicalDocument {
+  clinicalMetadata?: DocumentClinicalMetadata;
   id: string;
   patientId: string;
   originalName: string;

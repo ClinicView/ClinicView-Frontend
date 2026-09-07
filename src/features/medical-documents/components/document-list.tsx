@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge, Icon, type IconName } from '@/shared/ui';
 import type { DocumentStatus } from '../types/document';
 import { useDocuments } from '../hooks/use-documents';
+import { DocumentUploadDialog } from './document-upload-dialog';
+import { documentDateLabel } from '../lib/document-metadata';
 import styles from './document-list.module.css';
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
@@ -59,6 +61,7 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
   } = useDocuments(patientId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const libraryTitleRef = useRef<HTMLHeadingElement>(null);
   const previousPageRef = useRef(page);
 
@@ -71,7 +74,7 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) void upload(file);
+    if (file) setSelectedFile(file);
     e.target.value = '';
   }
 
@@ -82,6 +85,7 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
 
   return (
     <div className={styles.documentWorkspace}>
+      <DocumentUploadDialog patientId={patientId} file={selectedFile} busy={isUploading} uploadError={uploadError} onUpload={upload} onCancel={() => setSelectedFile(null)} />
       <section className={styles.flowPanel} aria-labelledby="document-flow-title">
         <div className={styles.sectionHeading}>
           <span className={styles.sectionKicker}>Flujo asistido</span>
@@ -279,7 +283,7 @@ export function DocumentList({ patientId, permissions }: DocumentListProps) {
                       <td data-label="Estado">
                         <StatusBadge status={doc.status} label={STATUS_LABEL[doc.status]} dot />
                       </td>
-                      <td data-label="Subida" className={styles.metaCell}>{formatDate(doc.createdAt)}</td>
+                      <td data-label="Subida" className={styles.metaCell}>{formatDate(doc.createdAt)}<br /><span>{documentDateLabel(doc.clinicalMetadata)}</span></td>
                     </tr>
                   );
                 })}

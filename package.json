@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
+    "gen-types:local": "npm --prefix ../ClinicView-Backend run gen:openapi && openapi-typescript ../ClinicView-Backend/openapi.generated.json -o src/shared/types/api.generated.ts",
     "test": "node scripts/run-unit-tests.mjs",
     "gen-types": "openapi-typescript http://localhost:3001/api/docs-json -o src/shared/types/api.generated.ts"
   },

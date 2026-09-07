@@ -441,6 +441,38 @@ export interface paths {
         patch: operations["PatientsController_activate"];
         trace?: never;
     };
+    "/api/patients/{patientId}/clinical-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalSummaryController_current"];
+        put: operations["ClinicalSummaryController_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/clinical-summary/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalSummaryController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/patients/{patientId}/records": {
         parameters: {
             query?: never;
@@ -736,6 +768,38 @@ export interface paths {
         head?: never;
         /** Rechazar documento (con motivo) */
         patch: operations["MedicalDocumentsController_reject"];
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{documentId}/metadata/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DocumentMetadataController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{documentId}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["DocumentMetadataController_update"];
         trace?: never;
     };
     "/api/notifications": {
@@ -1179,6 +1243,13 @@ export interface components {
             expectedUpdatedAt: string;
         };
         CreatePatientDto: {
+            medicalRecordNumber?: string | null;
+            emergencyContactName?: string | null;
+            emergencyContactPhone?: string | null;
+            emergencyContactRelationship?: string | null;
+            representativeName?: string | null;
+            insuranceName?: string | null;
+            insuranceNumber?: string | null;
             /**
              * @example DNI
              * @enum {string}
@@ -1202,11 +1273,11 @@ export interface components {
              */
             sex: "M" | "F" | "OTHER";
             /** @example +51 987 654 321 */
-            phone?: string;
+            phone?: Record<string, never>;
             /** @example paciente@correo.com */
-            email?: string;
+            email?: Record<string, never>;
             /** @example Av. Principal 123, Lima */
-            address?: string;
+            address?: Record<string, never>;
             /**
              * Format: uuid
              * @description Borrador privado que se consumirá atómicamente con el alta.
@@ -1216,6 +1287,14 @@ export interface components {
             expectedDraftVersion?: number;
         };
         PatientResponseDto: {
+            medicalRecordNumber?: string | null;
+            emergencyContactName?: string | null;
+            emergencyContactPhone?: string | null;
+            emergencyContactRelationship?: string | null;
+            representativeName?: string | null;
+            insuranceName?: string | null;
+            insuranceNumber?: string | null;
+            version: number;
             id: string;
             /** @enum {string} */
             documentType: "DNI" | "CE" | "PAS" | "OTHER";
@@ -1274,7 +1353,64 @@ export interface components {
             expectedVersion?: number;
             payload: components["schemas"]["PatientRegistrationDraftPayloadDto"];
         };
+        AllergyEntryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            notes?: string;
+            reaction: string;
+            /** @enum {string} */
+            severity: "UNKNOWN" | "MILD" | "MODERATE" | "SEVERE";
+        };
+        ProblemEntryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            notes?: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "RESOLVED";
+            code?: string;
+            /** Format: date */
+            onsetDate?: string;
+        };
+        MedicationEntryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            notes?: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "STOPPED";
+            regimen: string;
+            indication?: string;
+        };
+        ClinicalSummaryPayloadDto: {
+            /** @enum {string} */
+            allergyStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            allergies: components["schemas"]["AllergyEntryDto"][];
+            /** @enum {string} */
+            problemStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            problems: components["schemas"]["ProblemEntryDto"][];
+            /** @enum {string} */
+            medicationStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            medications: components["schemas"]["MedicationEntryDto"][];
+        };
+        ClinicalSummaryResponseDto: {
+            version: number;
+            payload: components["schemas"]["ClinicalSummaryPayloadDto"];
+            recordedByName: string | null;
+            recordedBy: string | null;
+            reason: string | null;
+            /** Format: date-time */
+            createdAt: string | null;
+        };
         ClinicalHistoryExportPatientDto: {
+            medicalRecordNumber?: string | null;
+            emergencyContactName?: string | null;
+            emergencyContactPhone?: string | null;
+            emergencyContactRelationship?: string | null;
+            representativeName?: string | null;
+            insuranceName?: string | null;
+            insuranceNumber?: string | null;
             id: string;
             /** @enum {string} */
             documentType: "DNI" | "CE" | "PAS" | "OTHER";
@@ -1367,7 +1503,35 @@ export interface components {
             version: number;
             attachments: components["schemas"]["ClinicalRecordAttachmentResponseDto"][];
         };
+        DocumentClinicalMetadataDto: {
+            /** @enum {string} */
+            documentKind?: "CLINICAL_HISTORY" | "CONSULTATION" | "EVOLUTION" | "LAB_RESULT" | "PRESCRIPTION" | "PROCEDURE" | "THERAPY_NOTE" | "IMAGING" | "DISCHARGE" | "REFERRAL" | "OTHER";
+            /**
+             * Format: date
+             * @description Fecha civil de la atención o inicio del período; no es la fecha de carga.
+             */
+            clinicalDate?: string;
+            /** Format: date */
+            clinicalEndDate?: string;
+            sourceInstitution?: string;
+            sourceService?: string;
+            originalProfessional?: string;
+            /** @description Número de páginas declarado y comprobado visualmente; no se calcula por OCR. */
+            pageCount?: number;
+            sourceNotes?: string;
+        };
+        DocumentMetadataRevisionDto: {
+            version: number;
+            metadata: components["schemas"]["DocumentClinicalMetadataDto"];
+            reason: string;
+            recordedByName?: string | null;
+            recordedBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         ClinicalHistoryExportDocumentDto: {
+            clinicalMetadata: components["schemas"]["DocumentClinicalMetadataDto"];
+            metadataRevisions: components["schemas"]["DocumentMetadataRevisionDto"][];
             id: string;
             originalName: string;
             mimeType: string;
@@ -1396,6 +1560,8 @@ export interface components {
             updatedBy?: string | null;
         };
         ClinicalHistoryExportResponseDto: {
+            /** @description Todas las revisiones longitudinales; la primera es la vigente al exportar. */
+            clinicalSummaryRevisions: components["schemas"]["ClinicalSummaryResponseDto"][];
             patient: components["schemas"]["ClinicalHistoryExportPatientDto"];
             records: components["schemas"]["ClinicalHistoryExportRecordDto"][];
             documents: components["schemas"]["ClinicalHistoryExportDocumentDto"][];
@@ -1406,6 +1572,13 @@ export interface components {
             generatedAt: string;
         };
         UpdatePatientDto: {
+            medicalRecordNumber?: string | null;
+            emergencyContactName?: string | null;
+            emergencyContactPhone?: string | null;
+            emergencyContactRelationship?: string | null;
+            representativeName?: string | null;
+            insuranceName?: string | null;
+            insuranceNumber?: string | null;
             /** @example María */
             firstName?: string;
             /** @example García López */
@@ -1422,18 +1595,32 @@ export interface components {
              */
             sex?: "M" | "F" | "OTHER";
             /** @example +51 987 654 321 */
-            phone?: string;
+            phone?: Record<string, never>;
             /** @example paciente@correo.com */
-            email?: string;
+            email?: Record<string, never>;
             /** @example Av. Principal 123, Lima */
-            address?: string;
-            /**
-             * Format: uuid
-             * @description Borrador privado que se consumirá atómicamente con el alta.
-             */
-            draftId?: string;
-            /** @description Versión observada del borrador que se consumirá. */
-            expectedDraftVersion?: number;
+            address?: Record<string, never>;
+            expectedVersion: number;
+        };
+        PatientVersionDto: {
+            expectedVersion: number;
+        };
+        ClinicalSummaryHistoryResponseDto: {
+            data: components["schemas"]["ClinicalSummaryResponseDto"][];
+            nextBeforeVersion: number | null;
+        };
+        SaveClinicalSummaryDto: {
+            /** @enum {string} */
+            allergyStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            allergies: components["schemas"]["AllergyEntryDto"][];
+            /** @enum {string} */
+            problemStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            problems: components["schemas"]["ProblemEntryDto"][];
+            /** @enum {string} */
+            medicationStatus: "UNKNOWN" | "NONE_KNOWN" | "RECORDED";
+            medications: components["schemas"]["MedicationEntryDto"][];
+            expectedVersion: number;
+            reason: string;
         };
         ClinicalDiagnosisDto: {
             description: string;
@@ -1744,6 +1931,7 @@ export interface components {
             profession?: string | null;
         };
         DocumentResponseDto: {
+            clinicalMetadata?: components["schemas"]["DocumentClinicalMetadataDto"];
             id: string;
             patientId: string;
             originalName: string;
@@ -1838,6 +2026,21 @@ export interface components {
             expectedVersion: number;
             /** @description Motivo del rechazo */
             reason: string;
+        };
+        MetadataHistoryPageDto: {
+            data: components["schemas"]["DocumentMetadataRevisionDto"][];
+            nextBeforeVersion: number | null;
+        };
+        UpdateDocumentMetadataDto: {
+            expectedVersion: number;
+            metadata: components["schemas"]["DocumentClinicalMetadataDto"];
+            reason: string;
+        };
+        DocumentMetadataUpdateResponseDto: {
+            /** Format: uuid */
+            id: string;
+            version: number;
+            clinicalMetadata: components["schemas"]["DocumentClinicalMetadataDto"];
         };
         ReviewAssigneeDto: {
             id: string;
@@ -2920,7 +3123,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientVersionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2948,7 +3155,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientVersionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2964,6 +3175,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ClinicalSummaryController_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSummaryResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalSummaryController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveClinicalSummaryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSummaryResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalSummaryController_history: {
+        parameters: {
+            query?: {
+                beforeVersion?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSummaryHistoryResponseDto"];
+                };
             };
         };
     };
@@ -3354,6 +3634,17 @@ export interface operations {
                 "multipart/form-data": {
                     /** Format: binary */
                     file: string;
+                    /** @enum {string} */
+                    documentKind?: "CLINICAL_HISTORY" | "CONSULTATION" | "EVOLUTION" | "LAB_RESULT" | "PRESCRIPTION" | "PROCEDURE" | "THERAPY_NOTE" | "IMAGING" | "DISCHARGE" | "REFERRAL" | "OTHER";
+                    /** Format: date */
+                    clinicalDate?: string;
+                    /** Format: date */
+                    clinicalEndDate?: string;
+                    sourceInstitution?: string;
+                    sourceService?: string;
+                    originalProfessional?: string;
+                    pageCount?: number;
+                    sourceNotes?: string;
                 };
             };
         };
@@ -3557,6 +3848,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    DocumentMetadataController_history: {
+        parameters: {
+            query?: {
+                beforeVersion?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetadataHistoryPageDto"];
+                };
+            };
+        };
+    };
+    DocumentMetadataController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDocumentMetadataDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentMetadataUpdateResponseDto"];
+                };
             };
         };
     };

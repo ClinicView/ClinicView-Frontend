@@ -6,6 +6,7 @@ import type {
   FinalizeDocumentReviewInput,
   MedicalDocument,
 } from '../types/document';
+import { cleanDocumentMetadata, type DocumentClinicalMetadata, type DocumentMetadataRevision } from '../lib/document-metadata';
 
 export function listDocuments(
   patientId: string,
@@ -23,9 +24,10 @@ export function getDocument(patientId: string, docId: string): Promise<MedicalDo
   return apiGet<MedicalDocument>(`/patients/${patientId}/documents/${docId}`);
 }
 
-export function uploadDocument(patientId: string, file: File): Promise<MedicalDocument> {
+export function uploadDocument(patientId: string, file: File, metadata: DocumentClinicalMetadata = {}): Promise<MedicalDocument> {
   const form = new FormData();
   form.append('file', file);
+  for (const [key, value] of Object.entries(cleanDocumentMetadata(metadata))) form.append(key, String(value));
   return apiUpload<MedicalDocument>(`/patients/${patientId}/documents`, form);
 }
 
@@ -39,6 +41,13 @@ export function validateDocument(
   data: FinalizeDocumentReviewInput & { expectedVersion: number },
 ): Promise<MedicalDocument> {
   return apiPatch<MedicalDocument>(`/patients/${patientId}/documents/${docId}/validate`, data);
+}
+
+export function updateDocumentMetadata(patientId: string, docId: string, metadata: DocumentClinicalMetadata, expectedVersion: number, reason: string) {
+  return apiPatch<{ id: string; version: number; clinicalMetadata: DocumentClinicalMetadata }>(`/patients/${patientId}/documents/${docId}/metadata`, { metadata: cleanDocumentMetadata(metadata), expectedVersion, reason });
+}
+export function getDocumentMetadataHistory(patientId: string, docId: string, beforeVersion?: number) {
+  return apiGet<{ data: DocumentMetadataRevision[]; nextBeforeVersion: number | null }>(`/patients/${patientId}/documents/${docId}/metadata/history${beforeVersion !== undefined ? `?beforeVersion=${beforeVersion}` : ''}`);
 }
 
 export function saveDocumentCorrection(

@@ -14,6 +14,7 @@ import type {
   ValidationChecklistId,
 } from '../types/document';
 import { DocumentPreview } from './document-preview';
+import { DocumentMetadataPanel } from './document-metadata-panel';
 import { DocumentStepper } from './document-stepper';
 import { EntitiesPanel } from './entities-panel';
 import { MetricsPanel } from './metrics-panel';
@@ -405,6 +406,10 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
           )}
         </div>
       )}
+
+      {canReadPatient && <DocumentMetadataPanel document={document}
+        canEdit={can(permissions, 'documents.validate') && (!document.assignedReviewerId || isAssignedToCurrentUser)}
+        blocked={isDirty || isActing || document.status === 'PROCESSING'} onSaved={reload} />}
 
       {document.status === 'PROCESSING' && (
         <div

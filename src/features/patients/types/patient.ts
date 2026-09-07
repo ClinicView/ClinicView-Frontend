@@ -4,6 +4,7 @@ import type {
   RecordSchemaVersion,
 } from '../../clinical-records/types/record';
 import type { ClinicalSummary } from './clinical-summary';
+import type { DocumentClinicalMetadata, DocumentMetadataRevision } from '../../medical-documents/lib/document-metadata';
 
 export type DocumentType = 'DNI' | 'CE' | 'PAS' | 'OTHER';
 export type Sex = 'M' | 'F' | 'OTHER';
@@ -132,6 +133,8 @@ export interface ClinicalHistoryExportRecord {
 }
 
 export interface ClinicalHistoryExportDocument {
+  clinicalMetadata?: DocumentClinicalMetadata;
+  metadataRevisions?: DocumentMetadataRevision[];
   id: string;
   originalName: string;
   mimeType: string;

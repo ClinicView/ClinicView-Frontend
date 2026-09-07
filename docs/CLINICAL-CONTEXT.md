@@ -23,3 +23,19 @@ ayuda de cada sección explica su finalidad sin ocupar permanentemente el formul
 
 Backend requerido: migración `20260907100000_patient_context_and_clinical_summary`.
 Ver `ClinicView-Backend/docs/CLINICAL-COMPLETENESS.md` para los siguientes bloques.
+
+## Procedencia y fechas documentales
+
+Seleccionar un archivo abre una confirmación con identidad del paciente, vista
+previa opcional y los campos del original; no se sube hasta confirmar. La edición
+posterior de estos datos exige motivo y control de versión, respeta la asignación
+del revisor y se realiza en un diálogo separado del editor OCR.
+
+Las fechas civiles se muestran sin inventar una hora clínica. El día clínico
+ordena las entradas del historial y el PDF; si falta, se indica expresamente que
+la fecha disponible es de carga. El indicador de última fecha clínica no considera
+una subida sin fecha ni un registro corregido/anulado como nueva atención.
+
+La exportación completa agrega el historial de cambios de procedencia. Su consulta
+en pantalla se pagina en grupos de 20. Los contratos nuevos se derivan de OpenAPI:
+`npm run gen-types:local` los genera sin necesitar un backend escuchando en un puerto.

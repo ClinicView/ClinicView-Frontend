@@ -37,6 +37,7 @@ import {
 } from '@/shared/lib/date-time';
 import { parseClinicalSections } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
+import { documentSortDate, documentMetadataSections } from './document-metadata';
 import type { ClinicalSummary } from '@/features/patients/types/clinical-summary';
 import { clinicalSummarySections } from '@/features/patients/lib/clinical-summary-presentation';
 
@@ -140,6 +141,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   const parsed = parseClinicalSections(text);
 
   const sections: ExportSection[] = [
+    ...documentMetadataSections(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
       content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
@@ -192,8 +194,8 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
 
   return {
     title: document.originalName,
-    date: document.createdAt,
-    dateLabel: 'Fecha de carga',
+    date: documentSortDate(document),
+    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica (sin hora registrada)' : 'Carga (fecha clínica desconocida)',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
@@ -207,6 +209,7 @@ export function clinicalHistoryDocumentToExportItem(
   const text = document.clinicalText ?? '';
   const parsed = parseClinicalSections(text);
   const sections: ExportSection[] = [
+    ...documentMetadataSections(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
       content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
@@ -245,6 +248,12 @@ export function clinicalHistoryDocumentToExportItem(
     });
   }
 
+  for (const [index, revision] of (document.metadataRevisions ?? []).entries()) {
+    sections.push({ title: `HISTORIAL DE PROCEDENCIA · V${revision.version}${index === 0 ? ' · Última revisión' : ' · Anterior'}`, content: [
+      `Registrado: ${formatDateTime(revision.createdAt)} · Por: ${revision.recordedByName || 'Identidad histórica no registrada'}`,
+      `Motivo: ${revision.reason}`, documentMetadataSections(revision.metadata)[0].content,
+    ].join('\n') });
+  }
   const trace = [
     `Fuente del texto: ${document.textSource === 'CORRECTED' ? 'Corrección profesional' : document.textSource === 'OCR' ? 'OCR validado' : 'Sin texto exportable'}`,
     `Subido: ${formatDateTime(document.createdAt) ?? 'No registrado'}`,
@@ -263,8 +272,8 @@ export function clinicalHistoryDocumentToExportItem(
 
   return {
     title: document.originalName,
-    date: document.createdAt,
-    dateLabel: 'Fecha de carga',
+    date: documentSortDate(document),
+    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica (sin hora registrada)' : 'Carga (fecha clínica desconocida)',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,

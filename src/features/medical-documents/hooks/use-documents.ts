@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { DocumentStatus, DocumentsPage, MedicalDocument } from '../types/document';
 import { listDocuments, uploadDocument } from '../services/documents.service';
+import type { DocumentClinicalMetadata } from '../lib/document-metadata';
 
 const LIMIT = 20;
 
@@ -43,16 +44,18 @@ export function useDocuments(patientId: string) {
     void load(1, statusFilter);
   }, [load, statusFilter]);
 
-  async function upload(file: File): Promise<void> {
+  async function upload(file: File, metadata?: DocumentClinicalMetadata): Promise<boolean> {
     setIsUploading(true);
     setUploadError(null);
     setUploadMessage(null);
     try {
-      await uploadDocument(patientId, file);
+      await uploadDocument(patientId, file, metadata);
       await load(1, statusFilter);
       setUploadMessage(`El archivo ${file.name} se subió correctamente.`);
+      return true;
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Error al subir el archivo.');
+      return false;
     } finally {
       setIsUploading(false);
     }

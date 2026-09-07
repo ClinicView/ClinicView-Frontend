@@ -32,6 +32,7 @@ import { ageFromDateOnly, formatDateOnly, formatInstant } from '@/shared/lib/dat
 import { Alert, Icon, Spinner } from '@/shared/ui';
 import { usePatientOverview } from './use-patient-overview';
 import { ClinicalSummaryPanel } from '@/features/patients/components/clinical-summary-panel';
+import { documentSortDate, documentDateLabel } from '@/features/medical-documents/lib/document-metadata';
 import styles from './patient-profile.module.css';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
@@ -97,11 +98,11 @@ function buildTimeline(
   const docEntries: TimelineEntry[] = documents.map((doc) => ({
     id: `doc-${doc.id}`,
     kind: 'document',
-    date: doc.createdAt,
+    date: documentSortDate(doc),
     title: doc.originalName,
     statusLabel: DOC_STATUS_LABEL[doc.status] ?? doc.status,
     statusTone: DOC_STATUS_TONE[doc.status] ?? 'slate',
-    service: 'Digitalización · Archivo clínico',
+    service: `Archivo clínico · ${documentDateLabel(doc.clinicalMetadata)}${doc.clinicalMetadata?.sourceInstitution ? ` · ${doc.clinicalMetadata.sourceInstitution}` : ''}`,
     href: `/patients/${patientId}/documents/${doc.id}`,
     searchText: [doc.originalName, doc.correctedText ?? '', doc.ocrText ?? '']
       .join('\n')
@@ -257,7 +258,7 @@ export function PatientView({ id }: PatientViewProps) {
   const pendingDocs = overview.documents.filter(
     (doc) => doc.status !== 'VALIDATED' && doc.status !== 'REJECTED',
   ).length;
-  const lastEntry = timeline[0] ?? null;
+  const lastEntry = timeline.find((entry) => entry.record?.status === 'ACTIVE' || (entry.document?.status === 'VALIDATED' && Boolean(entry.document.clinicalMetadata?.clinicalDate))) ?? null;
   const visibleEntryCount = overview.isLoading
     ? '—'
     : overview.documents.length + overview.records.length;
@@ -305,20 +306,20 @@ export function PatientView({ id }: PatientViewProps) {
       [documentToExportItem(doc)],
       'Documento clínico digitalizado',
       `clinicview_${patient?.id.slice(0, 8)}_${doc.id.slice(0, 8)}`,
-      'fecha indicada corresponde a la carga',
+      'fecha clínica si está documentada; de lo contrario se identifica la fecha de carga',
     );
   }
 
   function exportSelected() {
     const docs = overview.documents.filter((doc) => selectedDocs.has(doc.id));
     const items = docs
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .sort((a, b) => new Date(documentSortDate(a)).getTime() - new Date(documentSortDate(b)).getTime())
       .map(documentToExportItem);
     void runExport(
       items,
       `Documentos seleccionados (${items.length})`,
       `clinicview_${patient?.id.slice(0, 8)}_seleccion`,
-      'orden por fecha de carga',
+      'orden por fecha clínica documentada; las fechas de carga se identifican explícitamente',
     );
   }
 
@@ -341,7 +342,7 @@ export function PatientView({ id }: PatientViewProps) {
     try {
       const items = [
         ...history.documents.map((document) => ({
-          date: document.createdAt,
+          date: documentSortDate(document),
           createdAt: document.createdAt,
           kind: 'document' as const,
           id: document.id,
@@ -376,7 +377,7 @@ export function PatientView({ id }: PatientViewProps) {
         subtitle: 'Historia clínica completa',
         fileName: `clinicview_${history.patient.id.slice(0, 8)}_historia_completa`,
         generatedAt: history.generatedAt,
-        orderDescription: 'orden por fecha de atención o de carga, según el tipo de entrada',
+        orderDescription: 'revisiones longitudinales separadas; entradas por fecha clínica, con fecha de carga identificada cuando no consta la clínica',
       });
     } catch (cause) {
       setExportError(
@@ -534,7 +535,7 @@ export function PatientView({ id }: PatientViewProps) {
                 <Icon name="calendar" size={20} />
               </span>
               <div>
-                <span className={styles.summaryLabel}>Última atención visible</span>
+                <span className={styles.summaryLabel}>Última fecha clínica visible</span>
                 <span className={styles.summaryValue}>
                   {lastEntry ? formatDate(lastEntry.date) : '—'}
                 </span>
