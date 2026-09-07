@@ -58,3 +58,8 @@ Los rangos documentales se incluyen por solapamiento. Seleccionar todos también
 se etiqueta explícitamente como seleccionar los documentos cargados.
 
 La exportación completa es independiente de filtros/paginación de pantalla.
+
+La ficha incluye ahora «Buscar en toda la historia y exportar por período o episodio».
+Esta vista usa búsqueda paginada en el servidor sobre todos los registros permitidos,
+independientemente de lo cargado en la ficha. Los indicadores superiores también
+se consultan sobre toda la historia. Ver CLINICAL-WORKFLOW.md para alcance y pendientes.

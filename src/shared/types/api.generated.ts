@@ -473,6 +473,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/patients/{patientId}/clinical-history/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalHistoryController_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/clinical-history/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalHistoryController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/patients/{patientId}/records": {
         parameters: {
             query?: never;
@@ -998,6 +1030,22 @@ export interface paths {
         patch: operations["NotificationsController_markRead"];
         trace?: never;
     };
+    "/api/clinical-work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalWorkController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/review/queue": {
         parameters: {
             query?: never;
@@ -1498,6 +1546,36 @@ export interface components {
             expectedVersion?: number;
             payload: components["schemas"]["PatientRegistrationDraftPayloadDto"];
         };
+        HistoryExportScopeDto: {
+            /** @enum {string} */
+            kind: "COMPLETE" | "FILTERED";
+            description: string;
+            includesSourceDocumentsOutsidePeriod: boolean;
+        };
+        EpisodeEventDto: {
+            id: string;
+            action: string;
+            actorName: string;
+            reason: string;
+            recordId?: string | null;
+            payload: Record<string, never>;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ClinicalHistoryExportEpisodeDto: {
+            id: string;
+            patientId: string;
+            title: string;
+            description?: string | null;
+            /** Format: date */
+            startedOn: string;
+            /** Format: date */
+            endedOn?: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "CLOSED";
+            version: number;
+            events: components["schemas"]["EpisodeEventDto"][];
+        };
         AllergyEntryDto: {
             /** Format: uuid */
             id: string;
@@ -1750,6 +1828,8 @@ export interface components {
             updatedBy?: string | null;
         };
         ClinicalHistoryExportResponseDto: {
+            scope: components["schemas"]["HistoryExportScopeDto"];
+            episodes: components["schemas"]["ClinicalHistoryExportEpisodeDto"][];
             /** @description Todas las revisiones longitudinales; la primera es la vigente al exportar. */
             clinicalSummaryRevisions: components["schemas"]["ClinicalSummaryResponseDto"][];
             patient: components["schemas"]["ClinicalHistoryExportPatientDto"];
@@ -1811,6 +1891,40 @@ export interface components {
             medications: components["schemas"]["MedicationEntryDto"][];
             expectedVersion: number;
             reason: string;
+        };
+        HistoryEntryDto: {
+            id: string;
+            /** @enum {string} */
+            kind: "RECORD" | "DOCUMENT";
+            title: string;
+            preview: string;
+            status: string;
+            recordType?: string | null;
+            clinicalFrom?: string | null;
+            clinicalTo?: string | null;
+            professional?: string | null;
+            service?: string | null;
+            specialty?: string | null;
+            episodeTitle?: string | null;
+            confirmed: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        HistoryPageDto: {
+            data: components["schemas"]["HistoryEntryDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        HistoryOverviewDto: {
+            pendingDocuments?: number | null;
+            activeRecords?: number | null;
+            recordVersions?: number | null;
+            pendingConfirmations?: number | null;
+            documents?: number | null;
+            validatedDocuments?: number | null;
+            openEpisodes?: number | null;
+            latestClinicalDate?: string | null;
         };
         ClinicalDiagnosisDto: {
             description: string;
@@ -2258,16 +2372,6 @@ export interface components {
             expectedRecordVersion: number;
             reason: string;
         };
-        EpisodeEventDto: {
-            id: string;
-            action: string;
-            actorName: string;
-            reason: string;
-            recordId?: string | null;
-            payload: Record<string, never>;
-            /** Format: date-time */
-            createdAt: string;
-        };
         EpisodeEventsPageDto: {
             data: components["schemas"]["EpisodeEventDto"][];
             total: number;
@@ -2429,6 +2533,23 @@ export interface components {
             id: string;
             version: number;
             clinicalMetadata: components["schemas"]["DocumentClinicalMetadataDto"];
+        };
+        ClinicalWorkItemDto: {
+            id: string;
+            resourceId: string;
+            patientId: string;
+            patientName: string;
+            title: string;
+            /** @enum {string} */
+            kind: "CONFIRMATION" | "DOCUMENT" | "DRAFT";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ClinicalWorkPageDto: {
+            data: components["schemas"]["ClinicalWorkItemDto"][];
+            total: number;
+            page: number;
+            limit: number;
         };
         ReviewAssigneeDto: {
             id: string;
@@ -3409,7 +3530,12 @@ export interface operations {
     };
     PatientsController_exportClinicalHistory: {
         parameters: {
-            query?: never;
+            query?: {
+                from?: string;
+                to?: string;
+                episodeId?: string;
+                versions?: "ALL" | "CURRENT";
+            };
             header?: never;
             path: {
                 id: string;
@@ -3631,6 +3757,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClinicalSummaryHistoryResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalHistoryController_search: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                episodeId?: string;
+                versions?: "ALL" | "CURRENT";
+                q?: string;
+                kind?: "RECORD" | "DOCUMENT";
+                recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
+                status?: "ACTIVE" | "CORRECTED" | "VOIDED" | "PENDING" | "PROCESSING" | "PROCESSED" | "FAILED" | "VALIDATED" | "REJECTED";
+                confirmation?: "PENDING" | "CONFIRMED";
+                page?: number;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryPageDto"];
+                };
+            };
+        };
+    };
+    ClinicalHistoryController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryOverviewDto"];
                 };
             };
         };
@@ -4614,6 +4793,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ClinicalWorkController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                kind?: "CONFIRMATION" | "DOCUMENT" | "DRAFT";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalWorkPageDto"];
+                };
             };
         };
     };

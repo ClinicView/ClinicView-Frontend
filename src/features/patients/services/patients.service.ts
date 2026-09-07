@@ -42,8 +42,10 @@ export function getPatient(id: string): Promise<Patient> {
   return apiGet<Patient>(`/patients/${id}`);
 }
 
-export function getClinicalHistoryExport(id: string): Promise<ClinicalHistoryExport> {
-  return apiGet<ClinicalHistoryExport>(`/patients/${id}/clinical-history/export`);
+export function getClinicalHistoryExport(id: string, filters: { from?: string; to?: string; episodeId?: string; versions?: 'ALL' | 'CURRENT' } = {}): Promise<ClinicalHistoryExport> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
+  return apiGet<ClinicalHistoryExport>(`/patients/${id}/clinical-history/export?${query}`);
 }
 
 export function createPatient(data: CreatePatientData): Promise<Patient> {

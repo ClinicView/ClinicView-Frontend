@@ -166,6 +166,8 @@ export interface ClinicalHistoryExportDocument {
 }
 
 export interface ClinicalHistoryExport {
+  scope?: import('../../../shared/types/api.generated').components['schemas']['HistoryExportScopeDto'];
+  episodes?: import('../../../shared/types/api.generated').components['schemas']['ClinicalHistoryExportEpisodeDto'][];
   clinicalSummaryRevisions: ClinicalSummary[];
   patient: Pick<
     Patient,

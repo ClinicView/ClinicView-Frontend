@@ -13,10 +13,10 @@ import type { ClinicalRecord } from '../types/record';
 import { useClinicalPage } from '../hooks/use-clinical-page';
 import { ClinicalPageControls } from './clinical-page-controls';
 import styles from './clinical-workflow.module.css';
+import { EPISODE_ACTION_LABELS, episodeChangeText } from '../lib/episode-presentation';
 
 type Episode = components['schemas']['EpisodeOverviewDto'];
 type EpisodeEvent = components['schemas']['EpisodeEventDto'];
-const ACTIONS: Record<string, string> = { CREATE: 'Creación', UPDATE: 'Edición', CLOSE: 'Cierre', REOPEN: 'Reapertura', ATTACH: 'Atención incorporada', DETACH: 'Atención retirada', CORRECT: 'Corrección clínica', VOID: 'Anulación clínica' };
 
 function EpisodeEditor({ patientId, episode, onSaved }: { patientId: string; episode?: Episode; onSaved: () => Promise<void> }) {
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
@@ -60,7 +60,7 @@ function EpisodeContent({ patientId, episode, permissions, onChanged }: { patien
         <button type="submit">{busy ? 'Guardando…' : episode.status === 'OPEN' ? 'Confirmar cierre' : 'Confirmar reapertura'}</button>
       </fieldset>{error && <Alert variant="error">{error}</Alert>}</form>
     </details>}
-    <h3>Historial de agrupación</h3><ol>{events.items.map((entry) => <li key={entry.id}><p><strong>{ACTIONS[entry.action] ?? entry.action}</strong> · {formatInstant(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })} · {entry.actorName}</p><p>{entry.reason}</p>{entry.recordId && <Link href={`/patients/${patientId}/records/${entry.recordId}`}>Ver versión relacionada</Link>}<details><summary>Datos del cambio</summary><pre className={styles.json}>{JSON.stringify(entry.payload, null, 2)}</pre></details></li>)}</ol>
+    <h3>Historial de agrupación</h3><ol>{events.items.map((entry) => <li key={entry.id}><p><strong>{EPISODE_ACTION_LABELS[entry.action] ?? entry.action}</strong> · {formatInstant(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })} · {entry.actorName}</p><p>{entry.reason}</p>{entry.recordId && <Link href={`/patients/${patientId}/records/${entry.recordId}`}>Ver versión relacionada</Link>}<details><summary>Datos del cambio</summary><pre className={styles.json}>{episodeChangeText(entry.payload)}</pre></details></li>)}</ol>
     <ClinicalPageControls state={events} resource="cambios del episodio" />
   </div>;
 }
@@ -77,6 +77,7 @@ export function EpisodesWorkspace({ patientId }: { patientId: string }) {
       <ClinicalPageControls state={episodes} resource="episodios" />
       {episodes.total === 0 && <p>Todavía no hay episodios en esta vista. Las atenciones sin agrupar siguen disponibles en la historia.</p>}
       {episodes.items.map((episode) => <article className={styles.panel} key={`${episode.id}-${episode.version}`}><header><h2>{episode.title}</h2><span>{episode.status === 'OPEN' ? 'Abierto' : 'Cerrado'}</span></header><p>{formatDateOnly(episode.startedOn)}{episode.endedOn ? ` — ${formatDateOnly(episode.endedOn)}` : ' — En seguimiento'}</p>{episode.description && <p>{episode.description}</p>}<p>{episode.activeCount} atenciones vigentes · {episode.pendingConfirmationCount} pendientes de confirmar · {episode.recordsCount} versiones en total</p>
+        <Link href={`/patients/${patientId}/history?episodeId=${episode.id}`}>Explorar atenciones y exportación de este episodio</Link>
         <button type="button" aria-expanded={opened === episode.id} aria-controls={`episode-${episode.id}`} onClick={() => setOpened(opened === episode.id ? '' : episode.id)}>{opened === episode.id ? 'Ocultar detalle' : 'Abrir detalle y acciones'}</button>
         {opened === episode.id && <div id={`episode-${episode.id}`}><EpisodeContent patientId={patientId} episode={episode} permissions={permissions} onChanged={episodes.reload} /></div>}
       </article>)}

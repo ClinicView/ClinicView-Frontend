@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/shared/ui';
 import { useNotifications } from '../hooks/use-notifications';
 import type { AppNotification, NotificationType } from '../types/notification';
 import styles from './notifications-bell.module.css';
+import { PendingClinicalWork } from './pending-clinical-work';
 
 const TYPE_META: Record<NotificationType, { icon: IconName; tone: string }> = {
   DOCUMENT_PROCESSED: { icon: 'check', tone: 'green' },
@@ -237,6 +238,8 @@ export function NotificationsBell() {
             </div>
           </div>
 
+          <div className={styles.activityBody}>
+          <PendingClinicalWork compact onNavigate={() => closePanel(false)} />
           {error && (
             <div className={styles.loadError} role="alert">
               <Icon name="warning" size={18} />
@@ -296,6 +299,7 @@ export function NotificationsBell() {
               })}
             </ul>
           )}
+          </div>
         </dialog>
       )}
     </div>

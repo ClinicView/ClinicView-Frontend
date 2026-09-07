@@ -19,11 +19,8 @@ import { RequiredAttachmentResolutionError } from '@/features/clinical-records/l
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import {
-  clinicalHistoryDocumentToExportItem,
-  clinicalSummaryToExportItem,
   documentToExportItem,
   exportPatientPdf,
-  recordToExportItem,
   type ExportItem,
 } from '@/features/medical-documents/lib/pdf-export';
 import { can } from '@/shared/permissions/can';
@@ -36,6 +33,8 @@ import { EMPTY_TIMELINE_FILTERS, matchesTimelineFilters, timelineFilterError, ty
 import { ClinicalSummaryPanel } from '@/features/patients/components/clinical-summary-panel';
 import { documentSortDate, documentDateLabel } from '@/features/medical-documents/lib/document-metadata';
 import styles from './patient-profile.module.css';
+import { useHistoryOverview } from '@/features/patients/hooks/use-history-overview';
+import { exportClinicalHistoryPdf } from '@/features/patients/lib/history-pdf';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
@@ -175,6 +174,7 @@ export function PatientView({ id }: PatientViewProps) {
   const router = useRouter();
   const { patient, isLoading, error } = usePatient(id);
   const permissions = user?.permissions ?? [];
+  const historyOverview = useHistoryOverview(id, permissions.join('|'));
   const canReadDocuments = can(permissions, 'documents.read');
   const canReadRecords = can(permissions, 'records.read');
   const overview = usePatientOverview(id, {
@@ -263,19 +263,6 @@ export function PatientView({ id }: PatientViewProps) {
   }
 
   const patientAge = ageFromDateOnly(patient.dateOfBirth);
-  const pendingDocs = overview.documents.filter(
-    (doc) => doc.status !== 'VALIDATED' && doc.status !== 'REJECTED',
-  ).length;
-  const lastEntry = timeline.find((entry) => entry.record?.status === 'ACTIVE' || (entry.document?.status === 'VALIDATED' && Boolean(entry.document.clinicalMetadata?.clinicalDate))) ?? null;
-  const visibleEntryCount = overview.isLoading
-    ? '—'
-    : overview.documents.length + overview.records.length;
-  const visibleDocumentCount = overview.isLoadingDocuments || overview.documentsError
-    ? '—'
-    : overview.documents.length;
-  const visiblePendingCount = overview.isLoadingDocuments || overview.documentsError
-    ? '—'
-    : pendingDocs;
 
   async function handleActivate() {
     setIsActivating(true);
@@ -348,45 +335,7 @@ export function PatientView({ id }: PatientViewProps) {
     }
 
     try {
-      const items = [
-        ...history.documents.map((document) => ({
-          date: documentSortDate(document),
-          createdAt: document.createdAt,
-          kind: 'document' as const,
-          id: document.id,
-          item: clinicalHistoryDocumentToExportItem(document),
-        })),
-        ...history.records.map((record) => ({
-          date: record.attendedAt,
-          createdAt: record.createdAt,
-          kind: 'record' as const,
-          id: record.id,
-          item: recordToExportItem(record),
-        })),
-      ]
-        .sort(
-          (a, b) =>
-            new Date(a.date).getTime() - new Date(b.date).getTime() ||
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
-            a.kind.localeCompare(b.kind) ||
-            a.id.localeCompare(b.id),
-        )
-        .map((entry) => entry.item);
-      items.unshift(...(history.clinicalSummaryRevisions ?? []).map((revision, index) => clinicalSummaryToExportItem(revision, index === 0)));
-
-      if (items.length === 0) {
-        setExportError('Este paciente todavía no tiene entradas clínicas para exportar.');
-        return;
-      }
-
-      await exportPatientPdf({
-        patient: history.patient,
-        items,
-        subtitle: 'Historia clínica completa',
-        fileName: `clinicview_${history.patient.id.slice(0, 8)}_historia_completa`,
-        generatedAt: history.generatedAt,
-        orderDescription: 'revisiones longitudinales separadas; entradas por fecha clínica, con fecha de carga identificada cuando no consta la clínica',
-      });
+      await exportClinicalHistoryPdf(history);
     } catch (cause) {
       setExportError(
         cause instanceof RequiredAttachmentResolutionError
@@ -535,6 +484,8 @@ export function PatientView({ id }: PatientViewProps) {
 
       {canReadRecords && <ClinicalSummaryPanel patientId={id} canEdit={patient.isActive && can(permissions, 'records.create')} />}
       {canReadRecords && <Link className="viewBack" href={`/patients/${id}/episodes`}>Episodios clínicos · agrupar y dar seguimiento a las atenciones →</Link>}
+      {(canReadRecords || canReadDocuments) && <Link className="viewBack" href={`/patients/${id}/history`}>Buscar en toda la historia y exportar por período o episodio →</Link>}
+      {historyOverview.error && <Alert variant="error">{historyOverview.error} <button type="button" onClick={historyOverview.refresh}>Reintentar indicadores</button></Alert>}
 
       {/* ─── Cards resumen ─── */}
       <section className={styles.summaryGrid} aria-label="Resumen del paciente">
@@ -545,12 +496,12 @@ export function PatientView({ id }: PatientViewProps) {
                 <Icon name="calendar" size={20} />
               </span>
               <div>
-                <span className={styles.summaryLabel}>Última fecha clínica visible</span>
+                <span className={styles.summaryLabel}>Última fecha clínica</span>
                 <span className={styles.summaryValue}>
-                  {lastEntry ? formatDate(lastEntry.date) : '—'}
+                  {historyOverview.data?.latestClinicalDate ? formatDateOnly(historyOverview.data.latestClinicalDate) : '—'}
                 </span>
                 <span className={styles.summaryHint}>
-                  {overview.isLoading ? 'Cargando…' : lastEntry?.title ?? 'Sin registros visibles'}
+                  {historyOverview.loading ? 'Consultando toda la historia…' : 'Atenciones vigentes y documentos validados según permisos'}
                 </span>
               </div>
             </article>
@@ -559,12 +510,10 @@ export function PatientView({ id }: PatientViewProps) {
                 <Icon name="folder" size={20} />
               </span>
               <div>
-                <span className={styles.summaryLabel}>Entradas cargadas</span>
-                <span className={styles.summaryValue}>{visibleEntryCount}</span>
+                <span className={styles.summaryLabel}>{canReadRecords ? 'Atenciones vigentes' : 'Documentos validados'}</span>
+                <span className={styles.summaryValue}>{(canReadRecords ? historyOverview.data?.activeRecords : historyOverview.data?.validatedDocuments) ?? '—'}</span>
                 <span className={styles.summaryHint}>
-                  {overview.documentsError || overview.recordsError
-                    ? 'Carga parcial; revisa el aviso inferior'
-                    : 'Revisa la cobertura de la ficha'}
+                  {canReadRecords ? `${historyOverview.data?.recordVersions ?? '—'} versiones en total, incluidas corregidas y anuladas` : 'Calculado sobre todos los documentos'}
                 </span>
               </div>
             </article>
@@ -575,9 +524,9 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="scan" size={20} />
                   </span>
                   <div>
-                    <span className={styles.summaryLabel}>Documentos cargados</span>
-                    <span className={styles.summaryValue}>{visibleDocumentCount}</span>
-                    <span className={styles.summaryHint}>Archivos digitalizados</span>
+                    <span className={styles.summaryLabel}>Documentos totales</span>
+                    <span className={styles.summaryValue}>{historyOverview.data?.documents ?? '—'}</span>
+                    <span className={styles.summaryHint}>{historyOverview.data?.validatedDocuments ?? '—'} validados</span>
                   </div>
                 </article>
                 <article className={styles.summaryCard}>
@@ -585,8 +534,8 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="clock" size={20} />
                   </span>
                   <div>
-                    <span className={styles.summaryLabel}>Pendientes cargados</span>
-                    <span className={styles.summaryValue}>{visiblePendingCount}</span>
+                    <span className={styles.summaryLabel}>Documentos pendientes</span>
+                    <span className={styles.summaryValue}>{historyOverview.data?.pendingDocuments ?? '—'}</span>
                     <span className={styles.summaryHint}>Por revisar / completar</span>
                   </div>
                 </article>
@@ -607,6 +556,8 @@ export function PatientView({ id }: PatientViewProps) {
           </article>
         )}
       </section>
+
+      {canReadRecords && historyOverview.data && <p><Link href={`/patients/${id}/history?kind=RECORD&status=ACTIVE&confirmation=PENDING`}>{historyOverview.data.pendingConfirmations ?? '—'} atenciones vigentes sin confirmación</Link> · <Link href={`/patients/${id}/episodes`}>{historyOverview.data.openEpisodes ?? '—'} episodios abiertos</Link> · <button type="button" onClick={historyOverview.refresh} disabled={historyOverview.loading}>Actualizar indicadores</button></p>}
 
       {/* ─── Tabs ─── */}
       <div className={styles.tabs} role="tablist" aria-label="Secciones de la ficha del paciente">

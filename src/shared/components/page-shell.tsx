@@ -41,6 +41,9 @@ function getInitials(email: string): string {
 }
 
 function getRouteLabel(pathname: string): string {
+  if (pathname.startsWith('/worklist')) return 'Mis tareas clínicas';
+  if (pathname.endsWith('/history')) return 'Explorar historia clínica';
+  if (pathname.endsWith('/episodes')) return 'Episodios clínicos';
   if (pathname === '/dashboard') return 'Centro operativo';
   if (pathname.startsWith('/review')) return 'Revisión digital';
   if (pathname.startsWith('/admin/audit')) return 'Auditoría';
@@ -226,6 +229,10 @@ export function PageShell({ children }: PageShellProps) {
         icon: 'scan',
         isActive: isDigitizationArea,
       });
+    }
+
+    if (can(permissions, 'patients.read') && canAny(permissions, ['records.confirm', 'records.create', 'documents.validate'])) {
+      items.push({ href: '/worklist', label: 'Mis pendientes', icon: 'clock', isActive: pathname.startsWith('/worklist') });
     }
 
     if (can(permissions, 'review.read')) {

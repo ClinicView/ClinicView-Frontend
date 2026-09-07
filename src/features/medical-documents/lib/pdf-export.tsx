@@ -1,5 +1,7 @@
 'use client';
 
+import { Fragment } from 'react';
+
 /**
  * Exportación PDF client-side con @react-pdf/renderer.
  * Genera PDFs con texto real (seleccionable) estructurado por secciones de la
@@ -112,6 +114,7 @@ const PDF_COLORS = {
 } as const;
 
 function formatDate(iso: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return formatDateOnly(iso, { day: '2-digit', month: 'long', year: 'numeric' });
   return formatInstant(iso, {
     day: '2-digit',
     month: 'long',
@@ -256,6 +259,7 @@ export function clinicalHistoryDocumentToExportItem(
   }
   const trace = [
     `Fuente del texto: ${document.textSource === 'CORRECTED' ? 'Corrección profesional' : document.textSource === 'OCR' ? 'OCR validado' : 'Sin texto exportable'}`,
+    `ID del documento: ${document.id}`,
     `Subido: ${formatDateTime(document.createdAt) ?? 'No registrado'}`,
     document.processedAt ? `Procesado: ${formatDateTime(document.processedAt)}` : null,
     document.correctedAt ? `Corregido: ${formatDateTime(document.correctedAt)}` : null,
@@ -391,6 +395,7 @@ export function recordToExportItem(
   }
   const trace = [
     `Ingresado por: ${record.createdByNameSnapshot ?? 'Nombre histórico no registrado'}`,
+    `ID de atención: ${record.id}`,
     record.parentRecordId
       ? `Corrige al registro: ${record.parentRecordId}`
       : 'Registro raíz de la cadena clínica',
@@ -450,7 +455,7 @@ export async function resolveExportItemAttachments(
   return resolved;
 }
 
-export async function exportPatientPdf(options: {
+export interface PatientPdfOptions {
   patient: Pick<
     Patient,
     | 'documentType'
@@ -475,11 +480,14 @@ export async function exportPatientPdf(options: {
   fileName: string;
   generatedAt?: string;
   orderDescription?: string;
-}): Promise<void> {
-  const { patient, items, subtitle, fileName, generatedAt, orderDescription } = options;
-  const resolvedItems = await resolveExportItemAttachments(items);
-  const { pdf, Document, Image: PdfImage, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
-  const brandLogoUrl = new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
+  brandLogoSource?: string;
+}
+
+export async function createPatientPdf(options: PatientPdfOptions, resources?: { loadBlob: AttachmentBlobLoader; encodeDataUrl: AttachmentDataUrlEncoder }): Promise<Blob> {
+  const { patient, items, subtitle, generatedAt, orderDescription } = options;
+  const resolvedItems = await resolveExportItemAttachments(items, resources?.loadBlob, resources?.encodeDataUrl);
+  const { pdf, Document, Image: PdfImage, Link: PdfLink, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+  const brandLogoUrl = options.brandLogoSource ?? new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
   const styles = StyleSheet.create({
     page: {
@@ -718,7 +726,7 @@ export async function exportPatientPdf(options: {
         <Text style={styles.coverTitle}>{subtitle}</Text>
         <Text style={styles.coverSubtitle}>
           {resolvedItems.length}{' '}
-          {resolvedItems.length === 1 ? 'entrada clínica' : 'entradas clínicas'}
+          {resolvedItems.length === 1 ? 'sección exportada' : 'secciones exportadas'}
           {orderDescription ? ` · ${orderDescription}` : ''}
         </Text>
         <Text style={styles.patientDetails}>
@@ -739,34 +747,36 @@ export async function exportPatientPdf(options: {
           {'\n'}Seguro: {[patient.insuranceName, patient.insuranceNumber].filter(Boolean).join(' · ') || 'No registrado'}
         </Text>
 
+        <Text style={styles.sectionTitle} minPresenceAhead={60}>Índice de secciones · enlaces internos</Text>
+        {resolvedItems.map((item, index) => <PdfLink key={`index-${index}`} src={`#entry-${index}`} style={{ fontSize: 10, color: PDF_COLORS.primary, marginBottom: 7 }}>{index + 1}. {item.title} · {formatDate(item.date)} · {item.status}</PdfLink>)}
         {resolvedItems.map((item, index) => (
-          <View key={index} style={styles.item} wrap>
-            <View style={styles.itemHeader} minPresenceAhead={80}>
+          <View key={index} id={`entry-${index}`} style={styles.item} wrap break={index === 0}>
+            <View style={styles.itemHeader} wrap={false} minPresenceAhead={80}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemMeta}>
                 {item.dateLabel}: {formatDate(item.date)} · {item.origin} · Estado: {item.status}
               </Text>
             </View>
             {item.sections.map((section, sectionIndex) => (
-              <View key={sectionIndex}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Fragment key={sectionIndex}>
+                <Text style={styles.sectionTitle} minPresenceAhead={36}>{section.title}</Text>
                 {section.content !== undefined && (
                   <Text style={styles.sectionContent}>{section.content}</Text>
                 )}
                 {section.blocks?.map((block, blockIndex) => {
                   if (block.kind === 'text') {
                     return (
-                      <View key={blockIndex} style={styles.structuredBlock}>
-                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
-                        <Text style={styles.sectionContent}>{block.content}</Text>
-                      </View>
+                      <Fragment key={blockIndex}>
+                        {block.label && <Text style={styles.blockLabel} minPresenceAhead={24}>{block.label}</Text>}
+                        <Text style={[styles.sectionContent, styles.structuredBlock]}>{block.content}</Text>
+                      </Fragment>
                     );
                   }
 
                   if (block.kind === 'list') {
                     return (
                       <View key={blockIndex} style={styles.structuredBlock}>
-                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
+                        {block.label && <Text style={styles.blockLabel} minPresenceAhead={24}>{block.label}</Text>}
                         {block.items.map((listItem, listIndex) => (
                           <View key={listIndex} style={styles.listRow} wrap={false}>
                             <Text style={styles.listBullet}>•</Text>
@@ -834,15 +844,15 @@ export async function exportPatientPdf(options: {
                   item.attachments
                     .filter((attachment) => attachment.sectionId === section.key)
                     .map(renderAttachment)}
-              </View>
+              </Fragment>
             ))}
             {item.attachments.some((attachment) => attachment.sectionId === null) && (
-              <View>
-                <Text style={styles.sectionTitle}>IMÁGENES ADJUNTAS</Text>
+              <Fragment>
+                <Text style={styles.sectionTitle} minPresenceAhead={340}>IMÁGENES ADJUNTAS</Text>
                 {item.attachments
                   .filter((attachment) => attachment.sectionId === null)
                   .map(renderAttachment)}
-              </View>
+              </Fragment>
             )}
           </View>
         ))}
@@ -860,7 +870,12 @@ export async function exportPatientPdf(options: {
     </Document>
   );
 
-  const blob = await pdf(doc).toBlob();
+  return pdf(doc).toBlob();
+}
+
+export async function exportPatientPdf(options: PatientPdfOptions): Promise<void> {
+  const blob = await createPatientPdf(options);
+  const { fileName } = options;
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement('a');
   anchor.href = url;

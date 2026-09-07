@@ -1,6 +1,7 @@
 .wrapper {
   position: relative;
 }
+.activityBody { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
 
 .bellBtn {
   position: relative;
