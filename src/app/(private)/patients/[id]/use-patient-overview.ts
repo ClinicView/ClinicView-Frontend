@@ -1,100 +1,48 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ClinicalRecord } from '@/features/clinical-records';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { listRecords } from '@/features/clinical-records';
-import type { MedicalDocument } from '@/features/medical-documents';
 import { listDocuments } from '@/features/medical-documents';
-import { ApiError } from '@/shared/services/api-client';
+import { PagedClinicalSource } from '@/shared/lib/paged-clinical-source';
 
-// Máximo que acepta la validación del backend (FindDocumentsQueryDto).
 const OVERVIEW_LIMIT = 50;
 
-interface PatientOverviewAccess {
-  documents: boolean;
-  records: boolean;
-}
-
-function resourceError(cause: unknown, resource: 'documentos' | 'registros'): string {
-  if (cause instanceof ApiError && cause.status === 403) {
-    return `Tu rol ya no permite consultar ${resource} clínicos.`;
-  }
-  return `No se pudieron cargar los ${resource} clínicos.`;
-}
-
-/**
- * Carga cada fuente autorizada de forma independiente. Una denegación o
- * fallo en documentos nunca oculta los registros que sí pudieron cargarse,
- * y viceversa.
- */
-export function usePatientOverview(patientId: string, access: PatientOverviewAccess) {
-  const [documents, setDocuments] = useState<MedicalDocument[]>([]);
-  const [records, setRecords] = useState<ClinicalRecord[]>([]);
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(access.documents);
-  const [isLoadingRecords, setIsLoadingRecords] = useState(access.records);
-  const [documentsError, setDocumentsError] = useState<string | null>(null);
-  const [recordsError, setRecordsError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-
-    setDocuments([]);
-    setRecords([]);
-    setDocumentsError(null);
-    setRecordsError(null);
-    setIsLoadingDocuments(access.documents);
-    setIsLoadingRecords(access.records);
-
-    const [documentsResult, recordsResult] = await Promise.allSettled([
-      access.documents
-        ? listDocuments(patientId, { page: 1, limit: OVERVIEW_LIMIT })
-        : Promise.resolve(null),
-      access.records
-        ? listRecords(patientId, { page: 1, limit: OVERVIEW_LIMIT })
-        : Promise.resolve(null),
-    ]);
-
-    if (requestId !== requestIdRef.current) return;
-
-    if (access.documents) {
-      if (documentsResult.status === 'fulfilled' && documentsResult.value) {
-        setDocuments(documentsResult.value.data);
-      } else if (documentsResult.status === 'rejected') {
-        setDocumentsError(resourceError(documentsResult.reason, 'documentos'));
-      }
-    }
-
-    if (access.records) {
-      if (recordsResult.status === 'fulfilled' && recordsResult.value) {
-        setRecords(recordsResult.value.data);
-      } else if (recordsResult.status === 'rejected') {
-        setRecordsError(resourceError(recordsResult.reason, 'registros'));
-      }
-    }
-
-    setIsLoadingDocuments(false);
-    setIsLoadingRecords(false);
-  }, [access.documents, access.records, patientId]);
+export function usePatientOverview(patientId: string, access: { documents: boolean; records: boolean }) {
+  const documentSource = useMemo(() => new PagedClinicalSource(access.documents,
+    (page) => listDocuments(patientId, { page, limit: OVERVIEW_LIMIT }), 'los documentos clínicos'),
+  [patientId, access.documents]);
+  const recordSource = useMemo(() => new PagedClinicalSource(access.records,
+    (page) => listRecords(patientId, { status: 'ALL', page, limit: OVERVIEW_LIMIT }), 'los registros clínicos'),
+  [patientId, access.records]);
+  const documentsPage = useSyncExternalStore(documentSource.subscribe, documentSource.getSnapshot, documentSource.getServerSnapshot);
+  const recordsPage = useSyncExternalStore(recordSource.subscribe, recordSource.getSnapshot, recordSource.getServerSnapshot);
 
   useEffect(() => {
-    void load();
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [load]);
+    void documentSource.reload();
+    return documentSource.cancel;
+  }, [documentSource]);
+  useEffect(() => {
+    void recordSource.reload();
+    return recordSource.cancel;
+  }, [recordSource]);
 
   return {
-    documents,
-    records,
-    documentsError,
-    recordsError,
-    isLoadingDocuments,
-    isLoadingRecords,
-    isLoading: isLoadingDocuments || isLoadingRecords,
+    documents: documentsPage.items,
+    records: recordsPage.items,
+    documentsPage,
+    recordsPage,
+    documentsError: documentsPage.error,
+    recordsError: recordsPage.error,
+    isLoadingDocuments: documentsPage.loading && documentsPage.page === 0,
+    isLoadingRecords: recordsPage.loading && recordsPage.page === 0,
+    isLoading: (documentsPage.loading && documentsPage.page === 0) || (recordsPage.loading && recordsPage.page === 0),
     hasAnyAccess: access.documents || access.records,
     canReadDocuments: access.documents,
     canReadRecords: access.records,
-    reload: load,
+    loadMoreDocuments: documentSource.loadMore,
+    loadMoreRecords: recordSource.loadMore,
+    reloadDocuments: documentSource.reload,
+    reloadRecords: recordSource.reload,
+    reload: () => Promise.all([documentSource.reload(), recordSource.reload()]),
   };
 }

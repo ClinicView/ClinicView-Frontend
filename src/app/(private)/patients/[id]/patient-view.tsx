@@ -28,9 +28,11 @@ import {
 } from '@/features/medical-documents/lib/pdf-export';
 import { can } from '@/shared/permissions/can';
 import { PageShell } from '@/shared/components/page-shell';
-import { ageFromDateOnly, formatDateOnly, formatInstant } from '@/shared/lib/date-time';
+import { ageFromDateOnly, formatDateOnly, formatInstant, isoToDateTimeLocal } from '@/shared/lib/date-time';
 import { Alert, Icon, Spinner } from '@/shared/ui';
 import { usePatientOverview } from './use-patient-overview';
+import { OverviewPagination } from './overview-pagination';
+import { EMPTY_TIMELINE_FILTERS, matchesTimelineFilters, timelineFilterError, type TimelineFilters } from '@/features/patients/lib/timeline-filters';
 import { ClinicalSummaryPanel } from '@/features/patients/components/clinical-summary-panel';
 import { documentSortDate, documentDateLabel } from '@/features/medical-documents/lib/document-metadata';
 import styles from './patient-profile.module.css';
@@ -81,6 +83,9 @@ interface TimelineEntry {
   date: string;
   title: string;
   statusLabel: string;
+  status: string;
+  clinicalFrom: string | null;
+  clinicalTo: string | null;
   statusTone: string;
   service: string;
   href: string | null;
@@ -101,6 +106,9 @@ function buildTimeline(
     date: documentSortDate(doc),
     title: doc.originalName,
     statusLabel: DOC_STATUS_LABEL[doc.status] ?? doc.status,
+    status: doc.status,
+    clinicalFrom: doc.clinicalMetadata?.clinicalDate ?? null,
+    clinicalTo: doc.clinicalMetadata?.clinicalEndDate ?? doc.clinicalMetadata?.clinicalDate ?? null,
     statusTone: DOC_STATUS_TONE[doc.status] ?? 'slate',
     service: `Archivo clínico · ${documentDateLabel(doc.clinicalMetadata)}${doc.clinicalMetadata?.sourceInstitution ? ` · ${doc.clinicalMetadata.sourceInstitution}` : ''}`,
     href: `/patients/${patientId}/documents/${doc.id}`,
@@ -116,6 +124,9 @@ function buildTimeline(
       id: `rec-${record.id}`,
       kind: 'record',
       date: record.attendedAt,
+      status: record.status,
+      clinicalFrom: isoToDateTimeLocal(record.attendedAt).slice(0, 10),
+      clinicalTo: isoToDateTimeLocal(record.attendedAt).slice(0, 10),
       title: getRecordTypeDefinition(record.recordType).shortLabel,
       statusLabel:
         record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
@@ -139,7 +150,7 @@ function buildTimeline(
   });
 
   return [...docEntries, ...recordEntries].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || b.id.localeCompare(a.id),
   );
 }
 
@@ -172,7 +183,7 @@ export function PatientView({ id }: PatientViewProps) {
   });
 
   const [activeTab, setActiveTab] = useState<TabId>('resumen');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [timelineFilters, setTimelineFilters] = useState<TimelineFilters>(EMPTY_TIMELINE_FILTERS);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -205,11 +216,8 @@ export function PatientView({ id }: PatientViewProps) {
     [id, overview.documents, overview.records],
   );
 
-  const filteredTimeline = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return timeline;
-    return timeline.filter((entry) => entry.searchText.includes(query));
-  }, [timeline, searchQuery]);
+  const filterError = timelineFilterError(timelineFilters);
+  const filteredTimeline = useMemo(() => timeline.filter((entry) => matchesTimelineFilters(entry, timelineFilters)), [timeline, timelineFilters]);
 
   const metricsDocs = useMemo(
     () =>
@@ -415,6 +423,7 @@ export function PatientView({ id }: PatientViewProps) {
   }
 
   async function reloadOverview() {
+    setSelectedDocs(new Set());
     await overview.reload();
     requestAnimationFrame(() => {
       document.getElementById(`patient-panel-${activeTab}`)?.focus({ preventScroll: true });
@@ -549,12 +558,12 @@ export function PatientView({ id }: PatientViewProps) {
                 <Icon name="folder" size={20} />
               </span>
               <div>
-                <span className={styles.summaryLabel}>Entradas disponibles</span>
+                <span className={styles.summaryLabel}>Entradas cargadas</span>
                 <span className={styles.summaryValue}>{visibleEntryCount}</span>
                 <span className={styles.summaryHint}>
                   {overview.documentsError || overview.recordsError
                     ? 'Carga parcial; revisa el aviso inferior'
-                    : 'Según los permisos de tu rol'}
+                    : 'Revisa la cobertura de la ficha'}
                 </span>
               </div>
             </article>
@@ -565,7 +574,7 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="scan" size={20} />
                   </span>
                   <div>
-                    <span className={styles.summaryLabel}>Digitalizaciones</span>
+                    <span className={styles.summaryLabel}>Documentos cargados</span>
                     <span className={styles.summaryValue}>{visibleDocumentCount}</span>
                     <span className={styles.summaryHint}>Archivos digitalizados</span>
                   </div>
@@ -575,7 +584,7 @@ export function PatientView({ id }: PatientViewProps) {
                     <Icon name="clock" size={20} />
                   </span>
                   <div>
-                    <span className={styles.summaryLabel}>Pendientes</span>
+                    <span className={styles.summaryLabel}>Pendientes cargados</span>
                     <span className={styles.summaryValue}>{visiblePendingCount}</span>
                     <span className={styles.summaryHint}>Por revisar / completar</span>
                   </div>
@@ -618,6 +627,11 @@ export function PatientView({ id }: PatientViewProps) {
         ))}
       </div>
 
+      {overview.hasAnyAccess && <OverviewPagination sources={[
+        ...(canReadDocuments ? [{ label: 'Documentos', state: overview.documentsPage, loadMore: overview.loadMoreDocuments, reload: async () => { setSelectedDocs(new Set()); await overview.reloadDocuments(); } }] : []),
+        ...(canReadRecords ? [{ label: 'Registros', state: overview.recordsPage, loadMore: overview.loadMoreRecords, reload: overview.reloadRecords }] : []),
+      ]} />}
+
       {(overview.documentsError || overview.recordsError) && (
         <div className={styles.overviewError}>
           <Alert variant="error">
@@ -631,7 +645,7 @@ export function PatientView({ id }: PatientViewProps) {
                 onClick={() => void reloadOverview()}
                 disabled={overview.isLoading}
               >
-                {overview.isLoading ? 'Reintentando…' : 'Reintentar carga'}
+                {overview.isLoading ? 'Reintentando…' : 'Recargar desde el inicio'}
               </button>
             </span>
           </Alert>
@@ -807,24 +821,39 @@ export function PatientView({ id }: PatientViewProps) {
               <input
                 type="search"
                 className={styles.searchInput}
-                placeholder="Buscar en la historia clínica…"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                aria-label="Buscar en la historia clínica"
+                placeholder="Buscar en las entradas cargadas…"
+                value={timelineFilters.query}
+                onChange={(event) => setTimelineFilters((current) => ({ ...current, query: event.target.value }))}
+                aria-label="Buscar en las entradas cargadas de la historia clínica"
               />
             </div>
             <span className={styles.resultCount} aria-live="polite" aria-atomic="true">
-              {filteredTimeline.length} {filteredTimeline.length === 1 ? 'entrada' : 'entradas'}
+              {filteredTimeline.length} de {timeline.length} entradas cargadas
             </span>
           </div>
+
+          <div className={styles.timelineFilters}>
+            <label>Tipo de entrada<select value={timelineFilters.kind} onChange={(event) => setTimelineFilters((current) => ({ ...current, kind: event.target.value as TimelineFilters['kind'], status: '' }))}>
+              <option value="all">Todos</option>
+              {canReadDocuments && <option value="document">Documentos</option>}
+              {canReadRecords && <option value="record">Registros de atención</option>}
+            </select></label>
+            <label>Estado<select value={timelineFilters.status} onChange={(event) => setTimelineFilters((current) => ({ ...current, status: event.target.value }))}>
+              <option value="">Todos los estados</option>
+              {canReadRecords && timelineFilters.kind !== 'document' && <optgroup label="Registros"><option value="ACTIVE">Activo</option><option value="CORRECTED">Corregido</option><option value="VOIDED">Anulado</option></optgroup>}
+              {canReadDocuments && timelineFilters.kind !== 'record' && <optgroup label="Documentos">{Object.entries(DOC_STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</optgroup>}
+            </select></label>
+            <label>Fecha clínica desde<input type="date" value={timelineFilters.from} aria-invalid={Boolean(filterError)} aria-describedby="timeline-filter-hint" onChange={(event) => setTimelineFilters((current) => ({ ...current, from: event.target.value }))} /></label>
+            <label>Fecha clínica hasta<input type="date" value={timelineFilters.to} aria-invalid={Boolean(filterError)} aria-describedby="timeline-filter-hint" onChange={(event) => setTimelineFilters((current) => ({ ...current, to: event.target.value }))} /></label>
+            <button type="button" className={styles.btnSmall} onClick={() => setTimelineFilters({ ...EMPTY_TIMELINE_FILTERS })}>Limpiar filtros</button>
+          </div>
+          <p id="timeline-filter-hint" className={styles.emptyHint} role={filterError ? 'alert' : undefined}>{filterError ?? 'Los filtros se aplican a las entradas cargadas. El rango clínico excluye documentos sin fecha clínica conocida.'}</p>
 
           {overview.isLoading ? (
             <Spinner label="Cargando historia…" />
           ) : filteredTimeline.length === 0 ? (
             <p className={styles.emptyHint}>
-              {searchQuery
-                ? 'Ninguna entrada coincide con la búsqueda.'
-                : 'Sin entradas en la historia clínica.'}
+              No hay coincidencias entre las entradas cargadas. Revisa los filtros y la cobertura de esta ficha.
             </p>
           ) : (
             <ol className={styles.timeline}>
@@ -950,9 +979,9 @@ export function PatientView({ id }: PatientViewProps) {
                 type="checkbox"
                 checked={selectedDocs.size === overview.documents.length && overview.documents.length > 0}
                 onChange={toggleSelectAll}
-                aria-label="Seleccionar todos los documentos"
+                aria-label="Seleccionar todos los documentos cargados"
               />
-              Seleccionar todos
+              Seleccionar todos los cargados
             </label>
             <div className={styles.docsToolbarActions}>
               <button

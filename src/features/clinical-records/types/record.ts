@@ -10,6 +10,7 @@ export type RecordType =
 export type RecordOrigin = 'MANUAL' | 'DIGITIZED';
 
 export type RecordStatus = 'ACTIVE' | 'CORRECTED' | 'VOIDED';
+export type RecordStatusFilter = RecordStatus | 'ALL';
 
 export type RecordPriority = 'URGENT' | 'PRIORITY' | 'NORMAL' | 'ELECTIVE';
 

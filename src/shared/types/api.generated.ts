@@ -3251,7 +3251,7 @@ export interface operations {
         parameters: {
             query?: {
                 recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
-                status?: "ACTIVE" | "CORRECTED" | "VOIDED";
+                status?: "ACTIVE" | "CORRECTED" | "VOIDED" | "ALL";
                 origin?: "MANUAL" | "DIGITIZED";
                 /**
                  * @description Desde, inclusivo: YYYY-MM-DD (inicio del día en America/Lima) o ISO 8601 con zona

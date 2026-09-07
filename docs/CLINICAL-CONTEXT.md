@@ -39,3 +39,22 @@ una subida sin fecha ni un registro corregido/anulado como nueva atención.
 La exportación completa agrega el historial de cambios de procedencia. Su consulta
 en pantalla se pagina en grupos de 20. Los contratos nuevos se derivan de OpenAPI:
 `npm run gen-types:local` los genera sin necesitar un backend escuchando en un puerto.
+
+## Cobertura y filtros de la ficha
+
+Documentos y registros permiten cargar páginas adicionales de 50, con conteos
+visibles y una advertencia de vista parcial. Una fuente que falla no elimina la
+otra; los reintentos conservan las páginas previas salvo revocación del acceso.
+Las respuestas obsoletas al cambiar de paciente o recargar no restauran datos.
+
+La historia incluye versiones activas, corregidas y anuladas con estado explícito.
+Se corrigió «Todos los estados» para enviar `status=ALL`: omitir el parámetro
+seguía devolviendo únicamente activos en el backend.
+
+Los filtros por texto (sin depender de tildes), tipo, estado y período clínico
+operan **sobre lo cargado**, no afirman buscar en páginas aún no consultadas.
+Un documento sin fecha clínica no coincide con un filtro de fecha clínica.
+Los rangos documentales se incluyen por solapamiento. Seleccionar todos también
+se etiqueta explícitamente como seleccionar los documentos cargados.
+
+La exportación completa es independiente de filtros/paginación de pantalla.

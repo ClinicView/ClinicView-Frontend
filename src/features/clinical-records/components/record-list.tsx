@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, EmptyState, Alert, StatusBadge } from '@/shared/ui';
-import type { RecordStatus, RecordType } from '../types/record';
+import type { RecordStatus, RecordStatusFilter, RecordType } from '../types/record';
 import { useRecords } from '../hooks/use-records';
 import styles from './record-list.module.css';
 
@@ -55,10 +55,10 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
         <select
           id="record-status-filter"
           className={styles.select}
-          value={statusFilter ?? ''}
-          onChange={(e) => onStatusFilterChange((e.target.value as RecordStatus) || undefined)}
+          value={statusFilter}
+          onChange={(e) => onStatusFilterChange(e.target.value as RecordStatusFilter)}
         >
-          <option value="">Todos los estados</option>
+          <option value="ALL">Todos los estados</option>
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>{STATUS_LABEL[s]}</option>
           ))}
@@ -81,12 +81,12 @@ export function RecordList({ patientId, permissions }: RecordListProps) {
       <div className={styles.tableWrap}>
         {isLoading ? (
           <Spinner label="Cargando registros…" />
-        ) : data.length === 0 ? (
+        ) : error ? null : data.length === 0 ? (
           <EmptyState
             icon="records"
-            title={statusFilter ? 'Sin registros con ese estado' : 'Sin registros manuales de atención'}
+            title={statusFilter !== 'ALL' ? 'Sin registros con ese estado' : 'Sin registros de atención'}
             description={
-              statusFilter
+              statusFilter !== 'ALL'
                 ? 'Prueba con otro filtro.'
                 : 'Registra la primera atención clínica manual de este paciente.'
             }

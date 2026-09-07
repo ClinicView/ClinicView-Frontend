@@ -3,13 +3,13 @@ import type {
   ClinicalRecord,
   CorrectRecordData,
   CreateRecordData,
-  RecordStatus,
+  RecordStatusFilter,
   RecordsPage,
 } from '../types/record';
 
 export function listRecords(
   patientId: string,
-  params: { status?: RecordStatus; page?: number; limit?: number },
+  params: { status?: RecordStatusFilter; page?: number; limit?: number },
 ): Promise<RecordsPage> {
   const qs = new URLSearchParams();
   if (params.status) qs.set('status', params.status);
