@@ -28,6 +28,7 @@ import {
 } from '../../../../../../shared/lib/date-time';
 
 export interface CommonRecordFormState {
+  specialty?: string;
   attendancePrecision?: 'INSTANT' | 'DAY';
   recordType: RecordType | '';
   attendedAt: string;
@@ -83,6 +84,7 @@ export const COMMON_FIELD_IDS = {
   doctorName: 'record-doctorName',
   professionalLicense: 'record-professionalLicense',
   service: 'record-service',
+  specialty: 'record-specialty',
   summary: 'record-summary',
   notes: 'record-notes',
   preliminaryDiagnosis: 'record-preliminaryDiagnosis',
@@ -97,6 +99,7 @@ const COMMON_LABELS: Record<keyof typeof COMMON_FIELD_IDS, string> = {
   doctorName: 'Médico o profesional',
   professionalLicense: 'Colegiatura o registro profesional',
   service: 'Servicio o especialidad',
+  specialty: 'Especialidad',
   summary: 'Resumen clínico',
   notes: 'Notas adicionales',
   preliminaryDiagnosis: 'Diagnóstico preliminar',
@@ -405,6 +408,7 @@ export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
     ...(state.doctorName.trim() ? { doctorName: state.doctorName.trim() } : {}),
     ...(state.professionalLicense.trim() ? { professionalLicense: state.professionalLicense.trim() } : {}),
     ...(state.service.trim() ? { service: state.service.trim() } : {}),
+    ...(state.specialty?.trim() ? { specialty: state.specialty.trim() } : {}),
     ...(state.preliminaryDiagnosis.trim()
       ? { preliminaryDiagnosis: state.preliminaryDiagnosis.trim() }
       : {}),
@@ -425,6 +429,7 @@ export function restoreEditorState(payload: RecordDraftPayload): RecordEditorSta
   next.doctorName = payload.doctorName ?? '';
   next.professionalLicense = payload.professionalLicense ?? '';
   next.service = payload.service ?? '';
+  next.specialty = payload.specialty ?? '';
   next.summary = payload.summary ?? '';
   next.notes = payload.notes ?? '';
   next.preliminaryDiagnosis = payload.preliminaryDiagnosis ?? '';
@@ -477,6 +482,7 @@ function validateCommon(
   else if (state.doctorName.length > 120) add('doctorName', 'Usa 120 caracteres o menos.');
   if (state.professionalLicense.length > 80) add('professionalLicense', 'Usa 80 caracteres o menos.');
   if (state.service.length > 120) add('service', 'Usa 120 caracteres o menos.');
+  if ((state.specialty?.length ?? 0) > 120) add('specialty', 'Usa 120 caracteres o menos.');
   if (!state.summary.trim()) add('summary', 'Ingresa un resumen clínico.');
   else if (state.summary.length > 2000) add('summary', 'Usa 2000 caracteres o menos.');
   if (state.notes.length > 4000) add('notes', 'Usa 4000 caracteres o menos.');
@@ -673,6 +679,7 @@ export function toCreateRecordData(
       ? { professionalLicense: state.professionalLicense.trim() }
       : {}),
     ...(state.service.trim() ? { service: state.service.trim() } : {}),
+    ...(state.specialty?.trim() ? { specialty: state.specialty.trim() } : {}),
     ...(state.preliminaryDiagnosis.trim()
       ? { preliminaryDiagnosis: state.preliminaryDiagnosis.trim() }
       : {}),
@@ -685,7 +692,7 @@ export function toCreateRecordData(
 
 export function hasMeaningfulEditorData(state: RecordEditorState): boolean {
   if (state.recordType || state.doctorName.trim() || state.professionalLicense.trim()
-    || state.service || state.summary.trim() || state.notes.trim()
+    || state.service || state.specialty || state.summary.trim() || state.notes.trim()
     || state.preliminaryDiagnosis.trim() || state.plan.trim()
     || state.attachments.length > 0) return true;
   return false;
@@ -706,6 +713,7 @@ export function createCorrectionEditorState(record: ClinicalRecord): RecordEdito
       ? { professionalLicense: record.professionalLicenseSnapshot }
       : {}),
     ...(record.service ? { service: record.service } : {}),
+    ...(record.specialty ? { specialty: record.specialty } : {}),
     ...(record.preliminaryDiagnosis
       ? { preliminaryDiagnosis: record.preliminaryDiagnosis }
       : {}),
@@ -757,6 +765,7 @@ export function toCorrectRecordData(
     doctorName: state.doctorName.trim() || null,
     professionalLicense: state.professionalLicense.trim() || null,
     service: state.service.trim() || null,
+    ...(state.specialty || original.specialty ? { specialty: state.specialty?.trim() || null } : {}),
     preliminaryDiagnosis: state.preliminaryDiagnosis.trim() || null,
     plan: state.plan.trim() || null,
     priority: state.priority,

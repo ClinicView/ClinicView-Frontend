@@ -44,6 +44,7 @@ function getRouteLabel(pathname: string): string {
   if (pathname === '/dashboard') return 'Centro operativo';
   if (pathname.startsWith('/review')) return 'Revisión digital';
   if (pathname.startsWith('/admin/audit')) return 'Auditoría';
+  if (pathname.startsWith('/admin/catalogs')) return 'Catálogos clínicos';
   if (pathname.startsWith('/admin/roles')) return 'Roles y permisos';
   if (pathname.startsWith('/admin')) return 'Administración';
   if (pathname.startsWith('/profile')) return 'Mi perfil';
@@ -255,6 +256,10 @@ export function PageShell({ children }: PageShellProps) {
         icon: 'shield',
         isActive: pathname.startsWith('/admin/audit'),
       });
+    }
+
+    if (can(permissions, 'catalogs.manage')) {
+      items.push({ href: '/admin/catalogs', label: 'Catálogos', icon: 'admin', isActive: pathname.startsWith('/admin/catalogs') });
     }
 
     items.push({

@@ -1,5 +1,6 @@
 // Espejo de los PermissionKey del backend. Mantener sincronizado con el seed.
 export type Permission =
+  | 'catalogs.manage'
   | 'users.read'
   | 'users.create'
   | 'users.update'

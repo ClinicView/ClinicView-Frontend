@@ -726,6 +726,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clinical-catalogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ClinicalCatalogsController_list"];
+        put?: never;
+        post: operations["ClinicalCatalogsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clinical-catalogs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ClinicalCatalogsController_update"];
+        trace?: never;
+    };
     "/api/dashboard/stats": {
         parameters: {
             query?: never;
@@ -1645,6 +1677,7 @@ export interface components {
             professionalNameSnapshot?: string | null;
             professionalLicenseSnapshot?: string | null;
             service?: string | null;
+            specialty?: string | null;
             preliminaryDiagnosis?: string | null;
             plan?: string | null;
             /** @enum {string} */
@@ -1799,6 +1832,7 @@ export interface components {
             heightCm?: number;
         };
         ConsultationDetailsV1Dto: {
+            careInstructions?: string;
             chiefComplaint: string;
             presentIllness?: string;
             relevantHistory?: string;
@@ -1808,6 +1842,7 @@ export interface components {
             followUp?: string;
         };
         EvolutionDetailsV1Dto: {
+            disposition?: string;
             evolution: string;
             subjective?: string;
             objective?: string;
@@ -1826,6 +1861,9 @@ export interface components {
             flag?: "NORMAL" | "LOW" | "HIGH" | "CRITICAL" | "ABNORMAL";
         };
         LabResultDetailsV1Dto: {
+            methodology?: string;
+            sampleCondition?: string;
+            criticalResultCommunication?: string;
             studyName: string;
             laboratoryName?: string;
             specimen?: string;
@@ -1848,6 +1886,7 @@ export interface components {
             instructions?: string;
         };
         PrescriptionDetailsV1Dto: {
+            safetyReview?: string;
             indication?: string;
             medications: components["schemas"]["PrescriptionMedicationDto"][];
             /** Format: date */
@@ -1857,6 +1896,8 @@ export interface components {
             nonPharmacologicalInstructions?: string;
         };
         ProcedureDetailsV1Dto: {
+            materials?: string;
+            specimenDestination?: string;
             procedureName: string;
             indication?: string;
             bodySite?: string;
@@ -1878,6 +1919,8 @@ export interface components {
             unit?: string;
         };
         TherapyNoteDetailsV1Dto: {
+            tolerance?: string;
+            sessionDurationMinutes?: number;
             discipline: string;
             sessionNumber?: number;
             goals?: string;
@@ -1890,6 +1933,8 @@ export interface components {
             nextSessionAt?: string;
         };
         OtherDetailsV1Dto: {
+            recipient?: string;
+            purpose?: string;
             title: string;
             category: string;
             context?: string;
@@ -1931,6 +1976,7 @@ export interface components {
             doctorName?: string;
             /** @description Servicio o especialidad */
             service?: string;
+            specialty?: string;
             preliminaryDiagnosis?: string;
             /** @description Indicaciones / plan de manejo */
             plan?: string;
@@ -1984,6 +2030,7 @@ export interface components {
             professionalNameSnapshot?: string | null;
             professionalLicenseSnapshot?: string | null;
             service?: string | null;
+            specialty?: string | null;
             preliminaryDiagnosis?: string | null;
             plan?: string | null;
             /** @enum {string} */
@@ -2025,6 +2072,7 @@ export interface components {
             doctorName?: string;
             /** @description Servicio o especialidad */
             service?: string;
+            specialty?: string;
             preliminaryDiagnosis?: string;
             /** @description Indicaciones / plan de manejo */
             plan?: string;
@@ -2091,6 +2139,7 @@ export interface components {
             doctorName?: string;
             professionalLicense?: string;
             service?: string;
+            specialty?: string;
             preliminaryDiagnosis?: string;
             plan?: string;
             /** @enum {string} */
@@ -2129,6 +2178,7 @@ export interface components {
             doctorName?: Record<string, never> | null;
             professionalLicense?: Record<string, never> | null;
             service?: Record<string, never> | null;
+            specialty?: string | null;
             preliminaryDiagnosis?: Record<string, never> | null;
             plan?: Record<string, never> | null;
             /** @enum {string} */
@@ -2223,6 +2273,32 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        CatalogEntryDto: {
+            id: string;
+            /** @enum {string} */
+            kind: "SERVICE" | "SPECIALTY";
+            code: string;
+            name: string;
+            isActive: boolean;
+            version: number;
+        };
+        CatalogPageDto: {
+            data: components["schemas"]["CatalogEntryDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        CreateCatalogEntryDto: {
+            /** @enum {string} */
+            kind: "SERVICE" | "SPECIALTY";
+            code: string;
+            name: string;
+        };
+        UpdateCatalogEntryDto: {
+            expectedVersion: number;
+            name: string;
+            isActive: boolean;
         };
         ValidationChecklistSnapshotItemDto: {
             id: string;
@@ -4083,6 +4159,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EpisodeEventsPageDto"];
+                };
+            };
+        };
+    };
+    ClinicalCatalogsController_list: {
+        parameters: {
+            query?: {
+                kind?: "SERVICE" | "SPECIALTY";
+                status?: "ACTIVE" | "INACTIVE" | "ALL";
+                q?: string;
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogPageDto"];
+                };
+            };
+        };
+    };
+    ClinicalCatalogsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCatalogEntryDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntryDto"];
+                };
+            };
+        };
+    };
+    ClinicalCatalogsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCatalogEntryDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntryDto"];
                 };
             };
         };

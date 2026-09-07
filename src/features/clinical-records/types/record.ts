@@ -77,6 +77,7 @@ export interface DiagnosisDetails {
 }
 
 export interface ConsultationDetails {
+  careInstructions?: string;
   chiefComplaint: string;
   presentIllness?: string;
   relevantHistory?: string;
@@ -87,6 +88,7 @@ export interface ConsultationDetails {
 }
 
 export interface EvolutionDetails {
+  disposition?: string;
   evolution: string;
   subjective?: string;
   objective?: string;
@@ -105,6 +107,9 @@ export interface LabResultItem {
 }
 
 export interface LabResultDetails {
+  methodology?: string;
+  sampleCondition?: string;
+  criticalResultCommunication?: string;
   studyName: string;
   laboratoryName?: string;
   specimen?: string;
@@ -127,6 +132,7 @@ export interface MedicationDetails {
 }
 
 export interface PrescriptionDetails {
+  safetyReview?: string;
   indication?: string;
   medications: MedicationDetails[];
   validFrom?: string;
@@ -135,6 +141,8 @@ export interface PrescriptionDetails {
 }
 
 export interface ProcedureDetails {
+  materials?: string;
+  specimenDestination?: string;
   procedureName: string;
   indication?: string;
   bodySite?: string;
@@ -155,6 +163,8 @@ export interface TherapyMeasurementDetails {
 }
 
 export interface TherapyNoteDetails {
+  tolerance?: string;
+  sessionDurationMinutes?: number;
   discipline: string;
   sessionNumber?: number;
   goals?: string;
@@ -167,6 +177,8 @@ export interface TherapyNoteDetails {
 }
 
 export interface OtherRecordDetails {
+  recipient?: string;
+  purpose?: string;
   title: string;
   category: string;
   context?: string;
@@ -210,6 +222,7 @@ export type PartialRecordDetails = {
 }[RecordType];
 
 export interface ClinicalRecord {
+  specialty?: string | null;
   episode?: import('../../../shared/types/api.generated').components['schemas']['EpisodeDto'] | null;
   confirmation?: import('../../../shared/types/api.generated').components['schemas']['RecordConfirmationDto'] | null;
   attendancePrecision?: 'INSTANT' | 'DAY';
@@ -251,6 +264,7 @@ export interface RecordsPage {
 }
 
 export interface CreateRecordCommonData {
+  specialty?: string;
   attendancePrecision?: 'INSTANT' | 'DAY';
   attendedAt: string;
   summary: string;
@@ -280,6 +294,7 @@ export interface CreateRecordData extends CreateRecordCommonData {
 }
 
 export type CorrectRecordData = {
+  specialty?: string | null;
   attendancePrecision?: 'INSTANT' | 'DAY';
   expectedVersion: number;
   attendedAt: string;
@@ -296,6 +311,7 @@ export type CorrectRecordData = {
 } & TypedRecordDetailsPayload;
 
 export interface RecordDraftPayload {
+  specialty?: string;
   attendancePrecision?: 'INSTANT' | 'DAY';
   recordType?: RecordType;
   attendedAt?: string;

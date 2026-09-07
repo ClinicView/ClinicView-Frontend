@@ -324,6 +324,7 @@ export function recordToExportItem(
   if (record.service?.trim()) {
     sections.push({ title: 'SERVICIO', content: record.service.trim() });
   }
+  if (record.specialty?.trim()) sections.push({ title: 'ESPECIALIDAD', content: record.specialty.trim() });
   sections.push({
     title: 'PRIORIDAD',
     content: RECORD_PRIORITY_LABEL[record.priority] ?? record.priority,

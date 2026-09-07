@@ -142,9 +142,12 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
           </div>
         )}
         {record.service && (
+          <div className={styles.field}><dt className={styles.fieldLabel}>Servicio consignado</dt><dd className={styles.fieldValue}>{record.service}</dd></div>
+        )}
+        {record.specialty && (
           <div className={styles.field}>
-            <dt className={styles.fieldLabel}>Servicio / especialidad</dt>
-            <dd className={styles.fieldValue}>{record.service}</dd>
+            <dt className={styles.fieldLabel}>Especialidad</dt>
+            <dd className={styles.fieldValue}>{record.specialty}</dd>
           </div>
         )}
         {record.priority && record.priority !== 'NORMAL' && (

@@ -50,3 +50,16 @@ de cada versión; las anteriores mantienen su agrupación histórica.
 Los controles clínicos explican cuándo hace falta reabrir un episodio. Se conserva
 el diseño actual, ayuda contextual, etiquetas, controles nativos y áreas de 44px.
 Backend requerido: migración 20260907150000_clinical_episodes.
+
+## Catálogos y campos específicos
+
+/admin/catalogs permite buscar, crear, renombrar y activar/desactivar servicios y
+especialidades con catalogs.manage. Los formularios comparten CatalogField; no
+hay listas hardcodeadas distintas para alta y corrección. La identificación del
+documento también consulta sugerencias conservando el texto del original externo.
+
+Las siete plantillas agregan campos opcionales específicos. Su registro central
+define las mismas etiquetas y límites para formulario, detalle y PDF. Ningún
+campo clínico nuevo se autocompleta. La especialidad se guarda separada del servicio;
+los antiguos valores combinados no se reinterpretan ni migran automáticamente.
+Requiere 20260907160000_clinical_catalogs y renovar la sesión administrativa.

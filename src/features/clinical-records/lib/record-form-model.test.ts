@@ -113,6 +113,21 @@ test('valida los mínimos de consulta y acepta la plantilla completa', () => {
   assert.deepEqual(validateEditorState(state), []);
 });
 
+test('conserva especialidad y campos ampliados en borrador, alta y corrección', () => {
+  const state = validCommon('CONSULTATION');
+  state.specialty = '  Especialidad del original  ';
+  state.detailsByType.CONSULTATION.chiefComplaint = 'Control';
+  state.detailsByType.CONSULTATION.careInstructions = 'Orientación documentada';
+  const restored = restoreEditorState(toDraftPayload(state));
+  assert.equal(restored.specialty, 'Especialidad del original');
+  assert.equal(restored.detailsByType.CONSULTATION.careInstructions, 'Orientación documentada');
+  assert.equal(toCreateRecordData(state)?.specialty, 'Especialidad del original');
+  const original = recordFixture({ specialty: 'Especialidad histórica', details: { chiefComplaint: 'Control', careInstructions: 'Orientación documentada' } });
+  const corrected = toCorrectRecordData(createCorrectionEditorState(original), original);
+  assert.equal(corrected?.specialty, 'Especialidad histórica');
+  assert.equal((corrected?.details as { careInstructions: string }).careInstructions, 'Orientación documentada');
+});
+
 test('limpia filas vacías y convierte fechas del laboratorio al contrato ISO', () => {
   const state = validCommon('LAB_RESULT');
   state.detailsByType.LAB_RESULT.studyName = 'Hemograma completo';

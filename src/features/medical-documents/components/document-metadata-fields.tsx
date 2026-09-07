@@ -1,4 +1,6 @@
 'use client';
+import { useId } from 'react';
+import { CatalogField } from '@/features/clinical-records/components/catalog-field';
 
 import { ContextHelp } from '@/shared/ui/context-help';
 import { currentDateOnly } from '@/shared/lib/date-time';
@@ -15,6 +17,7 @@ export function DocumentMetadataFields({
   value: DocumentClinicalMetadata;
   onChange: (value: DocumentClinicalMetadata) => void;
 }) {
+  const serviceId = useId();
   return (
     <fieldset className={styles.fields}>
       <legend>Identificación clínica y procedencia</legend>
@@ -108,16 +111,10 @@ export function DocumentMetadataFields({
             }
           />
         </label>
-        <label>
-          Servicio / especialidad de origen
-          <input
-            maxLength={150}
-            value={value.sourceService ?? ''}
-            onChange={(e) =>
-              onChange({ ...value, sourceService: e.target.value })
-            }
-          />
-        </label>
+        <div>
+          <label htmlFor={serviceId}>Servicio / especialidad de origen</label>
+          <CatalogField id={serviceId} kind="SERVICE" maxLength={150} value={value.sourceService ?? ''} onChange={(sourceService) => onChange({ ...value, sourceService })} />
+        </div>
         <label>
           Profesional que figura en el original
           <input

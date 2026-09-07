@@ -42,18 +42,7 @@ import {
 } from './record-form-model';
 import styles from './manual-record.module.css';
 
-const SERVICES = [
-  'Medicina General',
-  'Medicina Interna',
-  'Cardiología',
-  'Pediatría',
-  'Ginecología y Obstetricia',
-  'Traumatología',
-  'Neurología',
-  'Dermatología',
-  'Psiquiatría',
-  'Otro',
-];
+import { CatalogField } from '@/features/clinical-records/components/catalog-field';
 
 const PRIORITIES: Array<{ value: RecordPriority; label: string; icon: IconName }> = [
   { value: 'URGENT', label: 'Urgente', icon: 'alert' },
@@ -591,19 +580,8 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.service}>Servicio o especialidad</label>
-              <select
-                id={COMMON_FIELD_IDS.service}
-                className={styles.select}
-                value={form.service}
-                onChange={(event) => updateCommon({ service: event.target.value })}
-                disabled={commonDisabled}
-                aria-invalid={errorsById.has(COMMON_FIELD_IDS.service)}
-                aria-describedby={errorDescription(errorsById, COMMON_FIELD_IDS.service)}
-              >
-                <option value="">Seleccionar…</option>
-                {SERVICES.map((service) => <option key={service} value={service}>{service}</option>)}
-              </select>
+              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.service}>Servicio de atención</label>
+              <CatalogField id={COMMON_FIELD_IDS.service} kind="SERVICE" className={styles.input} value={form.service} onChange={(service) => updateCommon({ service })} disabled={commonDisabled} invalid={errorsById.has(COMMON_FIELD_IDS.service)} errorId={errorDescription(errorsById, COMMON_FIELD_IDS.service)} />
               {errorsById.get(COMMON_FIELD_IDS.service) && (
                 <p id={`${COMMON_FIELD_IDS.service}-error`} className={styles.fieldError}>
                   {errorsById.get(COMMON_FIELD_IDS.service)?.message}
@@ -611,6 +589,10 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
               )}
             </div>
 
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.specialty}>Especialidad (opcional)</label>
+              <CatalogField id={COMMON_FIELD_IDS.specialty} kind="SPECIALTY" className={styles.input} value={form.specialty ?? ''} onChange={(specialty) => updateCommon({ specialty })} disabled={commonDisabled} />
+            </div>
             <div className={`${styles.field} ${styles.professionalField}`} ref={doctorWrapRef}>
               <label className={styles.label} htmlFor={COMMON_FIELD_IDS.doctorName}>
                 Médico o profesional <span className={styles.required} aria-hidden="true">*</span>

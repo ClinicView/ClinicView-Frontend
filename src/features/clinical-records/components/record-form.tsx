@@ -28,18 +28,7 @@ import type { RecordAttachmentFormReference } from '@/app/(private)/patients/[id
 import { RecordMediaUploader } from './record-media-uploader';
 import styles from '@/app/(private)/patients/[id]/records/new/manual-record.module.css';
 
-const SERVICES = [
-  'Medicina General',
-  'Medicina Interna',
-  'Cardiología',
-  'Pediatría',
-  'Ginecología y Obstetricia',
-  'Traumatología',
-  'Neurología',
-  'Dermatología',
-  'Psiquiatría',
-  'Otro',
-];
+import { CatalogField } from '@/features/clinical-records/components/catalog-field';
 
 const PRIORITIES: Array<{ value: RecordPriority; label: string; icon: IconName }> = [
   { value: 'URGENT', label: 'Urgente', icon: 'alert' },
@@ -367,22 +356,10 @@ export function RecordForm(props: CorrectRecordFormProps) {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.service}>Servicio o especialidad</label>
-              <input
-                id={COMMON_FIELD_IDS.service}
-                className={styles.input}
-                list="record-correction-services"
-                value={form.service}
-                maxLength={120}
-                onChange={(event) => updateCommon({ service: event.target.value })}
-                disabled={disabled}
-                autoComplete="off"
-                aria-invalid={errorsById.has(COMMON_FIELD_IDS.service)}
-                aria-describedby={errorDescription(errorsById, COMMON_FIELD_IDS.service)}
-              />
-              <datalist id="record-correction-services">
-                {SERVICES.map((service) => <option key={service} value={service} />)}
-              </datalist>
+              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.service}>Servicio consignado</label>
+              <CatalogField id={COMMON_FIELD_IDS.service} kind="SERVICE" className={styles.input} value={form.service} onChange={(service) => updateCommon({ service })} disabled={disabled} invalid={errorsById.has(COMMON_FIELD_IDS.service)} errorId={errorDescription(errorsById, COMMON_FIELD_IDS.service)} />
+              <label className={styles.label} htmlFor={COMMON_FIELD_IDS.specialty}>Especialidad (opcional)</label>
+              <CatalogField id={COMMON_FIELD_IDS.specialty} kind="SPECIALTY" className={styles.input} value={form.specialty ?? ''} onChange={(specialty) => updateCommon({ specialty })} disabled={disabled} />
               {errorsById.get(COMMON_FIELD_IDS.service) && (
                 <p id={`${COMMON_FIELD_IDS.service}-error`} className={styles.fieldError}>
                   {errorsById.get(COMMON_FIELD_IDS.service)?.message}
