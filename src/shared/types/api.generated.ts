@@ -491,6 +491,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/patients/{patientId}/records/from-document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publicar una transcripción humana vinculada a páginas de un original validado */
+        post: operations["ClinicalRecordsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/patients/{patientId}/records/draft/current": {
         parameters: {
             query?: never;
@@ -1428,6 +1445,19 @@ export interface components {
             email?: string | null;
             address?: string | null;
         };
+        RecordSourceDto: {
+            documentId: string;
+            documentVersion: number;
+            documentName: string;
+            documentMetadata: Record<string, never>;
+            pageFrom: number;
+            pageTo: number;
+            sourceNote: string;
+            publishedBy: string;
+            publishedByName: string;
+            /** Format: date-time */
+            publishedAt: string;
+        };
         ClinicalMediaAssetResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1477,6 +1507,10 @@ export interface components {
             status: "ACTIVE" | "CORRECTED" | "VOIDED";
             /** Format: date-time */
             attendedAt: string;
+            /** @enum {string} */
+            attendancePrecision: "INSTANT" | "DAY";
+            createdByNameSnapshot?: string | null;
+            source?: components["schemas"]["RecordSourceDto"] | null;
             summary: string;
             notes?: string | null;
             /** @description Contenido clínico tipado según recordType y schemaVersion. */
@@ -1752,11 +1786,15 @@ export interface components {
             /** @enum {string} */
             recordType: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
             /**
-             * Format: date-time
-             * @description Fecha y hora de la atención como instante ISO 8601 con zona horaria
+             * @description ISO con zona si INSTANT; YYYY-MM-DD si DAY (hora no consignada).
              * @example 2026-09-02T09:30:00-05:00
              */
             attendedAt: string;
+            /**
+             * @default INSTANT
+             * @enum {string}
+             */
+            attendancePrecision: "INSTANT" | "DAY";
             summary: string;
             notes?: string;
             /**
@@ -1806,6 +1844,10 @@ export interface components {
             status: "ACTIVE" | "CORRECTED" | "VOIDED";
             /** Format: date-time */
             attendedAt: string;
+            /** @enum {string} */
+            attendancePrecision: "INSTANT" | "DAY";
+            createdByNameSnapshot?: string | null;
+            source?: components["schemas"]["RecordSourceDto"] | null;
             summary: string;
             notes?: string | null;
             /** @description Contenido tipado según recordType y schemaVersion. */
@@ -1832,6 +1874,70 @@ export interface components {
             version: number;
             attachments: components["schemas"]["ClinicalRecordAttachmentResponseDto"][];
         };
+        PublishRecordDto: {
+            /** @enum {string} */
+            recordType: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
+            /**
+             * @description ISO con zona si INSTANT; YYYY-MM-DD si DAY (hora no consignada).
+             * @example 2026-09-02T09:30:00-05:00
+             */
+            attendedAt: string;
+            /**
+             * @default INSTANT
+             * @enum {string}
+             */
+            attendancePrecision: "INSTANT" | "DAY";
+            summary: string;
+            notes?: string;
+            /**
+             * Format: uuid
+             * @description Usuario profesional seleccionado; el servidor conserva una instantánea de identidad.
+             */
+            professionalId?: string;
+            /** @description Colegiatura consignada para la instantánea del registro. */
+            professionalLicense?: string;
+            /** @description Médico o profesional responsable */
+            doctorName?: string;
+            /** @description Servicio o especialidad */
+            service?: string;
+            preliminaryDiagnosis?: string;
+            /** @description Indicaciones / plan de manejo */
+            plan?: string;
+            /**
+             * @default NORMAL
+             * @enum {string}
+             */
+            priority: "URGENT" | "PRIORITY" | "NORMAL" | "ELECTIVE";
+            /**
+             * @default 1
+             * @enum {number}
+             */
+            schemaVersion: 1;
+            /** @description El esquema concreto se discrimina mediante recordType; versión soportada: 1. */
+            details: components["schemas"]["ConsultationDetailsV1Dto"] | components["schemas"]["EvolutionDetailsV1Dto"] | components["schemas"]["LabResultDetailsV1Dto"] | components["schemas"]["PrescriptionDetailsV1Dto"] | components["schemas"]["ProcedureDetailsV1Dto"] | components["schemas"]["TherapyNoteDetailsV1Dto"] | components["schemas"]["OtherDetailsV1Dto"];
+            /** @default [] */
+            attachments: components["schemas"]["RecordAttachmentInputDto"][];
+            /**
+             * Format: uuid
+             * @description Borrador del actor que se consumirá atómicamente al crear el registro.
+             */
+            draftId?: string;
+            /** @description Versión observada del borrador. Es obligatoria cuando se envía draftId y se consume mediante CAS. */
+            expectedDraftVersion?: number;
+            /** Format: uuid */
+            sourceDocumentId: string;
+            expectedDocumentVersion: number;
+            pageFrom: number;
+            pageTo: number;
+            sourceNote: string;
+            /** @enum {number} */
+            sourceVerified: true;
+            /**
+             * Format: uuid
+             * @description Identificador del intento; evita duplicados por reenvío.
+             */
+            publicationKey: string;
+        };
         RecordDraftResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1849,8 +1955,10 @@ export interface components {
         RecordDraftPayloadDto: {
             /** @enum {string} */
             recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
-            /** Format: date-time */
+            /** @description ISO con zona o fecha civil según attendancePrecision. */
             attendedAt?: string;
+            /** @enum {string} */
+            attendancePrecision?: "INSTANT" | "DAY";
             summary?: string;
             notes?: string;
             /** Format: uuid */
@@ -1883,11 +1991,12 @@ export interface components {
             /** @enum {string} */
             recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
             /**
-             * Format: date-time
-             * @description Nuevo instante ISO 8601 con zona horaria; hereda el original si se omite
+             * @description Fecha corregida con precisión explícita. Si se omite, hereda fecha y precisión originales.
              * @example 2026-09-02T09:30:00-05:00
              */
             attendedAt?: string;
+            /** @enum {string} */
+            attendancePrecision?: "INSTANT" | "DAY";
             summary?: string;
             notes?: Record<string, never> | null;
             /** Format: uuid */
@@ -3250,6 +3359,7 @@ export interface operations {
     ClinicalRecordsController_findAll: {
         parameters: {
             query?: {
+                sourceDocumentId?: string;
                 recordType?: "CONSULTATION" | "LAB_RESULT" | "PRESCRIPTION" | "THERAPY_NOTE" | "EVOLUTION" | "PROCEDURE" | "OTHER";
                 status?: "ACTIVE" | "CORRECTED" | "VOIDED" | "ALL";
                 origin?: "MANUAL" | "DIGITIZED";
@@ -3296,6 +3406,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateRecordDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordResponseDto"];
+                };
+            };
+        };
+    };
+    ClinicalRecordsController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRecordDto"];
             };
         };
         responses: {

@@ -24,9 +24,11 @@ import {
   isoToDateTimeLocal,
   isFutureDateTimeLocal,
   isValidDateOnly,
+  isFutureDateOnly,
 } from '../../../../../../shared/lib/date-time';
 
 export interface CommonRecordFormState {
+  attendancePrecision?: 'INSTANT' | 'DAY';
   recordType: RecordType | '';
   attendedAt: string;
   professionalId: string;
@@ -384,7 +386,7 @@ function selectedDetails(state: RecordEditorState): RecordDetails | undefined {
 }
 
 export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
-  const attendedAt = state.attendedAt ? dateTimeLocalToIso(state.attendedAt) : null;
+  const attendedAt = state.attendancePrecision === 'DAY' ? (isValidDateOnly(state.attendedAt) ? state.attendedAt : null) : state.attendedAt ? dateTimeLocalToIso(state.attendedAt) : null;
   const rawDetails = selectedDetails(state);
   const cleanedDetails = state.recordType && rawDetails
     ? serializeDetails(
@@ -396,6 +398,7 @@ export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
   return {
     ...(state.recordType ? { recordType: state.recordType } : {}),
     ...(attendedAt ? { attendedAt } : {}),
+    ...(state.attendancePrecision === 'DAY' ? { attendancePrecision: 'DAY' as const } : {}),
     ...(state.summary.trim() ? { summary: state.summary.trim() } : {}),
     ...(state.notes.trim() ? { notes: state.notes.trim() } : {}),
     ...(state.professionalId ? { professionalId: state.professionalId } : {}),
@@ -416,7 +419,8 @@ export function toDraftPayload(state: RecordEditorState): RecordDraftPayload {
 export function restoreEditorState(payload: RecordDraftPayload): RecordEditorState {
   const next = createEmptyEditorState();
   next.recordType = payload.recordType ?? '';
-  next.attendedAt = payload.attendedAt ? isoToDateTimeLocal(payload.attendedAt) : next.attendedAt;
+  next.attendancePrecision = payload.attendancePrecision;
+  next.attendedAt = payload.attendedAt ? (payload.attendancePrecision === 'DAY' ? payload.attendedAt : isoToDateTimeLocal(payload.attendedAt)) : next.attendedAt;
   next.professionalId = payload.professionalId ?? '';
   next.doctorName = payload.doctorName ?? '';
   next.professionalLicense = payload.professionalLicense ?? '';
@@ -461,8 +465,11 @@ function validateCommon(
   };
 
   if (!state.recordType) add('recordType', 'Selecciona un tipo de registro.');
-  if (!state.attendedAt) add('attendedAt', 'Ingresa la fecha y hora de atención.');
-  else if (!dateTimeLocalToIso(state.attendedAt)) add('attendedAt', 'Ingresa una fecha y hora válida.');
+  if (!state.attendedAt) add('attendedAt', 'Ingresa la fecha de atención.');
+  else if (state.attendancePrecision === 'DAY') {
+    if (!isValidDateOnly(state.attendedAt)) add('attendedAt', 'Ingresa una fecha válida.');
+    else if (isFutureDateOnly(state.attendedAt)) add('attendedAt', 'No puede estar en el futuro.');
+  } else if (!dateTimeLocalToIso(state.attendedAt)) add('attendedAt', 'Ingresa una fecha y hora válida.');
   else if (isFutureDateTimeLocal(state.attendedAt)) add('attendedAt', 'No puede estar en el futuro.');
   if (options.mode !== 'correct' && !state.doctorName.trim()) {
     add('doctorName', 'Ingresa el profesional responsable.');
@@ -644,7 +651,7 @@ export function toCreateRecordData(
   draft?: Pick<RecordDraftResponse, 'id' | 'version'>,
 ): TypedCreateRecordData | null {
   if (!state.recordType) return null;
-  const attendedAt = dateTimeLocalToIso(state.attendedAt);
+  const attendedAt = state.attendancePrecision === 'DAY' ? (isValidDateOnly(state.attendedAt) ? state.attendedAt : null) : dateTimeLocalToIso(state.attendedAt);
   if (!attendedAt) return null;
   const type = state.recordType;
   const cleaned = serializeDetails(
@@ -657,6 +664,7 @@ export function toCreateRecordData(
     schemaVersion: RECORD_SCHEMA_VERSION,
     details: cleaned,
     attendedAt,
+    ...(state.attendancePrecision === 'DAY' ? { attendancePrecision: 'DAY' as const } : {}),
     summary: state.summary.trim(),
     ...(state.notes.trim() ? { notes: state.notes.trim() } : {}),
     ...(state.professionalId ? { professionalId: state.professionalId } : {}),
@@ -686,7 +694,8 @@ export function hasMeaningfulEditorData(state: RecordEditorState): boolean {
 export function createCorrectionEditorState(record: ClinicalRecord): RecordEditorState {
   return restoreEditorState({
     recordType: record.recordType,
-    attendedAt: record.attendedAt,
+    attendedAt: record.attendancePrecision === 'DAY' ? isoToDateTimeLocal(record.attendedAt).slice(0, 10) : record.attendedAt,
+    attendancePrecision: record.attendancePrecision,
     summary: record.summary,
     ...(record.notes ? { notes: record.notes } : {}),
     ...(record.professionalId ? { professionalId: record.professionalId } : {}),
@@ -722,7 +731,7 @@ export function toCorrectRecordData(
 ): CorrectRecordData | null {
   if (!state.recordType || state.recordType !== original.recordType) return null;
   const initialAttendedAt = isoToDateTimeLocal(original.attendedAt);
-  const attendedAt = state.attendedAt === initialAttendedAt
+  const attendedAt = state.attendancePrecision === 'DAY' ? (isValidDateOnly(state.attendedAt) ? state.attendedAt : null) : state.attendedAt === initialAttendedAt
     ? original.attendedAt
     : dateTimeLocalToIso(state.attendedAt, { preserveSubMinuteFrom: original.attendedAt });
   if (!attendedAt) return null;
@@ -739,6 +748,7 @@ export function toCorrectRecordData(
 
   return {
     expectedVersion: original.version,
+    ...((state.attendancePrecision === 'DAY' || original.attendancePrecision === 'DAY') ? { attendancePrecision: state.attendancePrecision ?? 'INSTANT' } : {}),
     recordType: type,
     attendedAt,
     summary: state.summary.trim(),

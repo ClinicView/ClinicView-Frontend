@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { formatInstant } from '@/shared/lib/date-time';
 import { can } from '@/shared/permissions/can';
 import { Spinner, Alert } from '@/shared/ui';
@@ -107,9 +108,14 @@ export function RecordDetail({ patientId, recordId, permissions }: RecordDetailP
       </div>
 
       <dl className={styles.grid}>
+        <div className={styles.field}><dt className={styles.fieldLabel}>Ingresado por</dt><dd className={styles.fieldValue}>{record.createdByNameSnapshot ?? 'Nombre histórico no registrado'}{record.createdBy ? ` · ID ${record.createdBy}` : ''}</dd></div>
+        {record.source && <div className={styles.field}><dt className={styles.fieldLabel}>Documento original</dt><dd className={styles.fieldValue}>
+          {can(permissions, 'documents.read') ? <Link href={`/patients/${patientId}/documents/${record.source.documentId}`}>{record.source.documentName}</Link> : record.source.documentName}
+          <p>Páginas {record.source.pageFrom}–{record.source.pageTo} · Versión {record.source.documentVersion}</p><p>{record.source.sourceNote}</p><p>Transcripción cotejada por {record.source.publishedByName}. No equivale a cierre profesional.</p>
+        </dd></div>}
         <div className={styles.field}>
           <dt className={styles.fieldLabel}>Fecha de atención</dt>
-          <dd className={styles.fieldValue}><time dateTime={record.attendedAt}>{formatDateTime(record.attendedAt)}</time></dd>
+          <dd className={styles.fieldValue}><time dateTime={record.attendedAt}>{record.attendancePrecision === 'DAY' ? `${formatInstant(record.attendedAt)} · Hora no consignada` : formatDateTime(record.attendedAt)}</time></dd>
         </div>
         <div className={styles.field}>
           <dt className={styles.fieldLabel}>Registrado</dt>

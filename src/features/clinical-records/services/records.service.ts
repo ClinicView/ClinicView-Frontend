@@ -9,9 +9,10 @@ import type {
 
 export function listRecords(
   patientId: string,
-  params: { status?: RecordStatusFilter; page?: number; limit?: number },
+  params: { status?: RecordStatusFilter; page?: number; limit?: number; sourceDocumentId?: string },
 ): Promise<RecordsPage> {
   const qs = new URLSearchParams();
+  if (params.sourceDocumentId) qs.set('sourceDocumentId', params.sourceDocumentId);
   if (params.status) qs.set('status', params.status);
   if (params.page) qs.set('page', String(params.page));
   if (params.limit) qs.set('limit', String(params.limit));
@@ -48,4 +49,8 @@ export function voidRecord(
     reason,
     expectedVersion,
   });
+}
+
+export function publishRecord(patientId: string, data: CreateRecordData, source: import('../types/record').PublicationSource): Promise<ClinicalRecord> {
+  return apiPost<ClinicalRecord>(`/patients/${patientId}/records/from-document`, { ...data, ...source });
 }

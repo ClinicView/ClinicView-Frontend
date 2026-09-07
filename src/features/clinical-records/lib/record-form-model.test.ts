@@ -84,6 +84,26 @@ function validCommon(recordType: RecordType) {
   return state;
 }
 
+test('una fecha sin hora conserva su precisión en alta, borrador y corrección', () => {
+  const state = validCommon('CONSULTATION');
+  state.attendancePrecision = 'DAY';
+  state.attendedAt = '2023-09-27';
+  state.detailsByType.CONSULTATION.chiefComplaint = 'Control documentado';
+  assert.deepEqual(validateEditorState(state), []);
+  assert.equal(toCreateRecordData(state)?.attendedAt, '2023-09-27');
+  assert.equal(toCreateRecordData(state)?.attendancePrecision, 'DAY');
+  const restored = restoreEditorState(toDraftPayload(state));
+  assert.equal(restored.attendancePrecision, 'DAY');
+  assert.equal(restored.attendedAt, '2023-09-27');
+  const original = recordFixture({ attendancePrecision: 'DAY', attendedAt: '2023-09-27T05:00:00.000Z' });
+  const correction = createCorrectionEditorState(original);
+  assert.equal(correction.attendedAt, '2023-09-27');
+  assert.equal(toCorrectRecordData(correction, original)?.attendedAt, '2023-09-27');
+  assert.equal(toCorrectRecordData(correction, original)?.attendancePrecision, 'DAY');
+  state.attendedAt = '2023-02-30';
+  assert.ok(validateEditorState(state).length > 0);
+});
+
 test('valida los mínimos de consulta y acepta la plantilla completa', () => {
   const state = validCommon('CONSULTATION');
   const initial = validateEditorState(state);

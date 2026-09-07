@@ -292,6 +292,12 @@ export function recordToExportItem(
     record.attachments ?? [],
   );
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
+  if (record.source) sections.push({ title: 'DOCUMENTO ORIGINAL DE ESTA ATENCIÓN', content: [
+    `${record.source.documentName} · ID ${record.source.documentId}`,
+    `Páginas ${record.source.pageFrom}–${record.source.pageTo} · Versión del original ${record.source.documentVersion}`,
+    record.source.sourceNote,
+    `Transcripción cotejada por ${record.source.publishedByName} el ${formatDateTime(record.source.publishedAt) ?? 'No registrado'}. No equivale a cierre profesional.`,
+  ].join('\n') });
 
   if (professionalName?.trim()) {
     sections.push({
@@ -374,6 +380,7 @@ export function recordToExportItem(
     sections.push({ title: 'MOTIVO DE ANULACIÓN', content: record.voidReason.trim() });
   }
   const trace = [
+    `Ingresado por: ${record.createdByNameSnapshot ?? 'Nombre histórico no registrado'}`,
     record.parentRecordId
       ? `Corrige al registro: ${record.parentRecordId}`
       : 'Registro raíz de la cadena clínica',
@@ -392,7 +399,7 @@ export function recordToExportItem(
   return {
     title: definition.label,
     date: record.attendedAt,
-    dateLabel: 'Fecha de atención',
+    dateLabel: record.attendancePrecision === 'DAY' ? 'Fecha de atención (hora no consignada)' : 'Fecha de atención',
     status: record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
     origin: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
     sections,

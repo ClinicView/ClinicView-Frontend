@@ -12,7 +12,8 @@ import {
   type RecordEditorState,
   type RecordFormError,
 } from '@/app/(private)/patients/[id]/records/new/record-form-model';
-import { currentDateTimeLocal } from '@/shared/lib/date-time';
+import { currentDateTimeLocal, currentDateOnly } from '@/shared/lib/date-time';
+import { AttendancePrecisionControl } from './attendance-precision-control';
 import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
 import { Icon, type IconName } from '@/shared/ui';
 import { useRecordMedia } from '../hooks/use-record-media';
@@ -340,22 +341,23 @@ export function RecordForm(props: CorrectRecordFormProps) {
 
             <div className={styles.field}>
               <label className={styles.label} htmlFor={COMMON_FIELD_IDS.attendedAt}>
-                Fecha y hora de atención <span className={styles.required} aria-hidden="true">*</span>
+                {form.attendancePrecision === 'DAY' ? 'Fecha de atención (sin hora)' : 'Fecha y hora de atención'} <span className={styles.required} aria-hidden="true">*</span>
               </label>
               <input
                 id={COMMON_FIELD_IDS.attendedAt}
                 className={styles.input}
-                type="datetime-local"
+                type={form.attendancePrecision === 'DAY' ? 'date' : 'datetime-local'}
                 value={form.attendedAt}
-                max={currentDateTimeLocal()}
+                max={form.attendancePrecision === 'DAY' ? currentDateOnly() : currentDateTimeLocal()}
                 onChange={(event) => updateCommon({ attendedAt: event.target.value })}
                 disabled={disabled}
                 required
                 aria-invalid={errorsById.has(COMMON_FIELD_IDS.attendedAt)}
                 aria-describedby={`correction-attendedAt-hint${errorsById.has(COMMON_FIELD_IDS.attendedAt) ? ` ${COMMON_FIELD_IDS.attendedAt}-error` : ''}`}
               />
+              <AttendancePrecisionControl value={form.attendancePrecision} date={form.attendedAt} disabled={disabled} onChange={updateCommon} />
               <p id="correction-attendedAt-hint" className={styles.fieldHint}>
-                Si no cambias este valor, se conservará la hora exacta del registro original.
+                Se conserva la precisión original. No introduzcas una hora si no consta en la fuente.
               </p>
               {errorsById.get(COMMON_FIELD_IDS.attendedAt) && (
                 <p id={`${COMMON_FIELD_IDS.attendedAt}-error`} className={styles.fieldError}>

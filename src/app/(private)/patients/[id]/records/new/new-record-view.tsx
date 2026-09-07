@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AttendancePrecisionControl } from '@/features/clinical-records/components/attendance-precision-control';
+import { DocumentPublicationPanel, type PublicationSource } from '@/features/clinical-records/components/document-publication-panel';
+import { publishRecord } from '@/features/clinical-records/services/records.service';
 import { useSession } from '@/features/auth';
 import {
   RECORD_TYPE_OPTIONS,
@@ -19,8 +22,8 @@ import { usePatient } from '@/features/patients';
 import { PageShell } from '@/shared/components/page-shell';
 import {
   currentDateTimeLocal,
+  currentDateOnly,
 } from '@/shared/lib/date-time';
-import { ApiError } from '@/shared/services/api-client';
 import { searchProfessionals, type Professional } from '@/shared/services/professionals.service';
 import { Alert, Icon, Spinner, type IconName } from '@/shared/ui';
 import { DynamicDetailsFields } from './dynamic-details-fields';
@@ -74,11 +77,13 @@ interface NewRecordViewProps {
 export function NewRecordView({ patientId }: NewRecordViewProps) {
   const { user } = useSession();
   const router = useRouter();
+  const sourceDocumentId = useSearchParams().get('sourceDocument') ?? '';
+  const [publication, setPublication] = useState<PublicationSource | null>(null);
   const { patient, isLoading: isPatientLoading, error: patientError } = usePatient(patientId);
   const draftState = useRecordDraft(patientId);
   const saveDraftOnServer = draftState.save;
   const isDraftSaving = draftState.isSaving;
-  const [form, setForm] = useState<RecordEditorState>(createEmptyEditorState);
+  const [form, setForm] = useState<RecordEditorState>(() => sourceDocumentId ? { ...createEmptyEditorState(), attendancePrecision: 'DAY', attendedAt: '' } : createEmptyEditorState());
   const [submitted, setSubmitted] = useState(false);
   const [validationErrors, setValidationErrors] = useState<RecordFormError[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -420,11 +425,12 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const record = await createRecord(patientId, data);
+      if (sourceDocumentId && !publication) throw new Error('Completa la referencia y confirma el cotejo con el original después de editar el contenido.');
+      const record = sourceDocumentId && publication ? await publishRecord(patientId, data, publication) : await createRecord(patientId, data);
       savedRevisionRef.current = revisionRef.current;
       router.replace(`/patients/${patientId}/records/${record.id}`);
     } catch (cause) {
-      setSubmitError(cause instanceof ApiError ? cause.message : 'No se pudo registrar la atención.');
+      setSubmitError(cause instanceof Error ? cause.message : 'No se pudo registrar la atención.');
       setIsSubmitting(false);
       window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
     }
@@ -479,6 +485,8 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
           </button>
         </div>
       </header>
+
+      {sourceDocumentId && <DocumentPublicationPanel patientId={patientId} documentId={sourceDocumentId} fingerprint={JSON.stringify(form)} onChange={setPublication} disabled={isSubmitting} />}
 
       <form
         className={styles.formCard}
@@ -560,20 +568,21 @@ export function NewRecordView({ patientId }: NewRecordViewProps) {
 
             <div className={styles.field}>
               <label className={styles.label} htmlFor={COMMON_FIELD_IDS.attendedAt}>
-                Fecha y hora de atención <span className={styles.required} aria-hidden="true">*</span>
+                {form.attendancePrecision === 'DAY' ? 'Fecha de atención (sin hora)' : 'Fecha y hora de atención'} <span className={styles.required} aria-hidden="true">*</span>
               </label>
               <input
                 id={COMMON_FIELD_IDS.attendedAt}
                 className={styles.input}
-                type="datetime-local"
+                type={form.attendancePrecision === 'DAY' ? 'date' : 'datetime-local'}
                 value={form.attendedAt}
-                max={currentDateTimeLocal()}
+                max={form.attendancePrecision === 'DAY' ? currentDateOnly() : currentDateTimeLocal()}
                 onChange={(event) => updateCommon({ attendedAt: event.target.value })}
                 disabled={commonDisabled}
                 required
                 aria-invalid={errorsById.has(COMMON_FIELD_IDS.attendedAt)}
                 aria-describedby={errorDescription(errorsById, COMMON_FIELD_IDS.attendedAt)}
               />
+              <AttendancePrecisionControl value={form.attendancePrecision} date={form.attendedAt} disabled={commonDisabled} onChange={updateCommon} />
               {errorsById.get(COMMON_FIELD_IDS.attendedAt) && (
                 <p id={`${COMMON_FIELD_IDS.attendedAt}-error`} className={styles.fieldError}>
                   {errorsById.get(COMMON_FIELD_IDS.attendedAt)?.message}

@@ -9,6 +9,8 @@ export type RecordType =
 
 export type RecordOrigin = 'MANUAL' | 'DIGITIZED';
 
+export type PublicationSource = Pick<import('../../../shared/types/api.generated').components['schemas']['PublishRecordDto'], 'sourceDocumentId' | 'expectedDocumentVersion' | 'pageFrom' | 'pageTo' | 'sourceNote' | 'sourceVerified' | 'publicationKey'>;
+
 export type RecordStatus = 'ACTIVE' | 'CORRECTED' | 'VOIDED';
 export type RecordStatusFilter = RecordStatus | 'ALL';
 
@@ -208,6 +210,9 @@ export type PartialRecordDetails = {
 }[RecordType];
 
 export interface ClinicalRecord {
+  attendancePrecision?: 'INSTANT' | 'DAY';
+  createdByNameSnapshot?: string | null;
+  source?: import('../../../shared/types/api.generated').components['schemas']['RecordSourceDto'] | null;
   id: string;
   patientId: string;
   recordType: RecordType;
@@ -244,6 +249,7 @@ export interface RecordsPage {
 }
 
 export interface CreateRecordCommonData {
+  attendancePrecision?: 'INSTANT' | 'DAY';
   attendedAt: string;
   summary: string;
   notes?: string;
@@ -272,6 +278,7 @@ export interface CreateRecordData extends CreateRecordCommonData {
 }
 
 export type CorrectRecordData = {
+  attendancePrecision?: 'INSTANT' | 'DAY';
   expectedVersion: number;
   attendedAt: string;
   summary: string;
@@ -287,6 +294,7 @@ export type CorrectRecordData = {
 } & TypedRecordDetailsPayload;
 
 export interface RecordDraftPayload {
+  attendancePrecision?: 'INSTANT' | 'DAY';
   recordType?: RecordType;
   attendedAt?: string;
   summary?: string;

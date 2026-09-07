@@ -15,6 +15,7 @@ import type {
 } from '../types/document';
 import { DocumentPreview } from './document-preview';
 import { DocumentMetadataPanel } from './document-metadata-panel';
+import { DocumentLinkedRecords } from '@/features/clinical-records/components/document-linked-records';
 import { DocumentStepper } from './document-stepper';
 import { EntitiesPanel } from './entities-panel';
 import { MetricsPanel } from './metrics-panel';
@@ -407,6 +408,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         </div>
       )}
 
+      {canReadPatient && can(user?.permissions ?? [], 'records.read') && <DocumentLinkedRecords patientId={patientId} documentId={docId} canPublish={document.status === 'VALIDATED' && can(user?.permissions ?? [], 'records.create') && can(user?.permissions ?? [], 'documents.validate')} />}
       {canReadPatient && <DocumentMetadataPanel document={document}
         canEdit={can(permissions, 'documents.validate') && (!document.assignedReviewerId || isAssignedToCurrentUser)}
         blocked={isDirty || isActing || document.status === 'PROCESSING'} onSaved={reload} />}
