@@ -96,6 +96,18 @@ Comprobación integrada local del 11 de septiembre de 2026:
 - Los documentos, imágenes, credenciales y capturas de QA permanecen fuera de
   Git. El caso de 143 fragmentos verifica integración, no exactitud de OCR.
 
+### Seguridad de dependencias pendiente antes de publicar
+
+La comprobación `npm audit --omit=dev` del 11 de septiembre de 2026 también
+detectó avisos previos al bloque espacial en Next.js 16.2.12 (criticidad máxima
+crítica) y `baseline-browser-mapping` (moderada). El aviso propone Next.js 16.3.5.
+No se ha hecho ni validado esa actualización en este bloque. Mantener el frontend
+local en loopback y resolver/verificar estos avisos antes de exponerlo en red:
+
+- [Next.js en servidores Windows](https://github.com/advisories/GHSA-p293-qw3h-jr36).
+- [Next.js, optimización de imágenes AVIF](https://github.com/advisories/GHSA-2xp9-vwfh-vxw4).
+- [baseline-browser-mapping](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv).
+
 ## Límites deliberados
 
 No se afirma cobertura ni precisión clínica a partir del número de recortes.
