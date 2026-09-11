@@ -1,10 +1,23 @@
 export type OcrBox = [number, number, number, number];
 
+export interface OcrCropProvenance {
+  policy: 'fixed_padding' | 'neighbor_padding_v1';
+  originalPaddedBbox: OcrBox;
+  requestedPaddingPx: number;
+  appliedPaddingPx: OcrBox;
+  adjustedSides: ('left' | 'top' | 'right' | 'bottom')[];
+  neighborLineIds: string[];
+  overlappingLineIds: string[];
+}
+
 export interface OcrMachineLine {
   lineId: string;
   bbox: OcrBox;
   detectionBbox?: OcrBox | null;
   polygon?: number[][] | null;
+  cropProvenance?: OcrCropProvenance | null;
+  detectorIndex?: number | null;
+  rawPolygon?: number[][] | null;
   regionId?: string | null;
   order: number;
   text: string;

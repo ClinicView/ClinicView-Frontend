@@ -96,17 +96,47 @@ Comprobación integrada local del 11 de septiembre de 2026:
 - Los documentos, imágenes, credenciales y capturas de QA permanecen fuera de
   Git. El caso de 143 fragmentos verifica integración, no exactitud de OCR.
 
-### Seguridad de dependencias pendiente antes de publicar
+### Seguridad de dependencias actualizada
 
-La comprobación `npm audit --omit=dev` del 11 de septiembre de 2026 también
-detectó avisos previos al bloque espacial en Next.js 16.2.12 (criticidad máxima
-crítica) y `baseline-browser-mapping` (moderada). El aviso propone Next.js 16.3.5.
-No se ha hecho ni validado esa actualización en este bloque. Mantener el frontend
-local en loopback y resolver/verificar estos avisos antes de exponerlo en red:
+Los avisos detectados inicialmente en Next.js 16.2.12 y
+`baseline-browser-mapping` se corrigieron en el bloque siguiente con Next 16.3.5
+y dependencias actualizadas. Audit completo y de producción: cero avisos el
+11 de septiembre de 2026. Build y acceso al visor con el backend local verificados.
+El frontend local permanece en loopback. Véase `DEPENDENCY-SECURITY.md` para
+versiones, comprobaciones, alcance y la deuda de reglas nuevas de React.
 
 - [Next.js en servidores Windows](https://github.com/advisories/GHSA-p293-qw3h-jr36).
 - [Next.js, optimización de imágenes AVIF](https://github.com/advisories/GHSA-2xp9-vwfh-vxw4).
 - [baseline-browser-mapping](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv).
+
+## Procedencia de los márgenes automáticos
+
+Los nuevos procesamientos pueden incluir `cropProvenance` por línea. El visor
+utiliza el `bbox` entregado por el backend: no recalcula márgenes ni modifica
+las geometrías de ejecuciones anteriores. «Texto automático y procedencia»
+explica qué lados se ajustaron por vecinos y distingue ese recorte de máquina
+de una corrección humana posterior. Sin metadatos históricos no se inventa
+una política ni se muestra una explicación retrospectiva.
+
+Las detecciones solapadas o casi coincidentes tienen observaciones en español:
+no se eliminan, unen ni validan automáticamente. También se explican las
+inconsistencias de metadatos o límites que el backend no pudo verificar.
+Conservar la caja del detector no significa haber detectado todo el contenido,
+ni demuestra exactitud del texto. Las ayudas quedan dentro del componente
+existente, sin rediseñar la pantalla ni depender únicamente de colores.
+
+### Verificación del bloque de márgenes
+
+- Un documento sintético nuevo de tres líneas pasó por Paddle, TrOCR y backend
+  locales: estado `PROCESSED`, página protegida disponible y política
+  `neighbor_padding_v1` persistida. El visor muestra la procedencia real, no
+  datos simulados en el navegador. No se validó ni publicó como registro clínico.
+- El layout anterior de 143 fragmentos coincidió exactamente antes y después
+  de la prueba; no se reprocesaron historias existentes para aplicar la política.
+- Ayudas inspeccionadas en escritorio y móvil sin desbordamiento ni errores
+  JavaScript observados. Los fragmentos históricos sin metadata siguen legibles.
+- 100 pruebas frontend, 235 IA, 511 unitarias backend y 27 E2E backend aprobadas.
+  Son verificaciones funcionales y geométricas, no métricas de exactitud OCR.
 
 ## Límites deliberados
 

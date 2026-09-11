@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { boxError, mergeWithNext, moveLine, orderedLines, reviewError, reviewLines, reviewSelection, reviewText, splitLine, warningLabel } from './ocr-layout';
-import type { OcrLayout, OcrLayoutPage, OcrReviewLine } from '../types/ocr-layout';
+import { boxError, cropProvenanceLabel, mergeWithNext, moveLine, orderedLines, reviewError, reviewLines, reviewSelection, reviewText, splitLine, warningLabel } from './ocr-layout';
+import type { OcrCropProvenance, OcrLayout, OcrLayoutPage, OcrReviewLine } from '../types/ocr-layout';
 
 const pages: OcrLayoutPage[] = [{
   page: 1, width: 1000, height: 1400, coordinateSpace: 'preprocessed_page', warnings: [], imageAvailable: true,
@@ -153,6 +153,23 @@ test('warning labels do not claim detection confidence is measured accuracy', ()
   assert.match(warningLabel('low_confidence'), /confianza/);
   assert.match(warningLabel('unknown_warning'), /Observación técnica/);
   assert.doesNotMatch(warningLabel('low_confidence'), /exactitud/);
+});
+
+test('crop warnings explain review without claiming duplicate detections were deleted', () => {
+  assert.match(warningLabel('overlapping_detections_require_review'), /conservado/);
+  assert.match(warningLabel('possible_duplicate_detection_requires_review'), /No se ha eliminado/);
+  assert.match(warningLabel('machine_crop_clips_detection_requires_review'), /no contiene toda/);
+  assert.match(warningLabel('invalid_crop_provenance_requires_review'), /No se pudo verificar/);
+});
+
+test('crop provenance describes original machine margins, without guessing historical metadata', () => {
+  assert.equal(cropProvenanceLabel(undefined), null);
+  const provenance: OcrCropProvenance = { policy: 'neighbor_padding_v1', originalPaddedBbox: [2, 12, 108, 68], requestedPaddingPx: 8,
+    appliedPaddingPx: [8, 2, 8, 8], adjustedSides: ['top'], neighborLineIds: ['p1_l2'], overlappingLineIds: [] };
+  assert.match(cropProvenanceLabel(provenance) ?? '', /superior/);
+  assert.match(cropProvenanceLabel(provenance) ?? '', /no garantiza/);
+  assert.match(cropProvenanceLabel({ ...provenance, adjustedSides: [] }) ?? '', /no fue necesario/);
+  assert.match(cropProvenanceLabel({ ...provenance, policy: 'fixed_padding' }) ?? '', /margen fijo/);
 });
 
 test('reload never displays a selected crop over the image of a different page', () => {

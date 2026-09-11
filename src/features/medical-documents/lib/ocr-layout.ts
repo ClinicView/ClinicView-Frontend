@@ -1,4 +1,4 @@
-import type { OcrBox, OcrLayout, OcrLayoutPage, OcrReviewLine } from '../types/ocr-layout';
+import type { OcrBox, OcrCropProvenance, OcrLayout, OcrLayoutPage, OcrReviewLine } from '../types/ocr-layout';
 
 export function orderedLines(lines: OcrReviewLine[]): OcrReviewLine[] {
   return [...lines].sort((a, b) => a.page - b.page || a.order - b.order);
@@ -123,6 +123,13 @@ const WARNING_LABELS: Record<string, string> = {
   oversized_crop: 'El recorte puede incluir más de un renglón.',
   possible_multiline: 'El recorte puede incluir más de un renglón.',
   overlapping_boxes: 'Hay recortes superpuestos; comprueba si duplican contenido.',
+  overlapping_detections_require_review: 'Las detecciones originales se superponen. Se ha conservado su contenido; comprueba los límites y si incluyen otro renglón.',
+  possible_duplicate_detection_requires_review: 'Esta detección coincide en gran parte con otra y podría repetir contenido. No se ha eliminado: compruébala antes de unir o corregir fragmentos.',
+  machine_crop_clips_detection_requires_review: 'El recorte automático no contiene toda la detección original. Contrástalo con la página y ajusta sus límites si falta contenido.',
+  invalid_crop_metadata_requires_review: 'No se pudo verificar la información técnica del recorte. La imagen y el texto se conservan; comprueba sus límites.',
+  invalid_crop_provenance_requires_review: 'No se pudo verificar cómo se ajustó el margen automático. Contrasta el recorte con la página.',
+  invalid_detector_index_requires_review: 'La referencia técnica al detector no es válida. Comprueba el fragmento en la página.',
+  invalid_raw_polygon_requires_review: 'Las coordenadas originales del detector no pudieron verificarse. Comprueba el fragmento en la página.',
   low_confidence: 'El detector señaló una confianza baja.',
   no_text_detected: 'No se detectaron renglones. Revisa la página completa.',
   non_text_content_requires_page_review: 'Comprueba firmas, sellos, dibujos y cualquier zona sin rectángulo; el detector busca texto, no garantiza detectar todo el contenido.',
@@ -151,4 +158,12 @@ const WARNING_LABELS: Record<string, string> = {
 export function warningLabel(warning: string): string {
   if (warning.startsWith('paddle_invalid_polygon:') || warning.startsWith('paddle_degenerate_polygon:')) return 'Se recibió una detección con geometría inválida. Comprueba si falta alguna zona de la página.';
   return WARNING_LABELS[warning] ?? `Observación técnica: ${warning.replace(/[_-]/g, ' ')}. Verifica esta zona en la página.`;
+}
+
+export function cropProvenanceLabel(provenance?: OcrCropProvenance | null): string | null {
+  if (!provenance) return null;
+  if (provenance.policy === 'fixed_padding') return `Recorte automático original: margen fijo de hasta ${provenance.requestedPaddingPx} px, limitado por los bordes de la página.`;
+  const sides = { left: 'izquierdo', top: 'superior', right: 'derecho', bottom: 'inferior' };
+  if (!provenance.adjustedSides.length) return 'Recorte automático original: se comprobaron los vecinos y no fue necesario reducir el margen.';
+  return `Recorte automático original: margen reducido en ${provenance.adjustedSides.length === 1 ? 'el borde' : 'los bordes'} ${provenance.adjustedSides.map((side) => sides[side]).join(', ')} por proximidad a otras detecciones. La caja del detector se conservó completa. Esto no garantiza que el texto esté completo ni que el reconocimiento sea correcto.`;
 }
