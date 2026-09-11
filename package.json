@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",
-    "next": "~16.2.11",
+    "next": "16.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -23,14 +23,15 @@
       "postcss": "8.5.23",
       "sharp": "0.35.4"
     },
-    "nanoid@3": "3.3.18"
+    "nanoid@3": "3.3.18",
+    "baseline-browser-mapping": "2.11.22"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.3.3",
+    "eslint-config-next": "16.3.5",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5"
   }
