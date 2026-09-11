@@ -14,6 +14,7 @@ import type {
   ValidationChecklistId,
 } from '../types/document';
 import { DocumentPreview } from './document-preview';
+import { OcrSpatialReview } from './ocr-spatial-review';
 import { DocumentMetadataPanel } from './document-metadata-panel';
 import { DocumentLinkedRecords } from '@/features/clinical-records/components/document-linked-records';
 import { DocumentStepper } from './document-stepper';
@@ -77,9 +78,10 @@ interface DocumentDetailProps {
   patientId: string;
   docId: string;
   permissions: string[];
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function DocumentDetail({ patientId, docId, permissions }: DocumentDetailProps) {
+export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }: DocumentDetailProps) {
   const canReadPatient = can(permissions, 'patients.read');
   const {
     document,
@@ -87,7 +89,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     error,
     actionError,
     actionErrorStatus,
-    isActing,
+    isActing: isDocumentActing,
     process,
     saveCorrection,
     validate,
@@ -95,6 +97,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
     claimAssignment,
     releaseAssignment,
     reload,
+    refresh,
   } = useDocument(patientId, docId);
   const { user } = useSession();
   const { patient, isLoading: isPatientLoading } = usePatient(patientId, {
@@ -110,6 +113,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [spatialDirty, setSpatialDirty] = useState(false);
+  const [spatialSaving, setSpatialSaving] = useState(false);
+  const isActing = isDocumentActing || spatialSaving;
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
@@ -134,14 +140,8 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       (correctedText !== savedText || JSON.stringify(correctedEntities) !== savedEntities),
   );
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const preventAccidentalExit = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener('beforeunload', preventAccidentalExit);
-    return () => window.removeEventListener('beforeunload', preventAccidentalExit);
-  }, [isDirty]);
+  useEffect(() => { onDirtyChange?.(isDirty || spatialDirty || rejectReason.trim().length > 0); }, [isDirty, spatialDirty, rejectReason, onDirtyChange]);
+  useEffect(() => () => { onDirtyChange?.(false); }, [onDirtyChange]);
 
   const suggestions = useMemo<OcrSuggestion[]>(() => {
     if (!document?.nerEntities) return [];
@@ -197,6 +197,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }
 
   async function handleSave() {
+    if (spatialDirty || spatialSaving) return null;
     return saveCorrection({
       correctedText,
       correctedEntities: normalizedEntities(),
@@ -209,6 +210,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }
 
   async function handleValidate() {
+    if (spatialDirty || spatialSaving) return;
     await validate({
       correctedText,
       correctedEntities: normalizedEntities(),
@@ -218,6 +220,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }
 
   async function handleReject() {
+    if (spatialDirty || spatialSaving) return;
     const trimmed = rejectReason.trim();
     if (trimmed.length < 10) return;
     const updated = await reject(trimmed);
@@ -228,6 +231,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
   }
 
   async function handleReleaseAssignment() {
+    if (spatialDirty || spatialSaving) return;
     if (isDirty && !window.confirm('Liberar la revisión descartará los cambios que no hayas guardado. ¿Deseas continuar?')) {
       return;
     }
@@ -236,9 +240,9 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
 
   async function handleReloadLatest() {
     if (
-      (isDirty || rejectReason.trim().length > 0) &&
+      (isDirty || spatialDirty || rejectReason.trim().length > 0) &&
       !window.confirm(
-        'Recargar descartará el texto, las entidades y el motivo de rechazo que no hayas guardado. ¿Deseas continuar?',
+        'Recargar descartará los recortes, el texto, las entidades y el motivo de rechazo que no hayas guardado. ¿Deseas continuar?',
       )
     ) {
       return;
@@ -358,7 +362,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={styles.inlineAssignmentBtn}
                 type="button"
                 onClick={() => void handleReleaseAssignment()}
-                disabled={isActing}
+                disabled={isActing || spatialDirty}
               >
                 Liberar revisión
               </button>
@@ -411,7 +415,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
       {canReadPatient && can(user?.permissions ?? [], 'records.read') && <DocumentLinkedRecords patientId={patientId} documentId={docId} canPublish={document.status === 'VALIDATED' && can(user?.permissions ?? [], 'records.create') && can(user?.permissions ?? [], 'documents.validate')} />}
       {canReadPatient && <DocumentMetadataPanel document={document}
         canEdit={can(permissions, 'documents.validate') && (!document.assignedReviewerId || isAssignedToCurrentUser)}
-        blocked={isDirty || isActing || document.status === 'PROCESSING'} onSaved={reload} />}
+        blocked={isDirty || spatialDirty || isActing || document.status === 'PROCESSING'} onSaved={async () => { await reload(); }} />}
 
       {document.status === 'PROCESSING' && (
         <div
@@ -483,7 +487,27 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
         </div>
       )}
 
-      {/* Split 50/50: visor + corrección */}
+      {document.status !== 'PENDING' && document.status !== 'PROCESSING' && (
+        <OcrSpatialReview
+          key={document.id}
+          patientId={patientId}
+          docId={docId}
+          version={document.version}
+          canEdit={canCorrect}
+          blocked={isDirty || isDocumentActing}
+          correctedText={document.correctedText}
+          onDirtyChange={setSpatialDirty}
+          onSavingChange={setSpatialSaving}
+          onSaved={refresh}
+        />
+      )}
+
+      <div className={styles.clinicalStage}>
+        <div><span className={styles.stageLabel}>02 · Revisión clínica</span><h2>Organización y validación profesional</h2><p>Revisa el texto por secciones, sus entidades y el archivo original. La validación final siempre requiere tu confirmación.</p></div>
+        {spatialDirty && <p className={styles.stageNotice} role="status">Guarda o descarta la revisión visual de arriba para continuar con el editor clínico.</p>}
+      </div>
+
+      {/* La fuente espacial y la organización clínica tienen guardados explícitos. */}
       <div className={styles.split}>
         <div className={styles.leftColumn}>
           <DocumentPreview
@@ -577,7 +601,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
           >
             <StructuredTextEditor
               text={correctedText}
-              disabled={!canCorrect || isActing}
+              disabled={!canCorrect || isActing || spatialDirty}
               suggestions={suggestions}
               onChange={handleCorrectedTextChange}
               onDismissSuggestion={(id) =>
@@ -598,7 +622,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
             <EntitiesPanel
               detected={document.nerEntities}
               corrected={correctedEntities}
-              editable={canCorrect}
+              editable={canCorrect && !spatialDirty}
               isActing={isActing}
               onEntityChange={updateEntity}
               onEntityRemove={removeEntity}
@@ -616,10 +640,10 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
           >
             <ValidationPanel
               checked={checkedValidation}
-              canValidate={canValidate}
-              canReject={canReject}
+              canValidate={canValidate && !spatialDirty}
+              canReject={canReject && !spatialDirty}
               isActing={isActing}
-              hasUnsavedChanges={isDirty}
+              hasUnsavedChanges={isDirty || spatialDirty}
               showRejectForm={showRejectForm}
               rejectReason={rejectReason}
               onToggle={toggleValidationItem}
@@ -677,7 +701,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={styles.btn}
                 type="button"
                 onClick={() => void handleSave()}
-                disabled={isActing || !isDirty}
+                disabled={isActing || !isDirty || spatialDirty}
               >
                 <Icon name="download" size={15} />
                 Guardar borrador
@@ -688,7 +712,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={styles.btn}
                 type="button"
                 onClick={() => void handleMarkReviewed()}
-                disabled={isActing || correctedText.trim().length === 0}
+                disabled={isActing || correctedText.trim().length === 0 || spatialDirty}
               >
                 <Icon name="check" size={15} />
                 Marcar como revisado
@@ -699,7 +723,7 @@ export function DocumentDetail({ patientId, docId, permissions }: DocumentDetail
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 type="button"
                 onClick={() => activateTab('validation', true)}
-                disabled={isActing || correctedText.trim().length === 0}
+                disabled={isActing || correctedText.trim().length === 0 || spatialDirty}
                 aria-controls="correction-panel-validation"
               >
                 <Icon name="shield" size={15} />

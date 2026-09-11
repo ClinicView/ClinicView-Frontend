@@ -9,7 +9,7 @@ export default async function DocumentPage({
   const { id, docId } = await params;
   return (
     <RequirePermissions allOf={['documents.read']}>
-      <DocumentDetailView patientId={id} docId={docId} />
+      <DocumentDetailView key={`${id}/${docId}`} patientId={id} docId={docId} />
     </RequirePermissions>
   );
 }
