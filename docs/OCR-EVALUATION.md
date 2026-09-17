@@ -53,6 +53,9 @@ y no mezclar documentos de evaluación con los usados para entrenar.
 - `npm test`: guardas de presentación de métricas, valores ausentes/no finitos,
   tasas mayores que uno, elegibilidad de descarga e identidad exacta del borrador.
 - `npm run typecheck` y `npm run lint`.
+- `npm run build -- --webpack`: compilación de producción, incluido el tipado
+  de los E2E. Las comprobaciones DOM usan `window.document` para no confundirlo
+  con el documento clínico de la prueba.
 - [E2E de navegador](BROWSER-E2E.md): descarga autenticada tras revisar las dos
   páginas, procedencia/hash, diferencia entre OCR original y corrección, ausencia
   de métricas inventadas y estado clínico intacto. Usa OCR controlado: no mide la

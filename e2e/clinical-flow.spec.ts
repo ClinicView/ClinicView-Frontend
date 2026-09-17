@@ -249,7 +249,7 @@ test('complete synthetic clinical flow preserves reviewed content, dates, images
       await exportButton.focus();
       await expect(exportButton).toBeFocused();
       expect(await exportButton.evaluate((button) => getComputedStyle(button).outlineStyle)).toBe('solid');
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      expect(await page.evaluate(() => window.document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await exportButton.locator('..').screenshot({ path: path.join(runDir, `ocr-evaluation-export-${width}.png`) });
     }
   });
