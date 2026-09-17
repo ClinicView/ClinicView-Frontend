@@ -40,7 +40,9 @@ export function buildSteps(document: MedicalDocument): Step[] {
       meta: document.status === 'FAILED'
         ? 'Error'
         : document.status === 'PROCESSING'
-          ? 'En curso'
+          ? document.processing?.status === 'QUEUED' ? 'En cola'
+            : document.processing?.status === 'WAITING_FOR_WORKER' ? 'En espera'
+              : document.processing?.status === 'FINALIZING' ? 'Guardando' : 'En curso'
           : formatShort(document.processedAt),
       state: document.status === 'FAILED'
         ? 'error'

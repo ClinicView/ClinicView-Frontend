@@ -18,6 +18,7 @@ import { OcrSpatialReview } from './ocr-spatial-review';
 import { DocumentMetadataPanel } from './document-metadata-panel';
 import { DocumentLinkedRecords } from '@/features/clinical-records/components/document-linked-records';
 import { DocumentStepper } from './document-stepper';
+import { DocumentProcessingPanel } from './document-processing-panel';
 import { EntitiesPanel } from './entities-panel';
 import { MetricsPanel } from './metrics-panel';
 import { StructuredTextEditor, type OcrSuggestion } from './structured-text-editor';
@@ -90,6 +91,9 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
     actionError,
     actionErrorStatus,
     isActing: isDocumentActing,
+    isRefreshing,
+    processingConnectionLost,
+    processSubmissionUncertain,
     process,
     saveCorrection,
     validate,
@@ -169,9 +173,6 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
   }
   if (!document) return null;
 
-  const canProcess =
-    can(permissions, 'documents.upload') &&
-    (document.status === 'PENDING' || document.status === 'FAILED');
   const isAssignedToCurrentUser = document.assignedReviewerId === user?.sub;
   const canManageAssignment = can(permissions, 'review.assign');
   const canCorrect =
@@ -183,8 +184,6 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
     can(permissions, 'documents.reject') &&
     (document.status === 'PENDING' ||
       (document.status === 'PROCESSED' && isAssignedToCurrentUser));
-
-  const needsProcessing = document.status === 'PENDING' || document.status === 'FAILED';
 
   function normalizedEntities(): CorrectedEntity[] {
     return correctedEntities
@@ -389,50 +388,22 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
       )}
 
       {/* Banners de estado */}
-      {needsProcessing && (
-        <div className={`${styles.banner} ${styles.bannerWarning}`} role="status">
-          <div>
-            <p className={styles.bannerTitle}>Este documento todavía necesita procesamiento.</p>
-            <p className={styles.bannerText}>
-              Ejecuta la digitalización para obtener el texto OCR antes de corregir y validar.
-            </p>
-          </div>
-          {canProcess && (
-            <button
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              type="button"
-              onClick={() => void process()}
-              disabled={isActing}
-              aria-busy={isActing}
-            >
-              <Icon name="scan" size={16} />
-              {isActing ? 'Procesando…' : 'Procesar digitalización'}
-            </button>
-          )}
-        </div>
-      )}
+      <DocumentProcessingPanel
+        document={document}
+        canProcess={can(permissions, 'documents.upload')}
+        busy={isActing}
+        checking={isRefreshing}
+        blocked={isDirty || spatialDirty || rejectReason.trim().length > 0}
+        connectionLost={processingConnectionLost}
+        submissionUncertain={processSubmissionUncertain}
+        onProcess={() => void process()}
+        onRefresh={() => void refresh()}
+      />
 
       {canReadPatient && can(user?.permissions ?? [], 'records.read') && <DocumentLinkedRecords patientId={patientId} documentId={docId} canPublish={document.status === 'VALIDATED' && can(user?.permissions ?? [], 'records.create') && can(user?.permissions ?? [], 'documents.validate')} />}
       {canReadPatient && <DocumentMetadataPanel document={document}
         canEdit={can(permissions, 'documents.validate') && (!document.assignedReviewerId || isAssignedToCurrentUser)}
         blocked={isDirty || spatialDirty || isActing || document.status === 'PROCESSING'} onSaved={async () => { await reload(); }} />}
-
-      {document.status === 'PROCESSING' && (
-        <div
-          className={`${styles.banner} ${styles.bannerInfo}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div>
-            <p className={styles.bannerTitle}>Procesamiento en curso en segundo plano.</p>
-            <p className={styles.bannerText}>
-              Puedes seguir navegando por otras secciones: recibirás una notificación
-              (campana superior) cuando el OCR termine. Esta vista también se
-              actualiza sola.
-            </p>
-          </div>
-        </div>
-      )}
 
       {document.status === 'PROCESSED' && !document.ocrText && (
         <div className={`${styles.banner} ${styles.bannerInfo}`} role="status">

@@ -7,6 +7,10 @@ La revisión documental tiene dos etapas explícitas en el mismo detalle:
 2. **Revisión clínica:** archivo original, editor por secciones, entidades,
    comprobaciones profesionales y validación final existentes.
 
+Antes de estas etapas, la digitalización muestra un trabajo persistido con etapa,
+contadores y recuperación de consultas. Véase [OCR-PROCESSING.md](OCR-PROCESSING.md).
+La finalización automática no marca fragmentos como revisados ni valida la historia.
+
 ## Qué conserva el visor
 
 - Consulta `GET /patients/:patientId/documents/:id/ocr-layout`. No calcula

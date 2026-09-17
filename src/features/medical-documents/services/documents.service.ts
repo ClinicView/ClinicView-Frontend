@@ -20,8 +20,8 @@ export function listDocuments(
   return apiGet<DocumentsPage>(`/patients/${patientId}/documents${query ? `?${query}` : ''}`);
 }
 
-export function getDocument(patientId: string, docId: string): Promise<MedicalDocument> {
-  return apiGet<MedicalDocument>(`/patients/${patientId}/documents/${docId}`);
+export function getDocument(patientId: string, docId: string, signal?: AbortSignal): Promise<MedicalDocument> {
+  return apiGet<MedicalDocument>(`/patients/${patientId}/documents/${docId}`, { signal });
 }
 
 export function uploadDocument(patientId: string, file: File, metadata: DocumentClinicalMetadata = {}): Promise<MedicalDocument> {
@@ -31,8 +31,13 @@ export function uploadDocument(patientId: string, file: File, metadata: Document
   return apiUpload<MedicalDocument>(`/patients/${patientId}/documents`, form);
 }
 
-export function processDocument(patientId: string, docId: string): Promise<MedicalDocument> {
-  return apiPost<MedicalDocument>(`/patients/${patientId}/documents/${docId}/process`);
+export async function processDocument(patientId: string, docId: string, expectedVersion: number): Promise<MedicalDocument> {
+  // This deadline bounds acknowledgement, not OCR execution in the server.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    return await apiPost<MedicalDocument>(`/patients/${patientId}/documents/${docId}/process`, { expectedVersion }, { signal: controller.signal });
+  } finally { clearTimeout(timeout); }
 }
 
 export function validateDocument(

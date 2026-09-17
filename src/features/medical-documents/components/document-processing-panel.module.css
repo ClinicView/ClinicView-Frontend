@@ -1,0 +1,52 @@
+.panel {
+  min-width: 0;
+  border: 1px solid var(--color-info-border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  padding: 1.25rem 1.5rem;
+  color: var(--gray-800);
+  overflow-wrap: anywhere;
+}
+.failed { border-color: var(--color-danger-border); }
+.heading { display: flex; align-items: center; flex-wrap: wrap; gap: .875rem; }
+.headingCopy { flex: 1 1 220px; min-width: 0; }
+.heading h2 { font-size: 1.125rem; line-height: 1.4; color: var(--gray-900); }
+.eyebrow { color: var(--color-primary); font-size: .75rem; font-weight: 700; letter-spacing: .04em; margin-bottom: .25rem; }
+.icon { display: inline-flex; align-items: center; justify-content: center; background: var(--color-primary-light); color: var(--color-primary); border-radius: var(--radius-md); width: 44px; height: 44px; flex-shrink: 0; }
+.failed .icon { background: var(--color-danger-light); color: var(--color-danger); }
+.attempt { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: .35rem .6rem; color: var(--gray-600); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.description, .failureCopy, .metadata, .technical { font-size: .875rem; line-height: 1.6; }
+.description, .failureCopy { margin-top: 1rem; max-width: 90ch; }
+.failureCopy p + p { margin-top: .5rem; }
+.reference { color: var(--gray-600); }
+.progressBlock { margin-top: 1.25rem; max-width: 680px; }
+.progressLabel { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; font-size: .875rem; font-variant-numeric: tabular-nums; }
+.progressBlock progress { display: block; width: 100%; height: .625rem; border: none; border-radius: var(--radius-sm); overflow: hidden; accent-color: var(--color-primary); background: var(--color-primary-light); }
+.progressBlock progress::-webkit-progress-bar { background: var(--color-primary-light); border-radius: var(--radius-sm); }
+.progressBlock progress::-webkit-progress-value { background: var(--color-primary); border-radius: var(--radius-sm); }
+.progressBlock progress::-moz-progress-bar { background: var(--color-primary); border-radius: var(--radius-sm); }
+.progressBlock p { margin-top: .5rem; color: var(--gray-600); font-size: .8125rem; line-height: 1.5; }
+.metadata { display: flex; flex-wrap: wrap; gap: .75rem 2rem; margin-top: 1rem; }
+.metadata dt { color: var(--gray-600); font-size: .75rem; }
+.metadata dd { margin: 0; font-variant-numeric: tabular-nums; }
+.connectionWarning { margin-top: 1rem; padding: .875rem 1rem; background: var(--color-warning-light); border: 1px solid var(--color-warning-border); border-radius: var(--radius-sm); font-size: .875rem; line-height: 1.6; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }
+.primaryButton, .secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .625rem 1rem; border: 1px solid var(--color-control-border); border-radius: var(--radius-sm); font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer; transition: background var(--transition-fast), border-color var(--transition-fast); }
+.primaryButton { background: var(--color-primary); color: var(--color-on-primary); border-color: var(--color-primary); }
+.primaryButton:hover:not(:disabled) { background: var(--color-primary-hover); }
+.secondaryButton { background: var(--bg-surface); color: var(--gray-700); }
+.secondaryButton:hover:not(:disabled) { background: var(--color-primary-light); border-color: var(--color-primary); }
+.actions button:disabled { opacity: .6; cursor: not-allowed; }
+.actions button:focus-visible, .technical summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.technical { margin-top: 1rem; color: var(--gray-600); }
+.technical summary { display: list-item; width: fit-content; padding-block: .75rem; cursor: pointer; }
+.technical p { padding-top: .25rem; }
+.technical code { font-size: .8125rem; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 560px) {
+  .panel { padding: 1rem; }
+  .headingCopy { flex-basis: calc(100% - 65px); }
+  .actions > button { width: 100%; }
+  .description, .failureCopy, .connectionWarning { font-size: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .primaryButton, .secondaryButton { transition: none; } }

@@ -1,4 +1,5 @@
 import type { DocumentClinicalMetadata } from '../lib/document-metadata';
+import type { DocumentProcessing } from './processing';
 
 export type DocumentStatus =
   | 'PENDING'
@@ -103,6 +104,8 @@ export interface MedicalDocument {
   metrics?: OcrMetrics | null;
   ocrConfidence?: number | null;
   confidenceLevel?: ConfidenceLevel | null;
+  /** Absent/null on historical executions without a persisted processing job. */
+  processing?: DocumentProcessing | null;
 }
 
 export interface DocumentsPage {
