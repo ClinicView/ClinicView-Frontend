@@ -111,3 +111,16 @@ en este bloque fue del PDF; no se ejecutó una nueva revisión del navegador loc
 
 Punto 6 excluido expresamente: no se implementó MFA, aislamiento institucional,
 infraestructura cloud ni una migración de seguridad/dependencias.
+
+## Aceptación posterior en navegador
+
+La aceptación reproducible actual está documentada en [BROWSER-E2E.md](./BROWSER-E2E.md).
+Recorre carga, revisión espacial, validación, publicación, confirmación, consulta
+posterior con imagen y descarga del PDF con frontend/backend reales y datos
+sintéticos. Sustituye solo la respuesta HTTP del modelo OCR; no mide su precisión.
+Esta suite complementa las comprobaciones históricas descritas arriba.
+
+La inspección del PDF descargado detectó y corrigió títulos huérfanos: cada
+encabezado de documento o atención permanece con el inicio de su contenido.
+Se conservan el índice enlazado, las imágenes y la continuación de textos largos;
+no se fuerza una página nueva por cada registro. La suite comprueba esta regresión.

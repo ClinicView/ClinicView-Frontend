@@ -526,7 +526,6 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       marginTop: -10,
       marginBottom: 18,
     },
-    item: { marginBottom: 22 },
     itemHeader: {
       backgroundColor: PDF_COLORS.surface,
       borderLeftWidth: 3,
@@ -750,8 +749,16 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
         <Text style={styles.sectionTitle} minPresenceAhead={60}>Índice de secciones · enlaces internos</Text>
         {resolvedItems.map((item, index) => <PdfLink key={`index-${index}`} src={`#entry-${index}`} style={{ fontSize: 10, color: PDF_COLORS.primary, marginBottom: 7 }}>{index + 1}. {item.title} · {formatDate(item.date)} · {item.status}</PdfLink>)}
         {resolvedItems.map((item, index) => (
-          <View key={index} id={`entry-${index}`} style={styles.item} wrap break={index === 0}>
-            <View style={styles.itemHeader} wrap={false} minPresenceAhead={80}>
+          <Fragment key={index}>
+            {/* Keep cards at page level: minPresenceAhead is ignored for the first
+                child inside a split wrapping View, leaving its title orphaned. */}
+            <View
+              id={`entry-${index}`}
+              style={[styles.itemHeader, { marginTop: index === 0 ? 0 : 22 }]}
+              wrap={false}
+              break={index === 0}
+              minPresenceAhead={140}
+            >
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemMeta}>
                 {item.dateLabel}: {formatDate(item.date)} · {item.origin} · Estado: {item.status}
@@ -854,7 +861,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
                   .map(renderAttachment)}
               </Fragment>
             )}
-          </View>
+          </Fragment>
         ))}
 
         <View style={styles.footer} fixed>
