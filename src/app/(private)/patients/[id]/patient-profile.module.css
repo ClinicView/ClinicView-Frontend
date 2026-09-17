@@ -260,7 +260,7 @@
 }
 
 .tab:focus-visible,
-[role='tabpanel']:focus-visible {
+.tabPanel:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
@@ -1131,5 +1131,5 @@ a.recentTitle:hover { color: var(--color-primary); text-decoration: underline; }
 
 @media (forced-colors: active) {
   .tab:focus-visible,
-  [role='tabpanel']:focus-visible { outline-color: Highlight; }
+  .tabPanel:focus-visible { outline-color: Highlight; }
 }

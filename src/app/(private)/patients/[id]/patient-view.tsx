@@ -609,7 +609,7 @@ export function PatientView({ id }: PatientViewProps) {
       {activeTab === 'resumen' && (
         <div
           id="patient-panel-resumen"
-          className={styles.resumenGrid}
+          className={`${styles.resumenGrid} ${styles.tabPanel}`}
           role="tabpanel"
           tabIndex={0}
           aria-labelledby="patient-tab-resumen"
@@ -762,7 +762,7 @@ export function PatientView({ id }: PatientViewProps) {
       {activeTab === 'historia' && overview.hasAnyAccess && (
         <section
           id="patient-panel-historia"
-          className={styles.panel}
+          className={`${styles.panel} ${styles.tabPanel}`}
           role="tabpanel"
           tabIndex={0}
           aria-labelledby="patient-tab-historia"
@@ -920,7 +920,7 @@ export function PatientView({ id }: PatientViewProps) {
       {activeTab === 'documentos' && canReadDocuments && (
         <section
           id="patient-panel-documentos"
-          className={styles.panel}
+          className={`${styles.panel} ${styles.tabPanel}`}
           role="tabpanel"
           tabIndex={0}
           aria-labelledby="patient-tab-documentos"
@@ -1030,7 +1030,7 @@ export function PatientView({ id }: PatientViewProps) {
       {activeTab === 'metricas' && canReadDocuments && (
         <div
           id="patient-panel-metricas"
-          className={styles.metricsGrid}
+          className={`${styles.metricsGrid} ${styles.tabPanel}`}
           role="tabpanel"
           tabIndex={0}
           aria-labelledby="patient-tab-metricas"
