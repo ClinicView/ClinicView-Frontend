@@ -1123,6 +1123,7 @@
   min-height: 44px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.625rem;
   padding: 0.875rem 1.25rem;
   color: var(--gray-800);
@@ -1177,8 +1178,9 @@
 
 .metricsNote {
   width: 100%;
-  color: var(--gray-400);
-  font-size: 0.71875rem;
+  color: var(--gray-600);
+  font-size: 0.8125rem;
+  line-height: 1.6;
 }
 
 .metricsEmpty {

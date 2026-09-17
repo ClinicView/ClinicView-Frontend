@@ -1,5 +1,6 @@
 import { expect, test, type Response } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { validateClinicalPdf } from './pdf-verification';
 
@@ -170,6 +171,8 @@ test('complete synthetic clinical flow preserves reviewed content, dates, images
     expect(layout.pages.every((item) => item.imageAvailable)).toBe(true);
     const spatial = page.getByRole('region', { name: 'Cada fragmento, en su contexto' });
     await expect(spatial).toHaveAttribute('aria-busy', 'false');
+    await expect(spatial.getByRole('button', { name: 'Exportar para evaluación', exact: true })).toBeDisabled();
+    await expect(page.getByText('Sin CER/WER medidos contra una referencia.', { exact: true })).toBeVisible();
     for (const sourcePage of layout.pages) {
       await spatial.getByRole('combobox', { name: 'Página', exact: true }).selectOption(String(sourcePage.page));
       const lines = spatial.getByRole('list', { name: `Fragmentos de la página ${sourcePage.page}` }).getByRole('button');
@@ -195,6 +198,60 @@ test('complete synthetic clinical flow preserves reviewed content, dates, images
     expect(reviewed.review?.lines.every((line) => line.reviewed)).toBe(true);
     await expect(page.getByText('Revisión guardada y editor clínico actualizado. La validación sigue siendo una acción separada.')).toBeVisible();
     await page.screenshot({ path: path.join(runDir, '01-spatial-review.png'), fullPage: true });
+  });
+
+  await test.step('download an exact private evaluation draft without changing clinical status or calculating accuracy', async () => {
+    const before = await get<TestDocument>(`${documentsPath}/${document.id}`);
+    const layout = await get<TestLayout>(`${documentsPath}/${document.id}/ocr-layout`);
+    const spatial = page.getByRole('region', { name: 'Cada fragmento, en su contexto' });
+    const exportButton = spatial.getByRole('button', { name: 'Exportar para evaluación', exact: true });
+    await expect(exportButton).toBeEnabled();
+    const downloadStarted = page.waitForEvent('download');
+    await exportButton.click();
+    const download = await downloadStarted;
+    expect(download.suggestedFilename()).toBe(`ocr-evaluation-${layout.runId}-r1.json`);
+    const snapshotPath = path.join(runDir, 'evaluation-snapshot.json');
+    await download.saveAs(snapshotPath);
+    const snapshot = JSON.parse(await readFile(snapshotPath, 'utf8'));
+    expect(snapshot).toMatchObject({
+      schemaVersion: 1, kind: 'clinicview-ocr-evaluation-snapshot', documentId: document.id,
+      runId: layout.runId, revision: 1,
+      sourceSha256: createHash('sha256').update(await readFile(path.join(runDir, 'source.pdf'))).digest('hex'),
+      provenance: {
+        referenceKind: 'ocr_postedited', referenceDraft: true, pageCoverage: 'unassessed',
+        clinicalValidationIsReference: false, isCurrentRun: true, isLatestReview: true,
+        staleAgainstCurrentCorrection: false, currentDocumentStatus: 'PROCESSED',
+        currentDocumentVersion: before.version,
+      },
+    });
+    expect(snapshot.prediction.pages).toHaveLength(2);
+    expect(snapshot.review.pages).toHaveLength(2);
+    expect(snapshot.prediction.pages[0].lines[0].text).toBe('QA_NO_VALIDADO');
+    expect(snapshot.review.pages[0].lines[0].text).toBe('QA_ORIGINAL_VALIDADO');
+    for (let index = 0; index < 2; index += 1) {
+      expect(snapshot.review.pages[index].imageSha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(snapshot.prediction.pages[index].imageSha256).toBe(snapshot.review.pages[index].imageSha256);
+      expect(snapshot.review.pages[index].lines).toHaveLength(3);
+      expect(snapshot.review.pages[index].lines.every((line: { reviewed: boolean; sourceLineIds: string[] }) => line.reviewed && line.sourceLineIds.length === 1)).toBe(true);
+    }
+    expect(snapshot).not.toHaveProperty('metrics');
+    expect(snapshot).not.toHaveProperty('patientId');
+    expect(snapshot).not.toHaveProperty('recordedBy');
+    const after = await get<TestDocument>(`${documentsPath}/${document.id}`);
+    expect(after).toMatchObject({ version: before.version, status: before.status, correctedText: before.correctedText, validationAttested: before.validationAttested });
+    await expect(page.getByText('Sin CER/WER medidos contra una referencia.', { exact: true })).toBeVisible();
+    await expect(page.getByText(/las métricas reales se calculan al validar/)).toHaveCount(0);
+    await expect(page.getByText(/Guardar o validar en la web no recalcula CER\/WER/)).toBeVisible();
+    for (const width of [375, 768, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await exportButton.scrollIntoViewIfNeeded();
+      await page.keyboard.press('Tab');
+      await exportButton.focus();
+      await expect(exportButton).toBeFocused();
+      expect(await exportButton.evaluate((button) => getComputedStyle(button).outlineStyle)).toBe('solid');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await exportButton.locator('..').screenshot({ path: path.join(runDir, `ocr-evaluation-export-${width}.png`) });
+    }
   });
 
   await test.step('correct and atomically validate the exact professional text and checklist', async () => {

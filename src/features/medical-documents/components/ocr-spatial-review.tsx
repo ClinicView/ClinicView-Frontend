@@ -8,12 +8,14 @@ import { boxError, cropProvenanceLabel, mergeWithNext, moveLine, orderedLines, r
 import { getOcrLayout, getOcrPageImage, getOcrReviewRevision, saveOcrReview } from '../services/ocr-layout.service';
 import type { OcrBox, OcrLayout, OcrLayoutPage, OcrReviewLine, OcrRevision } from '../types/ocr-layout';
 import styles from './ocr-spatial-review.module.css';
+import { OcrEvaluationExport } from './ocr-evaluation-export';
 
 interface Props {
   patientId: string;
   docId: string;
   version: number;
   canEdit: boolean;
+  canExportEvaluation: boolean;
   blocked: boolean;
   correctedText: string | null;
   onDirtyChange: (dirty: boolean) => void;
@@ -49,7 +51,7 @@ function usePageImage(patientId: string, docId: string, page: OcrLayoutPage | un
   return result.key === key ? result : { key };
 }
 
-export function OcrSpatialReview({ patientId, docId, version, canEdit, blocked, correctedText, onDirtyChange, onSavingChange, onSaved }: Props) {
+export function OcrSpatialReview({ patientId, docId, version, canEdit, canExportEvaluation, blocked, correctedText, onDirtyChange, onSavingChange, onSaved }: Props) {
   const [layout, setLayout] = useState<OcrLayout | null>(null);
   const [lines, setLines] = useState<OcrReviewLine[]>([]);
   const [saved, setSaved] = useState('[]');
@@ -311,6 +313,7 @@ export function OcrSpatialReview({ patientId, docId, version, canEdit, blocked, 
       <div><strong>{dirty ? 'Cambios sin guardar' : layout.review ? `Revisión ${layout.review.revision} guardada` : 'Sin revisión humana guardada'}</strong><p>Guardar actualiza la transcripción clínica con estos fragmentos. No valida ni publica el documento.</p>{layout.review && <p>Por {layout.review.recordedBy.fullName} (@{layout.review.recordedBy.username}) · {formatInstant(layout.review.recordedAt)}</p>}<p className={styles.caption}>Ejecución: {layout.runId}</p></div>
       <div className={styles.footerActions}><button type="button" className={styles.button} disabled={!editable || !history.length || hasPendingForm} onClick={() => { const prior = history[history.length - 1]; const selection = reviewSelection(prior, layout.pages, selectionRef.current); setLines(prior); setHistory((items) => items.slice(0, -1)); setSelectedId(selection.lineId); setPageNumber(selection.page); setNotice('Último cambio deshecho.'); }}>Deshacer</button><button type="button" className={styles.button} disabled={saving || (!dirty && !conflict)} onClick={discard}>Descartar</button><button type="button" className={`${styles.button} ${styles.primary}`} disabled={!editable || !lineDirty || hasPendingForm} onClick={() => void save()}><Icon name="check" size={17} />{saving ? 'Guardando…' : 'Guardar revisión y actualizar transcripción'}</button></div>
     </footer>
+    {canExportEvaluation && <OcrEvaluationExport key={`${layout.runId}-${layout.review?.revision ?? 0}`} patientId={patientId} docId={docId} layout={layout} dirty={dirty || blocked} busy={saving || syncPending || loading || conflict} />}
     <p className={styles.status} role="status" aria-live="polite">{notice}</p>
   </section>;
 }

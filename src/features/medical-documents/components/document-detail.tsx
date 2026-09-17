@@ -465,6 +465,7 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
           docId={docId}
           version={document.version}
           canEdit={canCorrect}
+          canExportEvaluation={can(permissions, 'documents.read') && can(permissions, 'documents.validate')}
           blocked={isDirty || isDocumentActing}
           correctedText={document.correctedText}
           onDirtyChange={setSpatialDirty}
@@ -625,7 +626,7 @@ export function DocumentDetail({ patientId, docId, permissions, onDirtyChange }:
             />
           </div>
 
-          <MetricsPanel metrics={document.metrics} confidenceLevel={document.confidenceLevel} />
+          <MetricsPanel metrics={document.metrics} confidenceLevel={document.confidenceLevel} confidence={document.ocrConfidence} />
         </section>
       </div>
 

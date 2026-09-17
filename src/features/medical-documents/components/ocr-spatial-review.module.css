@@ -103,6 +103,9 @@
 .history { padding: .375rem 1.5rem; }
 .history .field { flex: 1 1 220px; }
 .history .actionRow { align-items: flex-end; }
+.evaluationExport { padding: 1rem 1.5rem; border-top: 1px solid var(--border-clinical); background: var(--surface-subtle); }
+.evaluationExport .caption { max-width: 95ch; }
+.evaluationExport .error { margin-top: .75rem; }
 @media (max-width: 1120px) {
   .workspace { grid-template-columns: minmax(0, 1.2fr) minmax(290px, 1fr); }
   .toolbar { justify-content: flex-start; }

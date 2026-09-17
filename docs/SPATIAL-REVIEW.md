@@ -144,6 +144,11 @@ existente, sin rediseñar la pantalla ni depender únicamente de colores.
 
 ## Límites deliberados
 
+La revisión guardada puede descargarse como borrador privado para evaluación,
+sin recalcular métricas ni entrenar. Véase [OCR-EVALUATION.md](OCR-EVALUATION.md)
+para procedencia, permisos y la diferencia entre revisión de fragmentos y
+comprobación de la página completa.
+
 No se afirma cobertura ni precisión clínica a partir del número de recortes.
 Firmas, dibujos y áreas no detectadas deben contrastarse con la página completa.
 Marcar un fragmento como revisado es una comprobación humana localizada; la

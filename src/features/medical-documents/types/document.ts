@@ -48,9 +48,11 @@ export interface FinalizeDocumentReviewInput {
 }
 
 /**
- * Métricas de calidad OCR/NER calculadas por el servicio IA v2.
- * cer/wer/charAccuracy en [0,1]. estimated=true cuando no hubo texto de
- * referencia y los valores derivan de la confianza del modelo.
+ * Contrato histórico del servicio IA. Solo estimated=false identifica una
+ * comparación suministrada contra referencia; no certifica un benchmark independiente.
+ * CER/WER son tasas no negativas y pueden superar 1 por inserciones.
+ * estimated=true contiene valores derivados de confianza, no errores medidos.
+ * charAccuracy y NER permanecen por compatibilidad, no se presentan como calidad clínica.
  */
 export interface OcrMetrics {
   cer: number | null;

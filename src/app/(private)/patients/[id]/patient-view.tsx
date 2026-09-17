@@ -18,6 +18,7 @@ import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-
 import { RequiredAttachmentResolutionError } from '@/features/clinical-records/lib/record-attachments-presentation';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
+import { formatErrorRate, referenceErrorRates } from '@/features/medical-documents/lib/ocr-metrics';
 import {
   documentToExportItem,
   exportPatientPdf,
@@ -222,7 +223,7 @@ export function PatientView({ id }: PatientViewProps) {
   const metricsDocs = useMemo(
     () =>
       overview.documents
-        .filter((doc) => doc.metrics && (doc.metrics.cer != null || doc.metrics.wer != null))
+        .filter((doc) => referenceErrorRates(doc.metrics) !== null)
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [overview.documents],
   );
@@ -1036,11 +1037,12 @@ export function PatientView({ id }: PatientViewProps) {
           aria-labelledby="patient-tab-metricas"
         >
           <section className={styles.panel}>
-            <h2 className={styles.panelTitle}>Evolución CER / WER por documento</h2>
+            <h2 className={styles.panelTitle}>Comparaciones CER / WER por documento</h2>
+            <p className={styles.emptyHint}>Solo comparaciones suministradas contra una referencia; no un benchmark independiente. La confianza del modelo se excluye. Guardar o validar una historia no recalcula estas tasas.</p>
             {metricsDocs.length === 0 ? (
               <p className={styles.emptyHint}>
-                Sin métricas disponibles todavía. Se registran cuando los documentos se
-                procesan con el motor IA v2 (TrOCR).
+                Sin CER/WER medidos disponibles. Se necesita una transcripción revisada
+                contra el documento completo para evaluar errores, cobertura y orden.
               </p>
             ) : (
               <MetricsChart documents={metricsDocs} />
@@ -1107,8 +1109,8 @@ function MetricsChart({ documents }: { documents: MedicalDocument[] }) {
 
   const points = documents.map((doc, index) => ({
     x: documents.length === 1 ? 0.5 : index / (documents.length - 1),
-    cer: doc.metrics?.cer ?? null,
-    wer: doc.metrics?.wer ?? null,
+    cer: referenceErrorRates(doc.metrics)?.cer ?? null,
+    wer: referenceErrorRates(doc.metrics)?.wer ?? null,
     label: formatDate(doc.createdAt),
   }));
 
@@ -1138,7 +1140,7 @@ function MetricsChart({ documents }: { documents: MedicalDocument[] }) {
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Evolución de CER y WER por documento"
+        aria-label="Comparaciones de CER y WER contra referencias suministradas por documento"
         style={{ width: '100%', height: 'auto' }}
       >
         {gridValues.map((value, index) => (
@@ -1219,8 +1221,8 @@ function MetricsChart({ documents }: { documents: MedicalDocument[] }) {
                 <tr key={document.id}>
                   <th scope="row">{document.originalName}</th>
                   <td><time dateTime={document.createdAt}>{formatDate(document.createdAt)}</time></td>
-                  <td>{document.metrics?.cer == null ? '—' : `${(document.metrics.cer * 100).toFixed(2)}%`}</td>
-                  <td>{document.metrics?.wer == null ? '—' : `${(document.metrics.wer * 100).toFixed(2)}%`}</td>
+                  <td>{formatErrorRate(referenceErrorRates(document.metrics)?.cer ?? null)}</td>
+                  <td>{formatErrorRate(referenceErrorRates(document.metrics)?.wer ?? null)}</td>
                 </tr>
               ))}
             </tbody>

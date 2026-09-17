@@ -17,6 +17,11 @@ export function getOcrReviewRevision(patientId: string, docId: string, runId: st
   return apiGet<OcrRevision>(`${layoutPath(patientId, docId)}/reviews/${revision}?${new URLSearchParams({ runId })}`);
 }
 
+export function getOcrEvaluationSnapshot(patientId: string, docId: string, runId: string, revision: number) {
+  // Same authenticated, no-store client as protected page images; no tokens in URLs.
+  return apiBlob(`${layoutPath(patientId, docId)}/reviews/${revision}/evaluation-snapshot?${new URLSearchParams({ runId })}`);
+}
+
 export function getOcrPageImage(patientId: string, docId: string, page: number, runId: string) {
   // The authenticated client handles JWT refresh; tokens never enter URLs or image markup.
   return apiBlob(`${layoutPath(patientId, docId)}/pages/${page}/image?${new URLSearchParams({ runId })}`);

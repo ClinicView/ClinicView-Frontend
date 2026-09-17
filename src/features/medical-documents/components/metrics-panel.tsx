@@ -2,16 +2,13 @@
 
 import { Icon } from '@/shared/ui';
 import type { ConfidenceLevel, OcrMetrics } from '../types/document';
+import { formatErrorRate, modelConfidence, referenceErrorRates } from '../lib/ocr-metrics';
 import styles from './correction-view.module.css';
 
 interface MetricsPanelProps {
   metrics: OcrMetrics | null | undefined;
   confidenceLevel: ConfidenceLevel | null | undefined;
-}
-
-function pct(value: number | null): string {
-  if (value == null) return '—';
-  return `${(value * 100).toFixed(1)}%`;
+  confidence?: number | null;
 }
 
 const LEVEL_CLASS: Record<ConfidenceLevel, string> = {
@@ -26,58 +23,34 @@ const LEVEL_LABEL: Record<ConfidenceLevel, string> = {
   LOW: 'Confianza baja',
 };
 
-export function MetricsPanel({ metrics, confidenceLevel }: MetricsPanelProps) {
+export function MetricsPanel({ metrics, confidenceLevel, confidence }: MetricsPanelProps) {
+  const rates = referenceErrorRates(metrics);
+  const confidenceValue = modelConfidence(confidence);
   return (
-    <details className={styles.metricsPanel} open={Boolean(metrics)}>
+    <details className={styles.metricsPanel} open>
       <summary className={styles.metricsSummary}>
         <Icon name="chart" size={16} />
-        Métricas OCR
-        {metrics?.estimated && <span className={styles.collapsibleHint}>(estimadas)</span>}
+        Calidad OCR y confianza del modelo
       </summary>
 
-      {metrics ? (
-        <div className={styles.metricsBody}>
-          <span className={styles.metricItem} aria-label={`Tasa de error por carácter: ${pct(metrics.cer)}`}>
-            <span className={styles.metricLabel}>CER:</span>
-            <span className={styles.metricValue}>{pct(metrics.cer)}</span>
+      <div className={styles.metricsBody}>
+        {rates ? <>
+          <p className={styles.metricsNote}><strong>Comparación contra una referencia suministrada al procesamiento.</strong> No acredita una evaluación independiente ni la versión clínica actual.</p>
+          <span className={styles.metricItem} aria-label={`Tasa de error por carácter: ${formatErrorRate(rates.cer)}`}>
+            <span className={styles.metricLabel}>CER:</span><span className={styles.metricValue}>{formatErrorRate(rates.cer)}</span>
           </span>
-          <span className={styles.metricDivider} aria-hidden="true">|</span>
-          <span className={styles.metricItem} aria-label={`Tasa de error por palabra: ${pct(metrics.wer)}`}>
-            <span className={styles.metricLabel}>WER:</span>
-            <span className={styles.metricValue}>{pct(metrics.wer)}</span>
+          <span className={styles.metricItem} aria-label={`Tasa de error por palabra: ${formatErrorRate(rates.wer)}`}>
+            <span className={styles.metricLabel}>WER:</span><span className={styles.metricValue}>{formatErrorRate(rates.wer)}</span>
           </span>
-          <span className={styles.metricDivider} aria-hidden="true">|</span>
-          <span className={styles.metricItem} aria-label={`Exactitud por carácter: ${pct(metrics.charAccuracy)}`}>
-            <span className={styles.metricLabel}>Acc:</span>
-            <span className={styles.metricValue}>{pct(metrics.charAccuracy)}</span>
-          </span>
-          {metrics.nerF1 != null && (
-            <>
-              <span className={styles.metricDivider} aria-hidden="true">|</span>
-              <span className={styles.metricItem} aria-label={`Puntuación F1 de entidades: ${pct(metrics.nerF1)}`}>
-                <span className={styles.metricLabel}>NER F1:</span>
-                <span className={styles.metricValue}>{pct(metrics.nerF1)}</span>
-              </span>
-            </>
-          )}
-          {confidenceLevel && (
-            <span className={`${styles.confidenceBadge} ${LEVEL_CLASS[confidenceLevel]}`}>
-              {LEVEL_LABEL[confidenceLevel]}
-            </span>
-          )}
-          {metrics.estimated && (
-            <span className={styles.metricsNote}>
-              Estimadas a partir de la confianza del modelo; las métricas reales se
-              calculan al validar contra el texto corregido.
-            </span>
-          )}
-        </div>
-      ) : (
-        <p className={styles.metricsEmpty}>
-          Las métricas CER/WER estarán disponibles cuando el documento se procese
-          con el motor IA v2 (TrOCR).
-        </p>
-      )}
+          <p className={styles.metricsNote}>Menor error es mejor. Las inserciones pueden llevar CER/WER por encima del 100 %. No son porcentajes de exactitud clínica.</p>
+        </> : <p className={styles.metricsNote}><strong>Sin CER/WER medidos contra una referencia.</strong> La confianza del modelo no permite calcular estos errores ni la calidad de las entidades.</p>}
+        <span className={styles.metricItem}>
+          <span className={styles.metricLabel}>Confianza del modelo:</span>
+          <span className={styles.metricValue}>{confidenceValue === null ? 'No disponible' : `${(confidenceValue * 100).toFixed(1)}%`}</span>
+        </span>
+        {confidenceLevel && <span className={`${styles.confidenceBadge} ${LEVEL_CLASS[confidenceLevel]}`}>{LEVEL_LABEL[confidenceLevel]}</span>}
+        <p className={styles.metricsNote}>La confianza es una señal automática, no precisión medida. Guardar o validar en la web no recalcula CER/WER. Para evaluarlos, utiliza una transcripción revisada y comprueba también las páginas completas, las zonas omitidas y el orden de lectura.</p>
+      </div>
     </details>
   );
 }
