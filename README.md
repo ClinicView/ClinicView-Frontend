@@ -1,17 +1,17 @@
 ﻿# ClinicView — Frontend
 
-Interfaz web de la plataforma clínica hospitalaria **ClinicView**, orientada a profesionales de salud y administradores. Construida con Next.js 15 y React 19.
+Interfaz web de la plataforma clínica hospitalaria **ClinicView**, orientada a profesionales de salud y administradores. Construida con Next.js 16 y React 19.
 
 ## Tecnologías
 
-- [Next.js 15](https://nextjs.org/) (App Router)
+- [Next.js 16](https://nextjs.org/) (App Router)
 - React 19
 - TypeScript
 - ESLint
 
 ## Requisitos
 
-- Node.js 18+
+- Node.js 22.13+ o 24+ recomendado para ejecutar también las pruebas de navegador/PDF
 - npm
 
 ## Instalación
@@ -41,6 +41,9 @@ cp .env.example .env.local
 | `npm run start` | Inicia el servidor de producción |
 | `npm run lint` | Ejecuta ESLint |
 | `npm run typecheck` | Verificación de tipos TypeScript |
+| `npm test` | Pruebas unitarias |
+| `npm run test:e2e` | Recorrido aislado de navegador desde carga hasta PDF, con OCR sintético |
+| `npm run test:e2e:guards` | Regresiones negativas del verificador PDF, sin servidores |
 | `npm run gen-types` | Genera tipos desde el esquema OpenAPI del backend |
 
 ## Estructura
@@ -62,5 +65,9 @@ src/
 - **Admin** — Gestión de usuarios del sistema
 
 ## Backend
+
+La [guía de aceptación en navegador](docs/BROWSER-E2E.md) explica la base aislada,
+los puertos exclusivos y cómo verificar texto completo, orden, fechas e imágenes
+del PDF descargado. No utiliza historias reales ni mide la precisión del OCR.
 
 Este frontend consume la API REST del backend de ClinicView. Asegúrate de tener el backend corriendo antes de iniciar el frontend en modo desarrollo.

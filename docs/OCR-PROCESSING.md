@@ -74,6 +74,11 @@ el original y no necesita dejar una petición HTTP abierta durante todo el OCR.
 
 ## Verificación
 
+La [suite de navegador hasta PDF](BROWSER-E2E.md) automatiza ahora un recorrido
+clínico completo sobre servicios y base de prueba aislados. El límite OCR es
+sintético para hacer la aceptación reproducible; no sustituye una evaluación del
+modelo real. La comprobación manual histórica descrita abajo conserva su alcance.
+
 `npm test` cubre contadores desconocidos o incoherentes, etapas, errores definitivos,
 permisos de reintento derivados del contrato, actualizaciones de la misma versión,
 respuestas antiguas, sondeo serial, cancelación, timeout y recuperación con backoff.

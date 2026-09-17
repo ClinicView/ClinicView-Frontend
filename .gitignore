@@ -7,6 +7,10 @@ out/
 
 # Build artifacts
 tsconfig.tsbuildinfo
+playwright-report/
+test-results/
+browser-e2e-results/
+.browser-e2e-runs/
 
 # Environment variables (keep .env.example)
 .env
