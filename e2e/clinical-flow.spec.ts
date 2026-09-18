@@ -51,7 +51,7 @@ const runDir: string = path.resolve(runDirectory);
 const correctedSource = [
   'QA_ORIGINAL_VALIDADO',
   'Registro de demostracion para prueba automatizada',
-  'Contenido sintetico sin valor asistencial',
+  'Prueba tipográfica sin valor asistencial: SatO₂ ± µg ≥ ≤ → ✓',
   'Segunda pagina del documento de prueba',
   'Revision humana requerida antes de publicacion',
   'Fin del original de demostracion',
@@ -388,6 +388,28 @@ test('complete synthetic clinical flow preserves reviewed content, dates, images
     }
   });
 
+  await test.step('cancel an export if its Unicode font fails and allow a subsequent retry', async () => {
+    const url = `${manifest.frontendUrl}/fonts/pdf/NotoSans-Regular.ttf`;
+    let reads = 0;
+    const downloads: string[] = [];
+    const onDownload = (download: { suggestedFilename(): string }) => downloads.push(download.suggestedFilename());
+    page.on('download', onDownload);
+    await page.route(url, async route => {
+      reads += 1;
+      await route.fulfill({ status: 503, body: 'Synthetic unavailable font' });
+    });
+    try {
+      await page.getByRole('button', { name: 'Exportar historia completa', exact: true }).click();
+      await expect(page.getByText(/No se pudieron cargar las fuentes del PDF/)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('button', { name: 'Exportar historia completa', exact: true })).toBeEnabled();
+      expect(reads).toBeGreaterThan(0);
+      expect(downloads).toEqual([]);
+    } finally {
+      await page.unroute(url);
+      page.off('download', onDownload);
+    }
+  });
+
   await test.step('download and independently inspect the complete PDF, not merely a successful HTTP response', async () => {
     const downloaded = page.waitForEvent('download');
     const exported = page.waitForResponse((response) => matches(response, 'GET', `/patients/${patientId}/clinical-history/export`));
@@ -402,6 +424,7 @@ test('complete synthetic clinical flow preserves reviewed content, dates, images
     await download.saveAs(pdfPath);
     const report = await validateClinicalPdf(await readFile(pdfPath), {
       requiredTexts: [manifest.patient.documentNumber, 'QA_FIN_CONTENIDO', 'QA_IMAGEN_DEMOSTRACION', manifest.doctor.fullName, 'Versión confirmada', ...correctedSource.split('\n'), ...noteParagraphs],
+      requiredUnicodeTexts: ['SatO₂', '±', 'µg', '≥', '≤', '→', '✓'],
       forbiddenTexts: ['QA_NO_VALIDADO'],
       orderedMarkers: ['QA_ORIGINAL_VALIDADO', 'QA_ATENCION_ORIGINAL', 'QA_CONSULTA_POSTERIOR'],
       expectedDates: ['05 de enero de 2024', '10 de enero de 2024', '20 de febrero de 2024'],

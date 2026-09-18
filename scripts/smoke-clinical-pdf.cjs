@@ -14,6 +14,7 @@ require(resolve(root, '../ClinicView-Backend/node_modules/tsconfig-paths')).regi
   paths: { '@/*': ['./src/*'] },
 });
 const { createPatientPdf } = require('../src/features/medical-documents/lib/pdf-export');
+const { PDF_FONT_FILES } = require('../src/features/medical-documents/lib/pdf-fonts');
 const { clinicalHistoryPdfOptions } = require('../src/features/patients/lib/history-pdf');
 
 async function main() {
@@ -145,6 +146,7 @@ async function main() {
     generatedAt: now,
   };
   const options = clinicalHistoryPdfOptions(history, 'EPISODE');
+  options.fontSources = Object.fromEntries(Object.entries(PDF_FONT_FILES).map(([key, path]) => [key, resolve(root, `public${path}`)]));
   const png = readFileSync(resolve(root, 'public/brand/clinicview-mark.png'));
   options.brandLogoSource = `data:image/png;base64,${readFileSync(resolve(root, 'public/brand/clinicview-logo-horizontal.png')).toString('base64')}`;
   options.items[1].attachments.push({

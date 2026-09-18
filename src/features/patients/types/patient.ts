@@ -139,6 +139,10 @@ export interface ClinicalHistoryExportRecord {
 }
 
 export interface ClinicalHistoryExportDocument {
+  createdByActor?: import('../../../shared/types/api.generated').components['schemas']['ClinicalHistoryExportActorDto'];
+  correctedByActor?: import('../../../shared/types/api.generated').components['schemas']['ClinicalHistoryExportActorDto'];
+  reviewedByActor?: import('../../../shared/types/api.generated').components['schemas']['ClinicalHistoryExportActorDto'];
+  updatedByActor?: import('../../../shared/types/api.generated').components['schemas']['ClinicalHistoryExportActorDto'];
   clinicalMetadata?: DocumentClinicalMetadata;
   metadataRevisions?: DocumentMetadataRevision[];
   id: string;

@@ -42,6 +42,7 @@ import type { MedicalDocument } from '../types/document';
 import { documentSortDate, documentMetadataSections } from './document-metadata';
 import type { ClinicalSummary } from '@/features/patients/types/clinical-summary';
 import { clinicalSummarySections } from '@/features/patients/lib/clinical-summary-presentation';
+import { PDF_FONT_FILES, PdfTypographyError, preparePdfFonts, unsupportedPdfCharacters, type PdfFontSources } from './pdf-fonts';
 
 export type ExportSectionBlock =
   | { kind: 'text'; label?: string; content: string }
@@ -135,6 +136,17 @@ function formatDateTime(iso: string | null): string | null {
   });
 }
 
+function documentActorLine(
+  role: string,
+  id: string | null,
+  actor?: ClinicalHistoryExportDocument['createdByActor'],
+): string | null {
+  if (!id && !actor?.id) return null;
+  const name = actor?.fullName?.trim() || actor?.displayName?.trim() || 'Autor histórico no registrado';
+  const username = actor?.username?.trim();
+  return `${role}: ${name}${username && name !== `@${username}` ? ` · @${username}` : ''}${actor?.isActive === false ? ' · Cuenta inactiva' : ''} · ID: ${id || actor?.id}`;
+}
+
 export function documentToExportItem(document: MedicalDocument): ExportItem {
   const correctedText = document.correctedText?.trim();
   const text =
@@ -175,7 +187,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
 
   if (document.validationChecklist?.items.length) {
     sections.push({
-      title: `ATESTACIÓN CLÍNICA · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      title: `CONFIRMACIONES DE REVISIÓN · ESQUEMA V${document.validationChecklist.schemaVersion}`,
       content: document.validationChecklist.items
         .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
         .join('\n'),
@@ -198,7 +210,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   return {
     title: document.originalName,
     date: documentSortDate(document),
-    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica (sin hora registrada)' : 'Carga (fecha clínica desconocida)',
+    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
@@ -209,7 +221,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
 export function clinicalHistoryDocumentToExportItem(
   document: ClinicalHistoryExportDocument,
 ): ExportItem {
-  const text = document.clinicalText ?? '';
+  const text = document.status === 'VALIDATED' ? (document.clinicalText ?? '') : '';
   const parsed = parseClinicalSections(text);
   const sections: ExportSection[] = [
     ...documentMetadataSections(document.clinicalMetadata),
@@ -244,7 +256,7 @@ export function clinicalHistoryDocumentToExportItem(
 
   if (document.validationChecklist?.items.length) {
     sections.push({
-      title: `ATESTACIÓN CLÍNICA · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      title: `CONFIRMACIONES DE REVISIÓN · ESQUEMA V${document.validationChecklist.schemaVersion}`,
       content: document.validationChecklist.items
         .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
         .join('\n'),
@@ -258,7 +270,7 @@ export function clinicalHistoryDocumentToExportItem(
     ].join('\n') });
   }
   const trace = [
-    `Fuente del texto: ${document.textSource === 'CORRECTED' ? 'Corrección profesional' : document.textSource === 'OCR' ? 'OCR validado' : 'Sin texto exportable'}`,
+    `Fuente del texto: ${document.status !== 'VALIDATED' ? 'Sin texto exportable' : document.textSource === 'CORRECTED' ? 'Texto corregido y validado' : document.textSource === 'OCR' ? 'OCR validado' : 'Sin texto exportable'}`,
     `ID del documento: ${document.id}`,
     `Subido: ${formatDateTime(document.createdAt) ?? 'No registrado'}`,
     document.processedAt ? `Procesado: ${formatDateTime(document.processedAt)}` : null,
@@ -267,17 +279,18 @@ export function clinicalHistoryDocumentToExportItem(
     document.validationAttestedAt
       ? `Atestación registrada: ${formatDateTime(document.validationAttestedAt)}`
       : null,
-    document.createdBy ? `Creador (ID): ${document.createdBy}` : null,
-    document.correctedById ? `Corrector (ID): ${document.correctedById}` : null,
-    document.reviewedBy ? `Revisor (ID): ${document.reviewedBy}` : null,
-    document.updatedBy ? `Última actualización (ID): ${document.updatedBy}` : null,
+    documentActorLine('Creador', document.createdBy, document.createdByActor),
+    documentActorLine('Corrector', document.correctedById, document.correctedByActor),
+    documentActorLine('Revisor', document.reviewedBy, document.reviewedByActor),
+    documentActorLine('Última actualización', document.updatedBy, document.updatedByActor),
+    'Identidades consultadas en el directorio al exportar; no son nombres históricos certificados ni acreditan una profesión. La revisión interna no equivale a una firma digital certificada.',
   ].filter((line): line is string => Boolean(line));
   sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
 
   return {
     title: document.originalName,
     date: documentSortDate(document),
-    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica (sin hora registrada)' : 'Carga (fecha clínica desconocida)',
+    dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
     sections,
@@ -481,12 +494,38 @@ export interface PatientPdfOptions {
   generatedAt?: string;
   orderDescription?: string;
   brandLogoSource?: string;
+  /** Absolute local paths for server/tests; browser exports use same-origin assets. */
+  fontSources?: PdfFontSources;
 }
 
 export async function createPatientPdf(options: PatientPdfOptions, resources?: { loadBlob: AttachmentBlobLoader; encodeDataUrl: AttachmentDataUrlEncoder }): Promise<Blob> {
   const { patient, items, subtitle, generatedAt, orderDescription } = options;
   const resolvedItems = await resolveExportItemAttachments(items, resources?.loadBlob, resources?.encodeDataUrl);
-  const { pdf, Document, Image: PdfImage, Link: PdfLink, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+  const { pdf, Document, Image: PdfImage, Link: PdfLink, Page, Text, View, StyleSheet, Font } = await import('@react-pdf/renderer');
+  // Never introduce discretionary hyphens into clinical terms or audit IDs.
+  Font.registerHyphenationCallback(word => [word]);
+  const sources = options.fontSources ?? Object.fromEntries(
+    Object.entries(PDF_FONT_FILES).map(([key, file]) => [key, new URL(file, window.location.origin).toString()]),
+  ) as PdfFontSources;
+  let fonts: Awaited<ReturnType<typeof preparePdfFonts>>;
+  try { fonts = await preparePdfFonts(Font, sources); }
+  catch { throw new PdfTypographyError('No se pudieron cargar las fuentes del PDF. Comprueba tu conexión y vuelve a exportar; no se descargó un documento incompleto.'); }
+  const textValues = [
+    subtitle, orderDescription ?? '', ...Object.values(patient).filter((value): value is string => typeof value === 'string'),
+    ...items.flatMap(item => [item.title, item.dateLabel, item.status, item.origin,
+      ...item.sections.flatMap(section => [section.title, section.content ?? '',
+        ...(section.blocks ?? []).flatMap(block => [block.label ?? '', ...(
+          block.kind === 'text' ? [block.content] : block.kind === 'list' ? block.items : [...block.columns, ...block.rows.flat()]
+        )]),
+      ]),
+      ...item.attachments.flatMap(attachment => [attachment.originalName, attachment.caption ?? '', attachment.description ?? '', attachment.sectionTitle ?? '']),
+    ]),
+  ];
+  const unsupported = unsupportedPdfCharacters(textValues, fonts.regular, fonts.bold);
+  if (unsupported.length) {
+    const codes = unsupported.slice(0, 6).map(character => `U+${character.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`).join(', ');
+    throw new PdfTypographyError(`No se exportó el PDF: hay caracteres sin soporte tipográfico (${codes}). El texto guardado no cambió. Solicita ampliar la tipografía para conservar esos símbolos.`);
+  }
   const brandLogoUrl = options.brandLogoSource ?? new URL(CLINICVIEW_BRAND_ASSETS.horizontal.src, window.location.origin).toString();
 
   const styles = StyleSheet.create({
@@ -495,7 +534,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       paddingBottom: 64,
       paddingHorizontal: 48,
       fontSize: 10,
-      fontFamily: 'Helvetica',
+      fontFamily: fonts.families,
       color: PDF_COLORS.ink,
     },
     header: {
@@ -515,9 +554,9 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       height: 33,
     },
     headerRight: { alignItems: 'flex-end' },
-    headerPatient: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
+    headerPatient: { fontSize: 10, fontWeight: 700 },
     headerMeta: { fontSize: 8, color: PDF_COLORS.primary, marginTop: 2 },
-    coverTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PDF_COLORS.ink, marginBottom: 4 },
+    coverTitle: { fontSize: 16, fontWeight: 700, color: PDF_COLORS.ink, marginBottom: 4 },
     coverSubtitle: { fontSize: 10, color: PDF_COLORS.primary, marginBottom: 18 },
     patientDetails: {
       fontSize: 8.5,
@@ -533,13 +572,13 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       padding: 8,
       marginBottom: 10,
     },
-    itemTitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: PDF_COLORS.ink },
+    itemTitle: { fontSize: 11, fontWeight: 700, color: PDF_COLORS.ink },
     itemMeta: { fontSize: 8.5, color: PDF_COLORS.primary, marginTop: 3 },
     sectionTitle: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       color: PDF_COLORS.primary,
-      letterSpacing: 0.8,
+      letterSpacing: 0,
       marginTop: 10,
       marginBottom: 4,
     },
@@ -547,7 +586,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     structuredBlock: { marginBottom: 7 },
     blockLabel: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       color: PDF_COLORS.ink,
       marginBottom: 2,
     },
@@ -573,7 +612,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       lineHeight: 1.3,
     },
     dataTableHeading: {
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       color: PDF_COLORS.primary,
     },
     dataCards: { gap: 5 },
@@ -587,7 +626,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     dataCardTitle: {
       marginBottom: 3,
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       color: PDF_COLORS.primary,
     },
     dataCardField: {
@@ -600,7 +639,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       width: '34%',
       paddingRight: 4,
       fontSize: 7.5,
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       color: PDF_COLORS.ink,
     },
     dataCardValue: {
@@ -621,8 +660,8 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     attachmentLabel: {
       marginBottom: 5,
       fontSize: 7.5,
-      fontFamily: 'Helvetica-Bold',
-      letterSpacing: 0.6,
+      fontWeight: 700,
+      letterSpacing: 0,
       color: PDF_COLORS.primary,
     },
     attachmentImage: {
@@ -633,7 +672,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     attachmentCaption: {
       marginBottom: 2,
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
+      fontWeight: 700,
       lineHeight: 1.4,
       color: PDF_COLORS.ink,
     },
@@ -735,7 +774,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
             month: 'long',
             year: 'numeric',
           })}{' '}
-          · Sexo:{' '}
+          · Sexo registrado en ficha:{' '}
           {SEX_LABEL[patient.sex] ?? patient.sex}
           {'\n'}Contacto:{' '}
           {[patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado'}

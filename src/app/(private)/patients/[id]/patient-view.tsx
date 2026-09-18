@@ -16,6 +16,7 @@ import {
 } from '@/features/clinical-records/lib/record-details-presentation';
 import { getRecordTypeDefinition } from '@/features/clinical-records/lib/record-type-definitions';
 import { RequiredAttachmentResolutionError } from '@/features/clinical-records/lib/record-attachments-presentation';
+import { PdfTypographyError } from '@/features/medical-documents/lib/pdf-fonts';
 import type { MedicalDocument, NerEntity } from '@/features/medical-documents';
 import { parseClinicalSections } from '@/features/medical-documents';
 import { formatErrorRate, referenceErrorRates } from '@/features/medical-documents/lib/ocr-metrics';
@@ -288,7 +289,7 @@ export function PatientView({ id }: PatientViewProps) {
       await exportPatientPdf({ patient, items, subtitle, fileName, orderDescription });
     } catch (cause) {
       setExportError(
-        cause instanceof RequiredAttachmentResolutionError
+        cause instanceof RequiredAttachmentResolutionError || cause instanceof PdfTypographyError
           ? cause.message
           : 'No se pudo generar el PDF. Inténtalo nuevamente.',
       );
@@ -339,7 +340,7 @@ export function PatientView({ id }: PatientViewProps) {
       await exportClinicalHistoryPdf(history);
     } catch (cause) {
       setExportError(
-        cause instanceof RequiredAttachmentResolutionError
+        cause instanceof RequiredAttachmentResolutionError || cause instanceof PdfTypographyError
           ? cause.message
           : 'La historia se obtuvo, pero no se pudo generar el PDF. Inténtalo nuevamente.',
       );
@@ -880,11 +881,17 @@ export function PatientView({ id }: PatientViewProps) {
 
                         {entry.kind === 'document' && parsed && parsed.isStructured && (
                           <>
+                            {parsed.preamble.trim() && (
+                              <div>
+                                <h3 className={styles.sectionHeading}>Texto sin clasificar</h3>
+                                <p className={styles.sectionText}>{parsed.preamble}</p>
+                              </div>
+                            )}
                             {parsed.sections.map((section, index) => (
                               <div key={index}>
                                 <h3 className={styles.sectionHeading}>{section.title}</h3>
                                 <p className={styles.sectionText}>
-                                  {section.content.trim() || '—'}
+                                  {section.content.trim() ? section.content : '—'}
                                 </p>
                               </div>
                             ))}

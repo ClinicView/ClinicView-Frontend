@@ -1,13 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { Icon } from '@/shared/ui';
 import {
-  buildClinicalText,
-  buildFieldsContent,
-  parseClinicalSections,
-  tryParseFields,
-} from '../lib/clinical-sections';
+  createClinicalTextDraft,
+  receiveClinicalText,
+  updateClinicalField,
+  updateClinicalPreamble,
+  updateClinicalSection,
+  type ClinicalTextDraft,
+} from '../lib/clinical-text-draft';
 import styles from './correction-view.module.css';
 
 export interface OcrSuggestion {
@@ -25,7 +27,7 @@ interface StructuredTextEditorProps {
 
 /**
  * Editor del texto corregido estructurado por secciones de la historia
- * clínica. Parsea el texto en secciones canónicas; los cambios se
+ * clínica. Conserva los títulos y el orden de la fuente; los cambios se
  * reconstruyen al texto plano para no romper el contrato con el backend.
  * Si el texto no tiene encabezados reconocibles, cae a un textarea libre.
  */
@@ -36,7 +38,15 @@ export function StructuredTextEditor({
   onChange,
   onDismissSuggestion,
 }: StructuredTextEditorProps) {
-  const parsed = useMemo(() => parseClinicalSections(text), [text]);
+  const [storedDraft, setStoredDraft] = useState(() => createClinicalTextDraft(text));
+  const draft = receiveClinicalText(storedDraft, text);
+  if (draft !== storedDraft) setStoredDraft(draft);
+  const parsed = draft.parsed;
+
+  function publish(next: ClinicalTextDraft) {
+    setStoredDraft(next);
+    if (next.emittedText !== null) onChange(next.emittedText);
+  }
 
   if (!text.trim()) {
     return (
@@ -92,17 +102,11 @@ export function StructuredTextEditor({
   }
 
   function updateSection(index: number, content: string) {
-    const next = {
-      ...parsed,
-      sections: parsed.sections.map((section, i) =>
-        i === index ? { ...section, content } : section,
-      ),
-    };
-    onChange(buildClinicalText(next));
+    publish(updateClinicalSection(draft, index, content));
   }
 
   function updatePreamble(content: string) {
-    onChange(buildClinicalText({ ...parsed, preamble: content }));
+    publish(updateClinicalPreamble(draft, content));
   }
 
   function sectionSuggestions(content: string): OcrSuggestion[] {
@@ -130,7 +134,9 @@ export function StructuredTextEditor({
       )}
 
       {parsed.sections.map((section, index) => {
-        const fields = tryParseFields(section.content);
+        // Keep control identity stable while typing. Reparse only external text,
+        // not every colon/newline emitted by this editor itself.
+        const fields = draft.fields[index];
         const sectionSugg = sectionSuggestions(section.content);
 
         return (
@@ -155,10 +161,7 @@ export function StructuredTextEditor({
                       className={styles.fieldInput}
                       value={field.value}
                       onChange={(event) => {
-                        const nextFields = fields.map((f, i) =>
-                          i === fieldIndex ? { ...f, value: event.target.value } : f,
-                        );
-                        updateSection(index, buildFieldsContent(nextFields));
+                        publish(updateClinicalField(draft, index, fieldIndex, event.target.value));
                       }}
                       disabled={disabled}
                       aria-label={`${section.title} — ${field.label}`}

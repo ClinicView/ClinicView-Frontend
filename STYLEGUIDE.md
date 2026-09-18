@@ -131,14 +131,20 @@ no truncar el estado esencial.
 
 Los estados y contratos son funcionales, no solo visuales:
 `PENDING → PROCESSING → PROCESSED → VALIDATED/REJECTED`, además de `FAILED`.
-La corrección OCR debe conservar el parser y el texto plano canónico. Secciones:
+La corrección OCR conserva el texto plano original revisado, sus encabezados,
+subtipos y orden. No impone seis secciones genéricas ni transforma diagnósticos
+presuntivos, definitivos o planes en «Observaciones». El parser solo reconoce
+etiquetas explícitas; lo desconocido se conserva, no se interpreta clínicamente.
 
-1. `DATOS DE IDENTIFICACIÓN`
-2. `ANTECEDENTES`
-3. `ANAMNESIS / ENFERMEDAD ACTUAL`
-4. `FUNCIONES BIOLÓGICAS`
-5. `EXAMEN FÍSICO`
-6. `OBSERVACIONES`
+- El preámbulo debe aparecer también en la historia, no solo en el editor.
+- Los valores inline (`Diagnóstico: valor`) son contenido editable, no títulos.
+- Campos con continuación multilínea usan textarea; no aplanar ni recortar texto.
+- El editor conserva los saltos de línea y no cambia de control mientras se escribe.
+- El PDF utiliza fuentes locales con cobertura comprobada; no sustituye símbolos
+  clínicos silenciosamente. Títulos originales, texto seleccionable y orden se
+  verifican sobre los bytes exportados, no solo sobre la respuesta del servidor.
+
+Detalles y pruebas: [fidelidad documental](docs/CLINICAL-DOCUMENT-FIDELITY.md).
 
 ## Referencias de patrones
 

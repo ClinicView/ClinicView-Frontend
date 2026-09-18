@@ -979,6 +979,91 @@ export interface paths {
         patch: operations["DocumentMetadataController_update"];
         trace?: never;
     };
+    "/api/patients/{patientId}/documents/{id}/ocr-layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener geometría original y última revisión espacial OCR */
+        get: operations["OcrLayoutController_getLayout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{id}/ocr-layout/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Guardar revisión espacial y texto corregido atómicamente, sin validar clínicamente */
+        patch: operations["OcrLayoutController_saveReview"];
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{id}/ocr-layout/reviews/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar una revisión histórica inmutable de una ejecución OCR */
+        get: operations["OcrLayoutController_getRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{id}/ocr-layout/pages/{page}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener la página preservada privada de la ejecución OCR indicada */
+        get: operations["OcrLayoutController_getPageImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/patients/{patientId}/documents/{id}/ocr-layout/reviews/{revision}/evaluation-snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar borrador privado de evaluación de una ejecución y revisión OCR exactas */
+        get: operations["OcrLayoutController_getEvaluationSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -1797,6 +1882,19 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ClinicalHistoryExportActorDto: {
+            id?: string | null;
+            fullName?: string | null;
+            username?: string | null;
+            isActive?: boolean | null;
+            /** @description Nombre actual legible o ausencia explícita; no acredita profesión ni firma. */
+            displayName: string;
+            /**
+             * @description El directorio actual no es una instantánea del nombre que existía en la fecha del evento.
+             * @enum {string}
+             */
+            identitySource: "CURRENT_DIRECTORY" | "UNAVAILABLE";
+        };
         ClinicalHistoryExportDocumentDto: {
             clinicalMetadata: components["schemas"]["DocumentClinicalMetadataDto"];
             metadataRevisions: components["schemas"]["DocumentMetadataRevisionDto"][];
@@ -1818,14 +1916,18 @@ export interface components {
             /** Format: date-time */
             correctedAt?: string | null;
             correctedById?: string | null;
+            correctedByActor?: components["schemas"]["ClinicalHistoryExportActorDto"];
             /** Format: date-time */
             reviewedAt?: string | null;
             reviewedBy?: string | null;
+            reviewedByActor?: components["schemas"]["ClinicalHistoryExportActorDto"];
             validationChecklist?: Record<string, never> | null;
             /** Format: date-time */
             validationAttestedAt?: string | null;
             createdBy?: string | null;
+            createdByActor?: components["schemas"]["ClinicalHistoryExportActorDto"];
             updatedBy?: string | null;
+            updatedByActor?: components["schemas"]["ClinicalHistoryExportActorDto"];
         };
         ClinicalHistoryExportResponseDto: {
             scope: components["schemas"]["HistoryExportScopeDto"];
@@ -2423,6 +2525,8 @@ export interface components {
             profession?: string | null;
         };
         DocumentResponseDto: {
+            /** @description Durable OCR job, safe progress/error snapshot; progress does not change the clinical document version. */
+            processing?: Record<string, never> | null;
             clinicalMetadata?: components["schemas"]["DocumentClinicalMetadataDto"];
             id: string;
             patientId: string;
@@ -2486,6 +2590,10 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        ProcessDocumentDto: {
+            /** @description Version displayed by the caller; repeated submissions of the same accepted version do not start another job. */
+            expectedVersion?: number;
+        };
         CorrectedEntityDto: {
             /** @enum {string} */
             type?: "DIAGNOSIS" | "SYMPTOM" | "MEDICATION" | "PROCEDURE" | "CLINICAL_DATE" | "OBSERVATION";
@@ -2533,6 +2641,25 @@ export interface components {
             id: string;
             version: number;
             clinicalMetadata: components["schemas"]["DocumentClinicalMetadataDto"];
+        };
+        OcrReviewLineDto: {
+            lineId: string;
+            page: number;
+            bbox: number[];
+            order: number;
+            text: string;
+            reviewed: boolean;
+            /** @description Original machine line IDs. Empty only for a justified manual region. */
+            sourceLineIds: string[];
+            reason?: string;
+        };
+        SaveOcrLayoutReviewDto: {
+            /** @description Explicit confirmation before replacing a previously corrected clinical text. */
+            confirmTextReplacement?: boolean;
+            expectedVersion: number;
+            runId: string;
+            lines: components["schemas"]["OcrReviewLineDto"][];
+            reason?: string;
         };
         ClinicalWorkItemDto: {
             id: string;
@@ -4582,7 +4709,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessDocumentDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -4740,6 +4871,119 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentMetadataUpdateResponseDto"];
                 };
+            };
+        };
+    };
+    OcrLayoutController_getLayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OcrLayoutController_saveReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveOcrLayoutReviewDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OcrLayoutController_getRevision: {
+        parameters: {
+            query: {
+                runId: string;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OcrLayoutController_getPageImage: {
+        parameters: {
+            query: {
+                runId: string;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+                page: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OcrLayoutController_getEvaluationSnapshot: {
+        parameters: {
+            query: {
+                runId: string;
+            };
+            header?: never;
+            path: {
+                patientId: string;
+                id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

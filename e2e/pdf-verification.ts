@@ -29,6 +29,8 @@ export interface ClinicalPdfInspection {
 
 export interface ClinicalPdfExpectations {
   requiredTexts?: readonly string[];
+  /** Exact Unicode semantics: NFC only, so O₂ cannot be satisfied by O2. */
+  requiredUnicodeTexts?: readonly string[];
   forbiddenTexts?: readonly string[];
   /** Use unique BODY text, not titles repeated in the table of contents. */
   orderedMarkers?: readonly string[];
@@ -95,7 +97,8 @@ export async function inspectClinicalPdf(bytes: Uint8Array): Promise<ClinicalPdf
     for (let number = 1; number <= document.numPages; number += 1) {
       const page = await document.getPage(number);
       const viewport = page.getViewport({ scale: 1 });
-      const content = await page.getTextContent();
+      // PDF.js otherwise compatibility-normalizes µ to μ before we can inspect it.
+      const content = await page.getTextContent({ disableNormalization: true });
       const fragments: PdfTextFragment[] = [];
       for (const item of content.items) {
         if (!('str' in item) || !item.str.trim()) continue;
@@ -190,6 +193,13 @@ export function verifyClinicalPdfInspection(
 ): ClinicalPdfVerification {
   const issues: string[] = [];
   const text = normalizePdfText(inspection.text);
+  const unicodeText = inspection.pages.flatMap(page => page.fragments.map(fragment => fragment.text))
+    .join(' ').normalize('NFC').replace(/\s+/g, ' ').trim();
+  for (const required of expected.requiredUnicodeTexts ?? []) {
+    if (!unicodeText.includes(required.normalize('NFC').replace(/\s+/g, ' ').trim())) {
+      issues.push(`Missing exact Unicode PDF text: ${required}`);
+    }
+  }
   if (inspection.pageCount < (expected.minPageCount ?? 1)) issues.push('PDF has too few pages.');
   if (expected.maxPageCount !== undefined && inspection.pageCount > expected.maxPageCount) {
     issues.push('PDF has unexpectedly many pages.');

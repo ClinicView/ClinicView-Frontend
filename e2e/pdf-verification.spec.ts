@@ -66,6 +66,16 @@ test.describe('downloaded clinical PDF verifier guards', () => {
     expect(verifyClinicalPdfInspection(truncated, expectations).issues).toContain('Missing PDF text: FIN COMPLETO');
   });
 
+  test('does not let compatibility normalization hide corrupted clinical subscripts', () => {
+    const source = fixture();
+    source.pages[0].fragments.push(text('SatO2 98 %', 190));
+    expect(verifyClinicalPdfInspection(source, { requiredUnicodeTexts: ['SatO₂'] }).issues)
+      .toContain('Missing exact Unicode PDF text: SatO₂');
+    source.pages[0].fragments.pop();
+    source.pages[0].fragments.push(text('SatO₂ 98 %', 190));
+    expect(verifyClinicalPdfInspection(source, { requiredUnicodeTexts: ['SatO₂'] }).issues).toEqual([]);
+  });
+
   test('fails if unvalidated OCR leaks into the actual exported bytes', () => {
     const leaked = fixture();
     leaked.text += ' OCR NO VALIDADO';

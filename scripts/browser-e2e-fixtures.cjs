@@ -11,7 +11,7 @@ const sharp = createRequire(require.resolve('next/package.json'))('sharp');
 const visibleLines = [
   'QA_ORIGINAL_VALIDADO',
   'Registro de demostracion para prueba automatizada',
-  'Contenido sintetico sin valor asistencial',
+  'Prueba tipográfica sin valor asistencial: SatO₂ ± µg ≥ ≤ → ✓',
   'Segunda pagina del documento de prueba',
   'Revision humana requerida antes de publicacion',
   'Fin del original de demostracion',
