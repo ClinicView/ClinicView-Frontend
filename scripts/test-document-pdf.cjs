@@ -72,6 +72,35 @@ async function main() {
   writeFileSync(resolve(output, 'document-fidelity.pdf'), bytes);
   writeFileSync(resolve(output, 'verification.json'), JSON.stringify(report, null, 2));
   assert.deepEqual(report.issues, []);
+  const paginationReports = [];
+  // Sweep adjacent near-bottom offsets. A three-line Text (including its blank
+  // paragraph separator) cannot split under React-PDF's 2-orphan/2-widow policy.
+  // A 36pt heading reservation used to strand the heading while all 3 lines moved.
+  for (const precedingLines of [34, 35, 36, 37, 38, 39, 40]) {
+    const heading = 'SECCIÓN QUE CONSERVA SU PRIMER PÁRRAFO';
+    const firstLine = 'PRIMER TEXTO CLÍNICO CONSERVADO.';
+    const lastLine = 'SEGUNDO TEXTO TRAS EL RENGLÓN EN BLANCO.';
+    const fixtureItem = {
+      title: 'Regresión sintética de paginación', date: '2024-04-15',
+      dateLabel: 'Fecha clínica registrada', status: 'Validado', origin: 'Prueba sintética', attachments: [],
+      sections: [
+        { title: 'CONTEXTO PREVIO', content: Array.from({ length: precedingLines }, (_, index) => `Línea sintética previa ${index + 1}.`).join('\n') },
+        { title: heading, content: `${firstLine}\n\n${lastLine}` },
+        { title: 'CIERRE DE PRUEBA', content: 'FIN ÍNTEGRO DE LA PRUEBA.' },
+      ],
+    };
+    const fixtureBytes = Buffer.from(await (await createPatientPdf({ ...options, items: [fixtureItem] })).arrayBuffer());
+    const checked = await validateClinicalPdf(fixtureBytes, {
+      requiredTexts: [...fixtureItem.sections[0].content.split('\n'), firstLine, lastLine, 'FIN ÍNTEGRO DE LA PRUEBA.'],
+      expectedSectionStarts: [{ heading, bodyStart: firstLine }],
+      requirePageNumbers: true, requireEntryBodyOnSamePage: true, maxPageCount: 4,
+    });
+    writeFileSync(resolve(output, `heading-${precedingLines}.pdf`), fixtureBytes);
+    paginationReports.push({ precedingLines, pageCount: checked.pageCount, issues: checked.issues });
+  }
+  writeFileSync(resolve(output, 'heading-pagination-verification.json'), JSON.stringify(paginationReports, null, 2));
+  assert.deepEqual(paginationReports.filter(result => result.issues.length), [], 'Clinical headings must retain their first body text at every boundary offset.');
   console.log(`PASS: preserved headings, inline values, exact Unicode, provenance, withheld text and PDF geometry (${report.pageCount} pages).`);
+  console.log('PASS: section keep-with-next across seven near-page-bottom offsets, including a blank paragraph line.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

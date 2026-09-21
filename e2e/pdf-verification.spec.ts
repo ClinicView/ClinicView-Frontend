@@ -142,4 +142,34 @@ test.describe('downloaded clinical PDF verifier guards', () => {
     orphan.pages[0].fragments.push(text('PRIMERA SECCION', 740), text('Contenido de la sección', 758));
     expect(verifyClinicalPdfInspection(orphan, { requireEntryBodyOnSamePage: true }).issues).toEqual([]);
   });
+
+  test('keeps a clinical section heading with its own first body text, not earlier text or the footer', () => {
+    const expected = { expectedSectionStarts: [{ heading: 'EVOLUCIÓN', bodyStart: 'CONTENIDO DE EVOLUCIÓN' }] };
+    const orphan = fixture();
+    orphan.pages[0].fragments.push(text('EVOLUCIÓN', 745));
+    expect(verifyClinicalPdfInspection(orphan, expected).issues)
+      .toContain('Page 1 has an orphaned section heading: EVOLUCIÓN');
+    orphan.pages[0].fragments.push(text('CONTENIDO DE EVOLUCIÓN', 720));
+    expect(verifyClinicalPdfInspection(orphan, expected).issues)
+      .toContain('Page 1 has an orphaned section heading: EVOLUCIÓN');
+    orphan.pages[0].fragments.pop();
+    orphan.pages[0].fragments.push(text('CONTENIDO DE EVOLUCIÓN', 802));
+    expect(verifyClinicalPdfInspection(orphan, expected).issues)
+      .toContain('Page 1 has an orphaned section heading: EVOLUCIÓN');
+    orphan.pages[0].fragments.pop();
+    orphan.pages[0].fragments.push(text('CONTENIDO DE EVOLUCIÓN', 762));
+    expect(verifyClinicalPdfInspection(orphan, expected).issues).toEqual([]);
+    expect(verifyClinicalPdfInspection(fixture(), expected).issues)
+      .toContain('Missing section heading occurrence: EVOLUCIÓN');
+  });
+
+  test('checks every repeated section heading, including the final occurrence', () => {
+    const inspection = fixture();
+    inspection.pages[0].fragments.push(text('EVOLUCIÓN', 190), text('CONTENIDO CLÍNICO', 205));
+    inspection.pages.push({ number: 2, width: 595, height: 842, text: '', images: [], fragments: [text('EVOLUCIÓN', 740), text('Página 2 de 2', 810)] });
+    inspection.pageCount = 2;
+    expect(verifyClinicalPdfInspection(inspection, {
+      expectedSectionStarts: [{ heading: 'EVOLUCIÓN', bodyStart: 'CONTENIDO CLÍNICO', minOccurrences: 2 }],
+    }).issues).toContain('Page 2 has an orphaned section heading: EVOLUCIÓN');
+  });
 });

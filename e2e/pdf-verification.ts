@@ -54,6 +54,12 @@ export interface ClinicalPdfExpectations {
   requirePageNumbers?: boolean;
   /** Keep each ClinicView entry's title/date card with at least its first body lines. */
   requireEntryBodyOnSamePage?: boolean;
+  /** Check every occurrence, excluding fixed masthead/footer text and earlier body text. */
+  expectedSectionStarts?: readonly {
+    heading: string;
+    bodyStart: string;
+    minOccurrences?: number;
+  }[];
 }
 
 export interface ClinicalPdfVerification extends ClinicalPdfInspection {
@@ -232,6 +238,38 @@ export function verifyClinicalPdfInspection(
     ));
     if (matches.length < (image.minOccurrences ?? 1)) {
       issues.push(`Missing visible attachment image: ${image.width}x${image.height}${image.caption ? ` (${image.caption})` : ''}`);
+    }
+  }
+  for (const section of expected.expectedSectionStarts ?? []) {
+    const heading = normalizePdfText(section.heading);
+    const bodyStart = normalizePdfText(section.bodyStart);
+    let occurrences = 0;
+    for (const page of inspection.pages) {
+      const bodyTop = expected.bodyBounds?.top ?? 90;
+      const bodyBottom = expected.bodyBounds?.bottom ?? page.height - 60;
+      const fragments = page.fragments.filter(fragment =>
+        fragment.y >= bodyTop && fragment.y + fragment.height <= bodyBottom,
+      ).sort((first, second) => first.y - second.y || first.x - second.x);
+      for (let first = 0; first < fragments.length && heading.length > 0; first += 1) {
+        let candidate = '';
+        // Exact fragment boundaries avoid treating a heading mentioned inside
+        // a sentence as another heading; adjacent fragments allow wrapped titles.
+        for (let last = first; last < fragments.length; last += 1) {
+          candidate = normalizePdfText(`${candidate} ${fragments[last].text}`);
+          if (candidate === heading) {
+            occurrences += 1;
+            const following = normalizePdfText(fragments.slice(last + 1).map(fragment => fragment.text).join(' '));
+            if (!bodyStart || !following.includes(bodyStart)) {
+              issues.push(`Page ${page.number} has an orphaned section heading: ${section.heading}`);
+            }
+            break;
+          }
+          if (candidate.length >= heading.length) break;
+        }
+      }
+    }
+    if (occurrences < (section.minOccurrences ?? 1)) {
+      issues.push(`Missing section heading occurrence: ${section.heading}`);
     }
   }
   for (const page of inspection.pages) {

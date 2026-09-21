@@ -114,6 +114,13 @@ const PDF_COLORS = {
   surface: '#E6F2FF',
 } as const;
 
+const PDF_BODY_TEXT = { fontSize: 9.5, lineHeight: 1.55, orphans: 2, widows: 2 } as const;
+// React-PDF moves a Text shorter than orphans + widows lines as one unit,
+// including blank paragraph lines. Reserve that largest unsplittable prefix
+// after the heading; a fixed 36pt hint was too short for a three-line body.
+const SECTION_TEXT_KEEP_WITH_NEXT = PDF_BODY_TEXT.fontSize * PDF_BODY_TEXT.lineHeight
+  * (PDF_BODY_TEXT.orphans + PDF_BODY_TEXT.widows - 1);
+
 function formatDate(iso: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return formatDateOnly(iso, { day: '2-digit', month: 'long', year: 'numeric' });
   return formatInstant(iso, {
@@ -582,7 +589,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       marginTop: 10,
       marginBottom: 4,
     },
-    sectionContent: { fontSize: 9.5, lineHeight: 1.55, color: PDF_COLORS.ink },
+    sectionContent: { fontSize: PDF_BODY_TEXT.fontSize, lineHeight: PDF_BODY_TEXT.lineHeight, color: PDF_COLORS.ink },
     structuredBlock: { marginBottom: 7 },
     blockLabel: {
       fontSize: 8,
@@ -805,9 +812,9 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
             </View>
             {item.sections.map((section, sectionIndex) => (
               <Fragment key={sectionIndex}>
-                <Text style={styles.sectionTitle} minPresenceAhead={36}>{section.title}</Text>
+                <Text style={styles.sectionTitle} minPresenceAhead={section.content !== undefined ? SECTION_TEXT_KEEP_WITH_NEXT : 36}>{section.title}</Text>
                 {section.content !== undefined && (
-                  <Text style={styles.sectionContent}>{section.content}</Text>
+                  <Text style={styles.sectionContent} orphans={PDF_BODY_TEXT.orphans} widows={PDF_BODY_TEXT.widows}>{section.content}</Text>
                 )}
                 {section.blocks?.map((block, blockIndex) => {
                   if (block.kind === 'text') {

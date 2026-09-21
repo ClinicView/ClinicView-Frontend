@@ -146,3 +146,40 @@ todos los formularios o certificación clínica. Los artefactos permanecen priva
 
 Referencias de implementación: [Playwright assertions](https://playwright.dev/docs/test-assertions)
 y [PDF.js](https://mozilla.github.io/pdf.js/examples/).
+
+## Regresión de paginación - 21 de septiembre de 2026
+
+La aceptación local adicional con TrOCR real recorrió upload, revisión espacial,
+persistencia al reabrir, validación, publicación de una consulta vinculada y
+exportación. Se usó un caso ficticio confirmado y una cuenta explícitamente
+identificada como revisión asistida, no una revisión médica humana. El informe
+del repositorio IA (`docs/REAL-OCR-WEB-RESULTS-20260921.md`) conserva también
+la interrupción del primer intento y su recuperación mediante reintento de la UI.
+Esta prueba no reemplaza la suite determinista anterior ni mide precisión OCR.
+
+La inspección visual del PDF completo detectó un título clínico al final de una
+página y su párrafo en la siguiente. React-PDF no divide un texto de tres líneas
+(incluidos renglones en blanco) con `orphans=2` y `widows=2`. La reserva fija
+de 36 puntos no alcanzaba para ese bloque. Ahora el espacio reservado se deriva
+de la tipografía y de esa misma política: `9.5 * 1.55 * (2 + 2 - 1)` puntos.
+No se alteran contenido, márgenes globales ni datos del original.
+
+Comprobaciones de regresión:
+
+- `npm run test:pdf`: conserva fidelidad de texto/Unicode y prueba siete
+  posiciones contiguas cerca del pie de página. El caso de 36 líneas previas
+  fallaba antes del arreglo y pasa después.
+- `expectedSectionStarts` en el verificador PDF permite exigir que cada título
+  esté con el inicio de su propio contenido en la misma página. Excluye cabecera,
+  pie y contenido anterior; comprueba también las ocurrencias repetidas.
+- El verificador aplicado a la primera descarga real detectó exactamente el
+  título huérfano de la página 8; no se ocultó el fallo cambiando la expectativa.
+- 210 pruebas unitarias, 15 guardas PDF y typecheck aprobados en este cambio.
+- Lint: cero errores y 46 advertencias preexistentes, fuera de este arreglo.
+- Compilación de producción aprobada y dos nuevas descargas desde la UI:
+  documento individual de 5 páginas e historia completa de 14. Verificación
+  de contenido/geometría/títulos sin incidencias e inspección visual de las
+  19 páginas finales. La nueva descarga ya no deja huérfano el título histórico.
+
+La evidencia de ejemplo, PDFs y capturas se conserva fuera de Git. Los textos
+usados en la regresión comprometida son sintéticos; no incluye datos de pacientes.
