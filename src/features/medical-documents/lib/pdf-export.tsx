@@ -37,15 +37,16 @@ import {
   formatDateOnly,
   formatInstant,
 } from '@/shared/lib/date-time';
-import { parseClinicalSections } from './clinical-sections';
+import { parseClinicalSections, tryParseFields } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
-import { documentSortDate, documentMetadataSections } from './document-metadata';
+import { documentSortDate, documentMetadataSections, type DocumentClinicalMetadata } from './document-metadata';
 import type { ClinicalSummary } from '@/features/patients/types/clinical-summary';
 import { clinicalSummarySections } from '@/features/patients/lib/clinical-summary-presentation';
 import { PDF_FONT_FILES, PdfTypographyError, preparePdfFonts, unsupportedPdfCharacters, type PdfFontSources } from './pdf-fonts';
 
 export type ExportSectionBlock =
   | { kind: 'text'; label?: string; content: string }
+  | { kind: 'fields'; label?: string; fields: { label: string; value: string; wide?: boolean }[] }
   | { kind: 'list'; label?: string; items: string[] }
   | { kind: 'table'; label?: string; columns: string[]; rows: string[][] };
 
@@ -54,6 +55,8 @@ export interface ExportSection {
   title: string;
   content?: string;
   blocks?: ExportSectionBlock[];
+  placement?: 'header' | 'body' | 'appendix';
+  layout?: 'fields' | 'narrative';
 }
 
 export type ExportAttachment = RecordExportAttachment;
@@ -63,8 +66,11 @@ export interface ExportItem {
   title: string;
   date: string;
   dateLabel: string;
+  datePrecision?: 'DAY' | 'INSTANT';
   status: string;
   origin: string;
+  reviewSummary?: string;
+  sourceSummary?: string;
   sections: ExportSection[];
   attachments: ExportAttachment[];
 }
@@ -73,9 +79,11 @@ export function clinicalSummaryToExportItem(revision: ClinicalSummary, current: 
   return {
     title: `Información longitudinal · Revisión ${revision.version}`,
     date: revision.createdAt ?? '', dateLabel: 'Fecha de revisión (no es una atención)',
+    datePrecision: 'INSTANT',
     origin: 'Revisión humana', status: current ? 'Vigente al exportar' : 'Revisión anterior; no vigente',
+    reviewSummary: `${current ? 'Información longitudinal vigente' : 'Información longitudinal anterior; no vigente'} · Registrado por ${revision.recordedByName ?? 'No registrado'} · ${formatDateTime(revision.createdAt ?? null) ?? 'Fecha no registrada'}. No es firma digital certificada.`,
     attachments: [], sections: [
-      { title: 'Trazabilidad de la revisión', content: `Registrado por: ${revision.recordedByName ?? 'No registrado'}\nMotivo / fuente: ${revision.reason ?? 'No registrado'}` },
+      { title: 'Trazabilidad de la revisión', content: `Registrado por: ${revision.recordedByName ?? 'No registrado'}\nMotivo / fuente: ${revision.reason ?? 'No registrado'}`, layout: 'narrative' },
       ...clinicalSummarySections(revision.payload),
     ],
   };
@@ -154,6 +162,69 @@ function documentActorLine(
   return `${role}: ${name}${username && name !== `@${username}` ? ` · @${username}` : ''}${actor?.isActive === false ? ' · Cuenta inactiva' : ''} · ID: ${id || actor?.id}`;
 }
 
+/** Presentation only: no field is inferred from its clinical meaning. */
+function clinicalTextSection(title: string, content: string): ExportSection {
+  return {
+    title,
+    content,
+    layout: tryParseFields(content) ? 'fields' : 'narrative',
+  };
+}
+
+function documentPresentationMetadata(metadata: DocumentClinicalMetadata = {}): ExportSection[] {
+  // Source uncertainty is clinical context, not an administrative appendix.
+  const { sourceNotes, ...briefMetadata } = metadata;
+  return [
+    ...documentMetadataSections(briefMetadata).map((section): ExportSection => ({
+      ...section,
+      placement: 'header',
+      layout: tryParseFields(section.content) ? 'fields' : 'narrative',
+    })),
+    ...(sourceNotes ? [{
+      title: 'OBSERVACIONES DE PROCEDENCIA',
+      content: sourceNotes,
+      placement: 'body' as const,
+      layout: 'narrative' as const,
+    }] : []),
+  ];
+}
+
+function documentReviewSummary(
+  document: Pick<MedicalDocument, 'status' | 'reviewedBy' | 'reviewedAt'>,
+  actor?: { fullName?: string | null; displayName?: string | null; username?: string | null },
+): string {
+  const name = actor?.fullName?.trim() || actor?.displayName?.trim();
+  const username = actor?.username?.trim();
+  const identity = name
+    ? `${name}${username && name !== `@${username}` ? ` · @${username}` : ''}`
+    : username ? `@${username}` : 'Nombre no disponible; identificación en anexo';
+  return [
+    DOC_STATUS_LABEL[document.status] ?? document.status,
+    document.status === 'VALIDATED'
+      ? 'Validación de la transcripción registrada'
+      : 'Sin validación de transcripción vigente',
+    document.reviewedBy || document.reviewedAt
+      ? `Revisor: ${identity} · ${formatDateTime(document.reviewedAt) ?? 'Fecha de revisión no registrada'}`
+      : document.status === 'VALIDATED'
+        ? 'Revisor y fecha de revisión no disponibles en este exportado'
+        : 'Sin revisión final registrada',
+    'Revisión interna; no es firma digital certificada.',
+  ].join(' · ');
+}
+
+function documentSourceSummary(
+  document: Pick<MedicalDocument, 'originalName' | 'clinicalMetadata'> & { version?: number },
+): string {
+  return [
+    `Archivo: ${document.originalName}`,
+    document.clinicalMetadata?.pageCount !== undefined
+      ? `Páginas declaradas: ${document.clinicalMetadata.pageCount}`
+      : 'Número de páginas no registrado',
+    Number.isInteger(document.version) ? `Versión del documento: ${document.version}` : null,
+    'Detalle de procedencia y revisión en el anexo.',
+  ].filter(Boolean).join(' · ');
+}
+
 export function documentToExportItem(document: MedicalDocument): ExportItem {
   const correctedText = document.correctedText?.trim();
   const text =
@@ -163,21 +234,22 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   const parsed = parseClinicalSections(text);
 
   const sections: ExportSection[] = [
-    ...documentMetadataSections(document.clinicalMetadata),
+    ...documentPresentationMetadata(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
       content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+      placement: 'appendix',
     },
   ];
   if (parsed.isStructured) {
     if (parsed.preamble.trim()) {
-      sections.push({ title: 'TEXTO SIN CLASIFICAR', content: parsed.preamble.trim() });
+      sections.push(clinicalTextSection('Encabezado del documento', parsed.preamble.trim()));
     }
     for (const section of parsed.sections) {
-      sections.push({ title: section.title, content: section.content.trim() || '—' });
+      sections.push(clinicalTextSection(section.title, section.content.trim() || '—'));
     }
   } else if (text.trim()) {
-    sections.push({ title: 'TEXTO DEL DOCUMENTO', content: text.trim() });
+    sections.push(clinicalTextSection('TEXTO DEL DOCUMENTO', text.trim()));
   } else {
     sections.push({
       title: 'TEXTO DEL DOCUMENTO',
@@ -195,6 +267,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   if (document.validationChecklist?.items.length) {
     sections.push({
       title: `CONFIRMACIONES DE REVISIÓN · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      placement: 'appendix',
       content: document.validationChecklist.items
         .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
         .join('\n'),
@@ -211,15 +284,18 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
     document.reviewedBy ? `Revisor (ID): ${document.reviewedBy}` : null,
   ].filter((line): line is string => Boolean(line));
   if (trace.length > 0) {
-    sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
+    sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n'), placement: 'appendix' });
   }
 
   return {
     title: document.originalName,
     date: documentSortDate(document),
     dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
+    datePrecision: document.clinicalMetadata?.clinicalDate ? 'DAY' : 'INSTANT',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
+    reviewSummary: documentReviewSummary(document, document.assignedReviewer && document.assignedReviewer.id === document.reviewedBy ? document.assignedReviewer : undefined),
+    sourceSummary: documentSourceSummary(document),
     sections,
     attachments: [],
   };
@@ -231,22 +307,23 @@ export function clinicalHistoryDocumentToExportItem(
   const text = document.status === 'VALIDATED' ? (document.clinicalText ?? '') : '';
   const parsed = parseClinicalSections(text);
   const sections: ExportSection[] = [
-    ...documentMetadataSections(document.clinicalMetadata),
+    ...documentPresentationMetadata(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
       content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+      placement: 'appendix',
     },
   ];
 
   if (parsed.isStructured) {
     if (parsed.preamble.trim()) {
-      sections.push({ title: 'TEXTO SIN CLASIFICAR', content: parsed.preamble.trim() });
+      sections.push(clinicalTextSection('Encabezado del documento', parsed.preamble.trim()));
     }
     for (const section of parsed.sections) {
-      sections.push({ title: section.title, content: section.content.trim() || '—' });
+      sections.push(clinicalTextSection(section.title, section.content.trim() || '—'));
     }
   } else if (text.trim()) {
-    sections.push({ title: 'TEXTO DEL DOCUMENTO', content: text.trim() });
+    sections.push(clinicalTextSection('TEXTO DEL DOCUMENTO', text.trim()));
   } else {
     sections.push({
       title: 'TEXTO DEL DOCUMENTO',
@@ -264,6 +341,7 @@ export function clinicalHistoryDocumentToExportItem(
   if (document.validationChecklist?.items.length) {
     sections.push({
       title: `CONFIRMACIONES DE REVISIÓN · ESQUEMA V${document.validationChecklist.schemaVersion}`,
+      placement: 'appendix',
       content: document.validationChecklist.items
         .map((item) => `Confirmado — ${item.title}: ${item.statement}`)
         .join('\n'),
@@ -271,7 +349,7 @@ export function clinicalHistoryDocumentToExportItem(
   }
 
   for (const [index, revision] of (document.metadataRevisions ?? []).entries()) {
-    sections.push({ title: `HISTORIAL DE PROCEDENCIA · V${revision.version}${index === 0 ? ' · Última revisión' : ' · Anterior'}`, content: [
+    sections.push({ title: `HISTORIAL DE PROCEDENCIA · V${revision.version}${index === 0 ? ' · Última revisión' : ' · Anterior'}`, placement: 'appendix', content: [
       `Registrado: ${formatDateTime(revision.createdAt)} · Por: ${revision.recordedByName || 'Identidad histórica no registrada'}`,
       `Motivo: ${revision.reason}`, documentMetadataSections(revision.metadata)[0].content,
     ].join('\n') });
@@ -292,14 +370,17 @@ export function clinicalHistoryDocumentToExportItem(
     documentActorLine('Última actualización', document.updatedBy, document.updatedByActor),
     'Identidades consultadas en el directorio al exportar; no son nombres históricos certificados ni acreditan una profesión. La revisión interna no equivale a una firma digital certificada.',
   ].filter((line): line is string => Boolean(line));
-  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
+  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n'), placement: 'appendix' });
 
   return {
     title: document.originalName,
     date: documentSortDate(document),
     dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
+    datePrecision: document.clinicalMetadata?.clinicalDate ? 'DAY' : 'INSTANT',
     status: DOC_STATUS_LABEL[document.status] ?? document.status,
     origin: 'Documento digitalizado',
+    reviewSummary: documentReviewSummary(document, document.reviewedByActor),
+    sourceSummary: documentSourceSummary(document),
     sections,
     attachments: [],
   };
@@ -316,8 +397,21 @@ export function recordToExportItem(
     record.attachments ?? [],
   );
   const professionalName = record.professionalNameSnapshot ?? record.doctorName;
-  if (record.episode) sections.push({ title: 'EPISODIO CLÍNICO', content: [record.episode.title, `ID ${record.episode.id} · ${record.episode.status === 'OPEN' ? 'Abierto' : 'Cerrado'}`, `Desde ${record.episode.startedOn}${record.episode.endedOn ? ` hasta ${record.episode.endedOn}` : ''}`, record.episode.description].filter(Boolean).join('\n') });
-  sections.push({ title: 'CONFIRMACIÓN CLÍNICA DE ESTA VERSIÓN', content: record.confirmation ? [
+  const statusLabel = record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado';
+  const reviewSummary = [
+    statusLabel,
+    record.confirmation
+      ? [
+        record.status === 'ACTIVE' ? 'Versión confirmada' : 'Confirmación histórica; esta versión no está vigente',
+        `${record.confirmation.actorName} · @${record.confirmation.actorUsername}`,
+        record.confirmation.capacity === 'ORIGINAL_PROFESSIONAL' ? 'Cuenta del profesional original' : 'Revisor autorizado',
+        formatDateTime(record.confirmation.confirmedAt) ?? 'Fecha de confirmación no registrada',
+      ].join(' · ')
+      : `Sin confirmación clínica explícita registrada · Ingresado por ${record.createdByNameSnapshot ?? 'Nombre histórico no registrado'} · ${formatDateTime(record.createdAt) ?? 'Fecha de ingreso no registrada'}`,
+    'No es firma digital certificada.',
+  ].join(' · ');
+  if (record.episode) sections.push({ title: 'EPISODIO CLÍNICO', content: [record.episode.title, record.episode.status === 'OPEN' ? 'Abierto' : 'Cerrado', `Desde ${record.episode.startedOn}${record.episode.endedOn ? ` hasta ${record.episode.endedOn}` : ''}`, record.episode.description].filter(Boolean).join('\n') });
+  sections.push({ title: 'CONFIRMACIÓN CLÍNICA DE ESTA VERSIÓN', placement: 'appendix', content: record.confirmation ? [
     record.status === 'ACTIVE' ? 'Versión confirmada.' : 'Confirmación histórica de una versión que ya no está vigente.',
     `${record.confirmation.actorName} · @${record.confirmation.actorUsername} · ${record.confirmation.capacity === 'ORIGINAL_PROFESSIONAL' ? 'Cuenta del profesional original' : 'Revisor autorizado'}`,
     `${formatDateTime(record.confirmation.confirmedAt) ?? 'Fecha no registrada'} · Versión revisada ${record.confirmation.recordVersion}`,
@@ -325,16 +419,23 @@ export function recordToExportItem(
     `Huella SHA-256: ${record.confirmation.contentHash}`,
     'Cierre interno; no es firma digital certificada.',
   ].filter(Boolean).join('\n') : 'Sin confirmación clínica explícita registrada. No es firma digital certificada.' });
-  if (record.source) sections.push({ title: 'DOCUMENTO ORIGINAL DE ESTA ATENCIÓN', content: [
+  if (record.source) sections.push({ title: 'DOCUMENTO ORIGINAL DE ESTA ATENCIÓN', placement: 'appendix', content: [
     `${record.source.documentName} · ID ${record.source.documentId}`,
     `Páginas ${record.source.pageFrom}–${record.source.pageTo} · Versión del original ${record.source.documentVersion}`,
     record.source.sourceNote,
     `Transcripción cotejada por ${record.source.publishedByName} el ${formatDateTime(record.source.publishedAt) ?? 'No registrado'}. No equivale a cierre profesional.`,
   ].join('\n') });
+  if (record.source?.sourceNote) sections.push({
+    title: 'OBSERVACIONES DE PROCEDENCIA',
+    content: record.source.sourceNote,
+    placement: 'body',
+    layout: 'narrative',
+  });
 
   if (professionalName?.trim()) {
     sections.push({
       title: 'PROFESIONAL ORIGINAL DE LA ATENCIÓN',
+      placement: 'header',
       content: [
         professionalName.trim(),
         record.professionalLicenseSnapshot?.trim()
@@ -346,14 +447,15 @@ export function recordToExportItem(
     });
   }
   if (record.service?.trim()) {
-    sections.push({ title: 'SERVICIO', content: record.service.trim() });
+    sections.push({ title: 'SERVICIO', content: record.service.trim(), placement: 'header' });
   }
-  if (record.specialty?.trim()) sections.push({ title: 'ESPECIALIDAD', content: record.specialty.trim() });
+  if (record.specialty?.trim()) sections.push({ title: 'ESPECIALIDAD', content: record.specialty.trim(), placement: 'header' });
   sections.push({
     title: 'PRIORIDAD',
     content: RECORD_PRIORITY_LABEL[record.priority] ?? record.priority,
+    placement: 'header',
   });
-  sections.push({ title: 'RESUMEN', content: record.summary });
+  sections.push({ title: 'RESUMEN', content: record.summary, layout: 'narrative' });
 
   const detailsBySection = new Map(details.map((section) => [section.id, section]));
   const attachmentSectionIds = new Set(
@@ -369,13 +471,14 @@ export function recordToExportItem(
     const blocks: ExportSectionBlock[] = [];
     for (const block of detailSection?.blocks ?? []) {
       if (block.kind === 'fields') {
-        blocks.push(
-          ...block.fields.map((field) => ({
-            kind: 'text' as const,
+        blocks.push({
+          kind: 'fields',
+          fields: block.fields.map((field) => ({
             label: field.label,
-            content: field.value,
+            value: field.value,
+            wide: field.wide,
           })),
-        );
+        });
       } else if (block.kind === 'list') {
         blocks.push({ kind: 'list', label: block.label, items: block.items });
       } else {
@@ -416,6 +519,7 @@ export function recordToExportItem(
   const trace = [
     `Ingresado por: ${record.createdByNameSnapshot ?? 'Nombre histórico no registrado'}`,
     `ID de atención: ${record.id}`,
+    record.episode ? `ID de episodio: ${record.episode.id}` : null,
     record.parentRecordId
       ? `Corrige al registro: ${record.parentRecordId}`
       : 'Registro raíz de la cadena clínica',
@@ -430,13 +534,20 @@ export function recordToExportItem(
     `Creado: ${formatDateTime(record.createdAt) ?? 'No registrado'}`,
     `Actualizado: ${formatDateTime(record.updatedAt) ?? 'No registrado'}`,
   ].filter((line): line is string => Boolean(line));
-  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n') });
+  sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n'), placement: 'appendix' });
   return {
     title: definition.label,
     date: record.attendedAt,
     dateLabel: record.attendancePrecision === 'DAY' ? 'Fecha de atención (hora no consignada)' : 'Fecha de atención',
-    status: record.status === 'ACTIVE' ? 'Activo' : record.status === 'CORRECTED' ? 'Corregido' : 'Anulado',
+    datePrecision: record.attendancePrecision === 'DAY' ? 'DAY' : 'INSTANT',
+    status: statusLabel,
     origin: record.origin === 'DIGITIZED' ? 'Origen digitalizado' : 'Registro manual',
+    reviewSummary,
+    sourceSummary: record.source
+      ? `${record.source.documentName} · Páginas ${record.source.pageFrom}–${record.source.pageTo} · Versión del original ${record.source.documentVersion} · Transcripción cotejada por ${record.source.publishedByName} el ${formatDateTime(record.source.publishedAt) ?? 'Fecha no registrada'}. Referencia completa en el anexo.`
+      : record.origin === 'DIGITIZED'
+        ? 'Origen digitalizado; referencia al documento original no disponible.'
+        : undefined,
     sections,
     attachments,
   };
@@ -500,6 +611,10 @@ export interface PatientPdfOptions {
   fileName: string;
   generatedAt?: string;
   orderDescription?: string;
+  /** Short human-readable scope; detailed policy remains in the appendix. */
+  scopeSummary?: string;
+  /** Required visible restrictions when an export is filtered. Never truncate. */
+  scopeDetails?: string;
   brandLogoSource?: string;
   /** Absolute local paths for server/tests; browser exports use same-origin assets. */
   fontSources?: PdfFontSources;
@@ -518,11 +633,11 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
   try { fonts = await preparePdfFonts(Font, sources); }
   catch { throw new PdfTypographyError('No se pudieron cargar las fuentes del PDF. Comprueba tu conexión y vuelve a exportar; no se descargó un documento incompleto.'); }
   const textValues = [
-    subtitle, orderDescription ?? '', ...Object.values(patient).filter((value): value is string => typeof value === 'string'),
-    ...items.flatMap(item => [item.title, item.dateLabel, item.status, item.origin,
+    subtitle, orderDescription ?? '', options.scopeSummary ?? '', options.scopeDetails ?? '', ...Object.values(patient).filter((value): value is string => typeof value === 'string'),
+    ...items.flatMap(item => [item.title, item.dateLabel, item.status, item.origin, item.reviewSummary ?? '', item.sourceSummary ?? '',
       ...item.sections.flatMap(section => [section.title, section.content ?? '',
         ...(section.blocks ?? []).flatMap(block => [block.label ?? '', ...(
-          block.kind === 'text' ? [block.content] : block.kind === 'list' ? block.items : [...block.columns, ...block.rows.flat()]
+          block.kind === 'text' ? [block.content] : block.kind === 'list' ? block.items : block.kind === 'fields' ? block.fields.flatMap(field => [field.label, field.value]) : [...block.columns, ...block.rows.flat()]
         )]),
       ]),
       ...item.attachments.flatMap(attachment => [attachment.originalName, attachment.caption ?? '', attachment.description ?? '', attachment.sectionTitle ?? '']),
@@ -560,11 +675,11 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       width: 132,
       height: 33,
     },
-    headerRight: { alignItems: 'flex-end' },
-    headerPatient: { fontSize: 10, fontWeight: 700 },
+    headerRight: { alignItems: 'flex-end', maxWidth: 300 },
+    headerPatient: { fontSize: 9, fontWeight: 700, textAlign: 'right', lineHeight: 1.2 },
     headerMeta: { fontSize: 8, color: PDF_COLORS.primary, marginTop: 2 },
-    coverTitle: { fontSize: 16, fontWeight: 700, color: PDF_COLORS.ink, marginBottom: 4 },
-    coverSubtitle: { fontSize: 10, color: PDF_COLORS.primary, marginBottom: 18 },
+    coverTitle: { fontSize: 19, fontWeight: 700, color: PDF_COLORS.ink, marginBottom: 5 },
+    coverSubtitle: { fontSize: 8.5, lineHeight: 1.45, color: '#475569', marginBottom: 12 },
     patientDetails: {
       fontSize: 8.5,
       lineHeight: 1.45,
@@ -576,8 +691,8 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       backgroundColor: PDF_COLORS.surface,
       borderLeftWidth: 3,
       borderLeftColor: PDF_COLORS.primary,
-      padding: 8,
-      marginBottom: 10,
+      padding: 10,
+      marginBottom: 8,
     },
     itemTitle: { fontSize: 11, fontWeight: 700, color: PDF_COLORS.ink },
     itemMeta: { fontSize: 8.5, color: PDF_COLORS.primary, marginTop: 3 },
@@ -587,10 +702,28 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       color: PDF_COLORS.primary,
       letterSpacing: 0,
       marginTop: 10,
-      marginBottom: 4,
+      marginBottom: 0,
+      backgroundColor: '#F4F7FB',
+      borderLeftWidth: 2,
+      borderLeftColor: PDF_COLORS.primary,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
     },
     sectionContent: { fontSize: PDF_BODY_TEXT.fontSize, lineHeight: PDF_BODY_TEXT.lineHeight, color: PDF_COLORS.ink },
     structuredBlock: { marginBottom: 7 },
+    narrativeFrame: { borderWidth: 0.6, borderColor: '#CCD8E6', padding: 8, marginBottom: 7 },
+    narrativeLabel: { fontSize: 8, fontWeight: 700, color: '#334155', marginTop: 7, marginBottom: 3 },
+    fieldRow: { flexDirection: 'row', marginBottom: 0 },
+    fieldCell: { flexGrow: 1, flexBasis: 0, borderWidth: 0.5, borderColor: '#CCD8E6', paddingVertical: 6, paddingHorizontal: 8 },
+    fieldLabel: { fontSize: 7.5, fontWeight: 700, color: '#475569', lineHeight: 1.3, marginBottom: 3 },
+    fieldValue: { fontSize: 9, color: PDF_COLORS.ink, lineHeight: 1.4 },
+    factsGroup: { marginBottom: 7 },
+    entryReference: { fontSize: 7.5, fontWeight: 700, color: PDF_COLORS.primary, marginBottom: 4, letterSpacing: 0.6 },
+    contextNote: { fontSize: 8, lineHeight: 1.4, color: '#334155', paddingHorizontal: 8, paddingVertical: 5, borderLeftWidth: 1, borderLeftColor: '#CBD5E1' },
+    indexTitle: { fontSize: 8, fontWeight: 700, color: '#475569', marginTop: 10, marginBottom: 5 },
+    indexLink: { fontSize: 8, lineHeight: 1.4, color: PDF_COLORS.primary, marginBottom: 4 },
+    appendixIntro: { fontSize: 8.5, lineHeight: 1.5, color: '#475569', marginBottom: 10 },
+    appendixText: { fontSize: 8.5, lineHeight: 1.45 },
     blockLabel: {
       fontSize: 8,
       fontWeight: 700,
@@ -615,7 +748,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       borderColor: '#CBD5E1',
       paddingVertical: 4,
       paddingHorizontal: 3,
-      fontSize: 7.5,
+      fontSize: 8,
       lineHeight: 1.3,
     },
     dataTableHeading: {
@@ -749,175 +882,231 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     );
   };
 
+  type PdfField = { label: string; value: string; wide?: boolean };
+  // Short facts are row-sized, never fixed-height. Long/multiline values become
+  // full-width flowing text instead of an unbreakable cell taller than a page.
+  const renderFields = (fields: readonly PdfField[], key: string, columns = 2) => {
+    const rows: PdfField[][] = [];
+    let row: PdfField[] = [];
+    const flush = () => { if (row.length) rows.push(row); row = []; };
+    for (const field of fields) {
+      if (field.wide || field.value.length > 140 || field.value.includes('\n')) {
+        flush(); rows.push([field]);
+      } else {
+        row.push(field);
+        if (row.length === columns) flush();
+      }
+    }
+    flush();
+    return (
+      <Fragment key={key}>
+        {rows.map((cells, rowIndex) => {
+          const first = cells[0];
+          if (cells.length === 1 && (first.value.length > 450 || first.value.split('\n').length > 5)) {
+            return <Fragment key={rowIndex}>
+              <Text style={styles.narrativeLabel} minPresenceAhead={SECTION_TEXT_KEEP_WITH_NEXT + 26}>{first.label}</Text>
+              <Text style={[styles.sectionContent, styles.narrativeFrame]} orphans={2} widows={2}>{first.value}</Text>
+            </Fragment>;
+          }
+          return <View key={rowIndex} style={styles.fieldRow} wrap={false}>
+            {cells.map((field, fieldIndex) => <View key={fieldIndex} style={styles.fieldCell}>
+              <Text style={styles.fieldLabel}>{field.label}</Text>
+              <Text style={styles.fieldValue}>{field.value}</Text>
+            </View>)}
+          </View>;
+        })}
+      </Fragment>
+    );
+  };
+
+  const renderTable = (block: Extract<ExportSectionBlock, { kind: 'table' }>, key: string, sectionTitle?: string) => {
+    const charsPerLine = Math.max(12, Math.floor((499 / Math.max(1, block.columns.length) - 8) / 4.4));
+    const rowHeight = (row: readonly string[]) => 10 + Math.max(1, ...row.map(cell =>
+      cell.split('\n').reduce((lines, part) => lines + Math.max(1, Math.ceil(part.length / charsPerLine)), 0),
+    )) * 10.4;
+    // Many columns or exceptionally tall rows need labelled, flowing records.
+    // Do not shrink clinical text until unreadable or clip it to a fixed box.
+    if (block.columns.length > 5 || block.rows.some(row => rowHeight(row) > 230)) {
+      return <Fragment key={key}>
+        {sectionTitle && <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={170}>{sectionTitle}</Text>}
+        {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={70}>{block.label}</Text>}
+        {block.rows.map((row, index) => <Fragment key={index}>
+          <Text style={styles.narrativeLabel} minPresenceAhead={70}>Elemento {index + 1}</Text>
+          {renderFields(row.map((value, column) => ({ label: block.columns[column] ?? '', value })), `${key}-card-${index}`)}
+        </Fragment>)}
+      </Fragment>;
+    }
+    const chunks: string[][][] = [];
+    let chunk: string[][] = [];
+    let height = rowHeight(block.columns);
+    for (const row of block.rows) {
+      if (chunk.length && height + rowHeight(row) > 210) {
+        chunks.push(chunk); chunk = []; height = rowHeight(block.columns);
+      }
+      chunk.push(row); height += rowHeight(row);
+    }
+    if (chunk.length || !chunks.length) chunks.push(chunk);
+    return <Fragment key={key}>
+      {chunks.map((rows, chunkIndex) => (
+        <View key={chunkIndex} wrap={false}>
+          {chunkIndex === 0 && sectionTitle && <Text style={styles.sectionTitle} wrap={false}>{sectionTitle}</Text>}
+          {chunkIndex === 0 && block.label && <Text style={styles.narrativeLabel}>{block.label}</Text>}
+          <View style={[styles.dataTable, { marginBottom: 7 }]} wrap={false}>
+          <View style={[styles.dataTableRow, styles.dataTableHeader]} wrap={false}>
+            {block.columns.map((column, index) => <Text key={index} style={[styles.dataTableCell, styles.dataTableHeading]}>{column}</Text>)}
+          </View>
+          {rows.map((row, rowIndex) => <View key={rowIndex} style={styles.dataTableRow} wrap={false}>
+            {row.map((cell, index) => <Text key={index} style={styles.dataTableCell}>{cell}</Text>)}
+          </View>)}
+          </View>
+        </View>
+      ))}
+    </Fragment>;
+  };
+
+  const renderBlock = (block: ExportSectionBlock, key: string) => {
+    if (block.kind === 'fields') return <Fragment key={key}>
+      {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={70}>{block.label}</Text>}
+      {renderFields(block.fields, key, block.fields.length >= 6 ? 3 : 2)}
+    </Fragment>;
+    if (block.kind === 'text') return <Fragment key={key}>
+      {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={SECTION_TEXT_KEEP_WITH_NEXT + 26}>{block.label}</Text>}
+      <Text style={[styles.sectionContent, styles.narrativeFrame]} orphans={2} widows={2}>{block.content}</Text>
+    </Fragment>;
+    if (block.kind === 'list') return <Fragment key={key}>
+      {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={SECTION_TEXT_KEEP_WITH_NEXT + 26}>{block.label}</Text>}
+      {block.items.map((value, index) => <Text key={index} style={[styles.sectionContent, styles.narrativeFrame]} orphans={2} widows={2}>• {value}</Text>)}
+    </Fragment>;
+    return renderTable(block, key);
+  };
+
+  const renderSection = (section: ExportSection, key: string, appendix = false) => {
+    const fields = section.layout === 'fields' && section.content ? tryParseFields(section.content) : null;
+    // An unbreakable table chunk can move farther than minPresenceAhead.
+    // Keep its section title inside the first chunk, not stranded on the prior page.
+    const startsWithTable = section.content === undefined && section.blocks?.[0]?.kind === 'table';
+    return <Fragment key={key}>
+      {!startsWithTable && <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={section.blocks?.length ? 85 : SECTION_TEXT_KEEP_WITH_NEXT + 26}>{section.title}</Text>}
+      {fields ? renderFields(fields.map(field => ({ label: field.label + ':', value: field.value })), key, fields.length >= 6 ? 3 : 2)
+        : section.content !== undefined && <Text
+          style={[styles.sectionContent, styles.narrativeFrame, ...(appendix ? [styles.appendixText] : [])]}
+          orphans={PDF_BODY_TEXT.orphans} widows={PDF_BODY_TEXT.widows}
+        >{section.content}</Text>}
+      {section.blocks?.map((block, index) => startsWithTable && index === 0 && block.kind === 'table'
+        ? renderTable(block, `${key}-${index}`, section.title)
+        : renderBlock(block, `${key}-${index}`))}
+    </Fragment>;
+  };
+
+  const itemDate = (item: ExportItem) => item.datePrecision === 'INSTANT'
+    ? formatInstant(item.date, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : formatDate(item.date);
+  const entryNumber = (index: number) => String(index + 1).padStart(2, '0');
+  const hasAppendix = Boolean(orderDescription || resolvedItems.some(item => item.sections.some(section => section.placement === 'appendix')));
+  const patientFields: PdfField[] = [
+    { label: 'Documento de identidad', value: `${patient.documentType} ${patient.documentNumber}` },
+    { label: 'N.º de historia clínica', value: patient.medicalRecordNumber || 'No asignada' },
+    { label: 'Fecha de nacimiento', value: formatDateOnly(patient.dateOfBirth, { day: '2-digit', month: 'long', year: 'numeric' }) },
+    { label: 'Sexo registrado en ficha', value: SEX_LABEL[patient.sex] ?? patient.sex },
+    { label: 'Contacto', value: [patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado' },
+    { label: 'Seguro', value: [patient.insuranceName, patient.insuranceNumber].filter(Boolean).join(' · ') || 'No registrado' },
+    { label: 'Dirección', value: patient.address || 'No registrada', wide: true },
+    { label: 'Contacto de emergencia', value: [patient.emergencyContactName, patient.emergencyContactPhone, patient.emergencyContactRelationship].filter(Boolean).join(' · ') || 'No registrado' },
+    { label: 'Representante', value: patient.representativeName || 'No registrado' },
+  ];
+
+  const renderHeaderSections = (item: ExportItem, key: string) => {
+    const fields: PdfField[] = [];
+    const blocks: ExportSectionBlock[] = [];
+    for (const section of item.sections.filter(section => section.placement === 'header')) {
+      const parsed = section.layout === 'fields' && section.content ? tryParseFields(section.content) : null;
+      if (parsed) fields.push(...parsed.map(field => ({ label: field.label + ':', value: field.value })));
+      else if (section.content !== undefined) fields.push({ label: section.title, value: section.content });
+      for (const block of section.blocks ?? []) {
+        if (block.kind === 'fields') fields.push(...block.fields);
+        else blocks.push(block);
+      }
+    }
+    return <Fragment>
+      {fields.length > 0 && renderFields(fields, key)}
+      {blocks.map((block, index) => renderBlock(block, `${key}-block-${index}`))}
+    </Fragment>;
+  };
+
   const doc = (
-    <Document
-      title={`${subtitle} — ${patient.lastName}, ${patient.firstName}`}
-      author="ClinicView"
-      language="es-PE"
-    >
+    <Document title={`${subtitle} — ${patient.lastName}, ${patient.firstName}`} author="ClinicView" language="es-PE">
       <Page size="A4" style={styles.page}>
         <View style={styles.header} fixed>
           <PdfImage src={brandLogoUrl} style={styles.brandLogo} />
           <View style={styles.headerRight}>
-            <Text style={styles.headerPatient}>
-              {patient.lastName}, {patient.firstName}
-            </Text>
-            <Text style={styles.headerMeta}>
-              {patient.documentType} {patient.documentNumber} · Exportado: {exportedAt}
-            </Text>
+            <Text style={styles.headerPatient}>{patient.lastName}, {patient.firstName}</Text>
+            <Text style={styles.headerMeta}>{patient.documentType} {patient.documentNumber}</Text>
+            <Text style={styles.headerMeta}>Emitido: {exportedAt}</Text>
           </View>
         </View>
 
         <Text style={styles.coverTitle}>{subtitle}</Text>
         <Text style={styles.coverSubtitle}>
-          {resolvedItems.length}{' '}
-          {resolvedItems.length === 1 ? 'sección exportada' : 'secciones exportadas'}
-          {orderDescription ? ` · ${orderDescription}` : ''}
+          {options.scopeSummary ?? `${resolvedItems.length} ${resolvedItems.length === 1 ? 'documento incluido' : 'documentos incluidos'} · Información clínica y respaldo documental`}
         </Text>
-        <Text style={styles.patientDetails}>
-          Fecha de nacimiento:{' '}
-          {formatDateOnly(patient.dateOfBirth, {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}{' '}
-          · Sexo registrado en ficha:{' '}
-          {SEX_LABEL[patient.sex] ?? patient.sex}
-          {'\n'}Contacto:{' '}
-          {[patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado'}
-          {'\n'}Dirección: {patient.address || 'No registrada'}
-          {'\n'}Historia clínica institucional: {patient.medicalRecordNumber || 'No asignada'}
-          {'\n'}Contacto de emergencia: {[patient.emergencyContactName, patient.emergencyContactPhone, patient.emergencyContactRelationship].filter(Boolean).join(' · ') || 'No registrado'}
-          {'\n'}Representante: {patient.representativeName || 'No registrado'}
-          {'\n'}Seguro: {[patient.insuranceName, patient.insuranceNumber].filter(Boolean).join(' · ') || 'No registrado'}
-        </Text>
+        {options.scopeDetails && <Text style={[styles.contextNote, { marginBottom: 10 }]}>{options.scopeDetails}</Text>}
+        <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={80}>Identificación del paciente</Text>
+        {renderFields(patientFields, 'patient', 3)}
 
-        <Text style={styles.sectionTitle} minPresenceAhead={60}>Índice de secciones · enlaces internos</Text>
-        {resolvedItems.map((item, index) => <PdfLink key={`index-${index}`} src={`#entry-${index}`} style={{ fontSize: 10, color: PDF_COLORS.primary, marginBottom: 7 }}>{index + 1}. {item.title} · {formatDate(item.date)} · {item.status}</PdfLink>)}
+        <Text style={styles.indexTitle} minPresenceAhead={35}>Contenido del expediente · enlaces internos</Text>
+        {resolvedItems.map((item, index) => <PdfLink key={index} src={`#entry-${index}`} style={styles.indexLink}>
+          {entryNumber(index)}. {item.title} · {itemDate(item)} · {item.status}
+        </PdfLink>)}
+        {hasAppendix && <PdfLink src="#technical-appendix" style={styles.indexLink}>Anexo de trazabilidad</PdfLink>}
+
         {resolvedItems.map((item, index) => (
           <Fragment key={index}>
-            {/* Keep cards at page level: minPresenceAhead is ignored for the first
-                child inside a split wrapping View, leaving its title orphaned. */}
-            <View
-              id={`entry-${index}`}
-              style={[styles.itemHeader, { marginTop: index === 0 ? 0 : 22 }]}
-              wrap={false}
-              break={index === 0}
-              minPresenceAhead={140}
-            >
+            {/* Page-level cards and headings keep minPresenceAhead effective. */}
+            <View id={`entry-${index}`} style={[styles.itemHeader, { marginTop: 16 }]} wrap={false} minPresenceAhead={120}>
+              <Text style={styles.entryReference}>ENTRADA {entryNumber(index)}</Text>
               <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemMeta}>
-                {item.dateLabel}: {formatDate(item.date)} · {item.origin} · Estado: {item.status}
-              </Text>
+              <Text style={styles.itemMeta}>{item.dateLabel}: {itemDate(item)} · {item.origin} · Estado: {item.status}</Text>
             </View>
-            {item.sections.map((section, sectionIndex) => (
+            {renderHeaderSections(item, `entry-facts-${index}`)}
+            {item.reviewSummary && <Text style={styles.contextNote} orphans={2} widows={2}>{item.reviewSummary}</Text>}
+            {item.sourceSummary && <Text style={styles.contextNote} orphans={2} widows={2}>{item.sourceSummary}</Text>}
+            {item.sections.filter(section => !section.placement || section.placement === 'body').map((section, sectionIndex) => (
               <Fragment key={sectionIndex}>
-                <Text style={styles.sectionTitle} minPresenceAhead={section.content !== undefined ? SECTION_TEXT_KEEP_WITH_NEXT : 36}>{section.title}</Text>
-                {section.content !== undefined && (
-                  <Text style={styles.sectionContent} orphans={PDF_BODY_TEXT.orphans} widows={PDF_BODY_TEXT.widows}>{section.content}</Text>
-                )}
-                {section.blocks?.map((block, blockIndex) => {
-                  if (block.kind === 'text') {
-                    return (
-                      <Fragment key={blockIndex}>
-                        {block.label && <Text style={styles.blockLabel} minPresenceAhead={24}>{block.label}</Text>}
-                        <Text style={[styles.sectionContent, styles.structuredBlock]}>{block.content}</Text>
-                      </Fragment>
-                    );
-                  }
-
-                  if (block.kind === 'list') {
-                    return (
-                      <View key={blockIndex} style={styles.structuredBlock}>
-                        {block.label && <Text style={styles.blockLabel} minPresenceAhead={24}>{block.label}</Text>}
-                        {block.items.map((listItem, listIndex) => (
-                          <View key={listIndex} style={styles.listRow} wrap={false}>
-                            <Text style={styles.listBullet}>•</Text>
-                            <Text style={styles.listContent}>{listItem}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    );
-                  }
-
-                  if (block.columns.length > 5) {
-                    return (
-                      <View key={blockIndex} style={styles.structuredBlock}>
-                        {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
-                        <View style={styles.dataCards}>
-                          {block.rows.map((row, rowIndex) => (
-                            <View key={rowIndex} style={styles.dataCard} wrap={false}>
-                              <Text style={styles.dataCardTitle}>Elemento {rowIndex + 1}</Text>
-                              {row.map((cell, cellIndex) => (
-                                <View key={cellIndex} style={styles.dataCardField}>
-                                  <Text style={styles.dataCardLabel}>
-                                    {block.columns[cellIndex]}
-                                  </Text>
-                                  <Text style={styles.dataCardValue}>{cell}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    );
-                  }
-
-                  return (
-                    <View key={blockIndex} style={styles.structuredBlock}>
-                      {block.label && <Text style={styles.blockLabel}>{block.label}</Text>}
-                      <View style={styles.dataTable}>
-                        <View
-                          style={[styles.dataTableRow, styles.dataTableHeader]}
-                          wrap={false}
-                        >
-                          {block.columns.map((column, columnIndex) => (
-                            <Text
-                              key={columnIndex}
-                              style={[styles.dataTableCell, styles.dataTableHeading]}
-                            >
-                              {column}
-                            </Text>
-                          ))}
-                        </View>
-                        {block.rows.map((row, rowIndex) => (
-                          <View key={rowIndex} style={styles.dataTableRow} wrap={false}>
-                            {row.map((cell, cellIndex) => (
-                              <Text key={cellIndex} style={styles.dataTableCell}>
-                                {cell}
-                              </Text>
-                            ))}
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  );
-                })}
-                {section.key &&
-                  item.attachments
-                    .filter((attachment) => attachment.sectionId === section.key)
-                    .map(renderAttachment)}
+                {renderSection(section, `body-${index}-${sectionIndex}`)}
+                {section.key && item.attachments.filter(attachment => attachment.sectionId === section.key).map(renderAttachment)}
               </Fragment>
             ))}
-            {item.attachments.some((attachment) => attachment.sectionId === null) && (
-              <Fragment>
-                <Text style={styles.sectionTitle} minPresenceAhead={340}>IMÁGENES ADJUNTAS</Text>
-                {item.attachments
-                  .filter((attachment) => attachment.sectionId === null)
-                  .map(renderAttachment)}
-              </Fragment>
-            )}
+            {item.attachments.some(attachment => attachment.sectionId === null) && <Fragment>
+              <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={340}>IMÁGENES ADJUNTAS</Text>
+              {item.attachments.filter(attachment => attachment.sectionId === null).map(renderAttachment)}
+            </Fragment>}
           </Fragment>
         ))}
 
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
-            Documento generado por ClinicView — uso clínico interno. Contiene información sensible.
+        {hasAppendix && <Fragment>
+          <Text id="technical-appendix" style={styles.coverTitle} break minPresenceAhead={80}>Anexo de trazabilidad</Text>
+          <Text style={styles.appendixIntro}>
+            Procedencia, revisiones y control de versiones. La referencia de cada entrada permite localizar su contenido clínico.
+            Las constancias internas no equivalen a una firma digital certificada.
           </Text>
-          <Text
-            style={styles.footerText}
-            render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
-          />
+          {orderDescription && renderSection({ title: 'Alcance de la exportación', content: orderDescription }, 'export-scope', true)}
+          {resolvedItems.map((item, index) => {
+            const appendixSections = item.sections.filter(section => section.placement === 'appendix');
+            if (!appendixSections.length) return null;
+            return <Fragment key={index}>
+              <View style={[styles.itemHeader, { marginTop: 14 }]} wrap={false} minPresenceAhead={110}>
+                <PdfLink src={`#entry-${index}`} style={styles.entryReference}>ENTRADA {entryNumber(index)} · VOLVER AL CONTENIDO</PdfLink>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemMeta}>{item.dateLabel}: {itemDate(item)} · {item.origin} · Estado: {item.status}</Text>
+              </View>
+              {appendixSections.map((section, sectionIndex) => renderSection(section, `appendix-${index}-${sectionIndex}`, true))}
+            </Fragment>;
+          })}
+        </Fragment>}
+
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>ClinicView · Documento clínico · Información confidencial</Text>
+          <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
       </Page>
     </Document>

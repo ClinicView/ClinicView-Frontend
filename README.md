@@ -42,6 +42,7 @@ cp .env.example .env.local
 | `npm run lint` | Ejecuta ESLint |
 | `npm run typecheck` | Verificación de tipos TypeScript |
 | `npm test` | Pruebas unitarias |
+| `npm run test:pdf` | Alcance del expediente, fidelidad documental y paginación de los PDF |
 | `npm run test:e2e` | Recorrido aislado de navegador desde carga hasta PDF, con OCR sintético |
 | `npm run test:e2e:guards` | Regresiones negativas del verificador PDF, sin servidores |
 | `npm run gen-types` | Genera tipos desde el esquema OpenAPI del backend |
@@ -69,5 +70,9 @@ src/
 La [guía de aceptación en navegador](docs/BROWSER-E2E.md) explica la base aislada,
 los puertos exclusivos y cómo verificar texto completo, orden, fechas e imágenes
 del PDF descargado. No utiliza historias reales ni mide la precisión del OCR.
+
+El [formato clínico de exportación](docs/CLINICAL-PDF-FORMAT.md) documenta los
+cuadros y secciones clínicas, el anexo de trazabilidad y las reglas para conservar
+contenido completo al adaptar documentos de distintos formatos.
 
 Este frontend consume la API REST del backend de ClinicView. Asegúrate de tener el backend corriendo antes de iniciar el frontend en modo desarrollo.

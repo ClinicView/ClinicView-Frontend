@@ -183,3 +183,12 @@ Comprobaciones de regresión:
 
 La evidencia de ejemplo, PDFs y capturas se conserva fuera de Git. Los textos
 usados en la regresión comprometida son sintéticos; no incluye datos de pacientes.
+
+## Formato clínico — 22 de septiembre de 2026
+
+El [nuevo formato PDF](CLINICAL-PDF-FORMAT.md) separa ficha y contenido clínico
+del anexo técnico, sin cambiar el flujo de revisión/validación. Amplía la
+regresión sintética a campos en cuadros, siete tipos de atención, tablas largas,
+estados históricos y filtros visibles. La comprobación del ejemplo previamente
+validado usa sus snapshots exportados y el generador de la aplicación; no se
+presenta como una nueva descarga ni como una nueva revisión clínica en la UI.
