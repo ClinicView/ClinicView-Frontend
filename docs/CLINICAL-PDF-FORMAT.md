@@ -82,7 +82,10 @@ Resultados de esta implementación:
   largos, adjunto visible, versiones corregidas/anuladas y anexo posterior al
   último contenido clínico. Conservación de todas las filas y encabezados en
   las seis páginas que contienen la tabla extensa.
-- 15 guardas negativas del verificador PDF; typecheck y build aprobados.
+- 21 guardas del verificador PDF; typecheck y build aprobados.
+- Nueva ejecución E2E aislada: **22/22** (recorrido completo y 21 guardas), sin
+  reintentos. Descarga de 9 páginas con backend, almacenamiento y autenticación
+  reales, límite OCR sintético, imagen, texto largo y control no validado.
 - Lint: cero errores y 46 advertencias preexistentes fuera de este cambio.
 - Ejemplos locales reconstruidos con el mismo generador desde snapshots de una
   demostración ya validada: individual de 6 páginas e historia de 16 páginas.
@@ -94,3 +97,19 @@ Los PDF, capturas y snapshots del ejemplo se conservan fuera de Git. Las pruebas
 no acreditan precisión OCR ni compatibilidad universal con cualquier formulario.
 El aumento de páginas respecto al formato anterior responde a cuadros, separación
 visual y anexo explícito, no a nuevas atenciones.
+
+## Continuidad del texto entre páginas
+
+La primera ejecución adicional de navegador completó la descarga, pero su
+comparador señaló un párrafo como ausente. La inspección de los bytes y de las
+nueve páginas confirmó que la oración continuaba en la página siguiente: el
+comparador había intercalado el pie y la cabecera entre sus dos partes.
+
+El verificador conserva la vista de texto completa y añade otra de la franja
+corporal, excluyendo cabecera/pie por coordenadas, nunca por borrar palabras.
+Las comprobaciones Unicode mantienen NFC exacto; el contenido prohibido se busca
+en ambas vistas, también si atraviesa páginas. No se relajan geometría, imágenes,
+cronología, numeración ni títulos. Seis regresiones nuevas cubren esa continuidad,
+la pérdida real de la última palabra, símbolos clínicos, OCR no validado partido
+entre páginas y texto corporal que se parece a un pie. Los fixtures antiguos
+conservan sus expectativas y ahora actualizan coherentemente texto y fragmentos.

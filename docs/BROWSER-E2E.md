@@ -192,3 +192,11 @@ regresión sintética a campos en cuadros, siete tipos de atención, tablas larg
 estados históricos y filtros visibles. La comprobación del ejemplo previamente
 validado usa sus snapshots exportados y el generador de la aplicación; no se
 presenta como una nueva descarga ni como una nueva revisión clínica en la UI.
+
+Además se volvió a ejecutar la suite aislada en navegador: **22/22** correctas,
+sin reintentos, con un PDF descargado de 9 páginas. La primera ejecución había
+producido un falso positivo del comparador al intercalar cabecera y pie en medio
+de una oración que atravesaba páginas. Se conserva aquella evidencia y la
+corrección se protege con seis regresiones nuevas; no se eliminó la oración de
+las expectativas ni se redujeron los controles de integridad. Véase el detalle
+de [continuidad entre páginas](CLINICAL-PDF-FORMAT.md#continuidad-del-texto-entre-páginas).

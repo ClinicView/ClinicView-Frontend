@@ -199,10 +199,21 @@ export function verifyClinicalPdfInspection(
 ): ClinicalPdfVerification {
   const issues: string[] = [];
   const text = normalizePdfText(inspection.text);
-  const unicodeText = inspection.pages.flatMap(page => page.fragments.map(fragment => fragment.text))
-    .join(' ').normalize('NFC').replace(/\s+/g, ' ').trim();
+  // A paragraph may continue onto the next page with fixed masthead/footer
+  // text between its fragments. Keep the full view and an additional body
+  // view, preserving extraction order and excluding only the configured bands.
+  // Never remove words by their content: clinical text can resemble a footer.
+  const bodyFragments = inspection.pages.flatMap(page => page.fragments.filter(fragment =>
+    fragment.y >= (expected.bodyBounds?.top ?? 90) &&
+    fragment.y + fragment.height <= (expected.bodyBounds?.bottom ?? page.height - 60),
+  ).map(fragment => fragment.text));
+  const textViews = [text, normalizePdfText(bodyFragments.join(' '))];
+  const unicodeTextViews = [
+    inspection.pages.flatMap(page => page.fragments.map(fragment => fragment.text)),
+    bodyFragments,
+  ].map(fragments => fragments.join(' ').normalize('NFC').replace(/\s+/g, ' ').trim());
   for (const required of expected.requiredUnicodeTexts ?? []) {
-    if (!unicodeText.includes(required.normalize('NFC').replace(/\s+/g, ' ').trim())) {
+    if (!unicodeTextViews.some(view => view.includes(required.normalize('NFC').replace(/\s+/g, ' ').trim()))) {
       issues.push(`Missing exact Unicode PDF text: ${required}`);
     }
   }
@@ -211,10 +222,10 @@ export function verifyClinicalPdfInspection(
     issues.push('PDF has unexpectedly many pages.');
   }
   for (const required of [...(expected.requiredTexts ?? []), ...(expected.expectedDates ?? [])]) {
-    if (!text.includes(normalizePdfText(required))) issues.push(`Missing PDF text: ${required}`);
+    if (!textViews.some(view => view.includes(normalizePdfText(required)))) issues.push(`Missing PDF text: ${required}`);
   }
   for (const forbidden of expected.forbiddenTexts ?? []) {
-    if (text.includes(normalizePdfText(forbidden))) issues.push(`Forbidden PDF text: ${forbidden}`);
+    if (textViews.some(view => view.includes(normalizePdfText(forbidden)))) issues.push(`Forbidden PDF text: ${forbidden}`);
   }
   let previousPosition = -1;
   for (const marker of expected.orderedMarkers ?? []) {
