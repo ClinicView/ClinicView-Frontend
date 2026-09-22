@@ -15,6 +15,9 @@ function findTests(directory) {
 }
 const tests = findTests(join(root, 'src')).sort();
 if (!tests.length) throw new Error('No unit tests found.');
+// A local server may be using .next. Allow tests to compile elsewhere without
+// touching its production build, generated types or the developer's next-env.d.ts.
+const outputDirectory = resolve(root, process.env.CLINICVIEW_UNIT_TEST_OUTPUT || '.next/unit-tests');
 const compiled = spawnSync(
   process.execPath,
   [
@@ -22,7 +25,7 @@ const compiled = spawnSync(
     '--rootDir',
     'src',
     '--outDir',
-    '.next/unit-tests',
+    outputDirectory,
     '--module',
     'commonjs',
     '--moduleResolution',
@@ -47,8 +50,7 @@ const result = spawnSync(
     '--test',
     ...tests.map((file) =>
       join(
-        root,
-        '.next/unit-tests',
+        outputDirectory,
         relative(join(root, 'src'), file).replace(/\.ts$/, '.js'),
       ),
     ),

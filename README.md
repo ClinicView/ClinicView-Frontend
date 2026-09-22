@@ -30,7 +30,32 @@ cp .env.example .env.local
 
 | Variable | Descripción | Valor por defecto |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | URL base de la API del backend | `http://localhost:3001/api` |
+| `NEXT_PUBLIC_API_URL` | URL base pública de la API, compartida por login, sesión, peticiones, cargas y documentos | Desarrollo/tests: `http://localhost:3001/api`; producción: `/api` |
+
+La configuración se resuelve en `src/shared/services/api-url.ts`. Acepta una ruta
+del mismo origen (`/api`) o una URL HTTP(S) explícita; normaliza las barras finales
+y rechaza valores vacíos, credenciales, parámetros, fragmentos y rutas ambiguas.
+Una compilación de producción nunca selecciona `localhost` de forma implícita.
+
+Para probar **localmente una compilación de producción** con backend en 3001,
+define antes de compilar, en PowerShell:
+
+```powershell
+$env:NEXT_PUBLIC_API_URL = 'http://localhost:3001/api'
+npm run build
+npm run start -- -p 3002
+```
+
+No ejecutes el build sobre `.next` mientras otro servidor esté usando esa carpeta:
+coordina primero su parada o compila una copia aislada. `/api` requiere que el
+mismo origen atienda esa ruta; no crea una API nueva ni un proxy automáticamente.
+El arnés E2E ya fija explícitamente `http://localhost:3101/api` y conserva sus
+puertos aislados.
+
+`NEXT_PUBLIC_API_URL` es pública y queda incorporada al JavaScript durante el
+build: cambiarla solo al ejecutar `start` no modifica el destino del navegador.
+Nunca incluyas secretos en ella. Consulta la
+[documentación oficial de variables de Next.js](https://nextjs.org/docs/app/guides/environment-variables#bundling-environment-variables-for-the-browser).
 
 ## Scripts
 
@@ -46,6 +71,19 @@ cp .env.example .env.local
 | `npm run test:e2e` | Recorrido aislado de navegador desde carga hasta PDF, con OCR sintético |
 | `npm run test:e2e:guards` | Regresiones negativas del verificador PDF, sin servidores |
 | `npm run gen-types` | Genera tipos desde el esquema OpenAPI del backend |
+
+Si la app local está usando `.next`, las pruebas unitarias pueden compilar sus
+archivos en otra carpeta, sin detener el servidor ni cambiar datos:
+
+```powershell
+$env:CLINICVIEW_UNIT_TEST_OUTPUT = '../tmp/frontend-unit-tests'
+npm test
+npx tsc --noEmit --incremental false
+```
+
+La carpeta de salida debe ser exclusiva para las pruebas; no apuntes a fuentes,
+datos clínicos ni al build que esté en uso. Esta opción no inicia servicios ni
+ejecuta las pruebas E2E que escriben en su base aislada.
 
 ## Estructura
 

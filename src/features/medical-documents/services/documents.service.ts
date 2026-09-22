@@ -1,4 +1,5 @@
 import { apiBlob, apiGet, apiPatch, apiPost, apiUpload } from '@/shared/services/api-client';
+import { API_BASE_URL } from '@/shared/services/api-url';
 import type {
   DocumentCorrectionInput,
   DocumentStatus,
@@ -76,8 +77,7 @@ export function rejectDocument(
 }
 
 export function getDocumentDownloadUrl(patientId: string, docId: string): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-  return `${base}/patients/${patientId}/documents/${docId}/file`;
+  return `${API_BASE_URL}/patients/${patientId}/documents/${docId}/file`;
 }
 
 export function getDocumentFile(patientId: string, docId: string): Promise<Blob> {

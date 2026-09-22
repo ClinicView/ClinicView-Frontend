@@ -7,9 +7,8 @@ import {
 } from '@/shared/session/auth-coordinator';
 import { sessionFromAccessToken } from '@/shared/session/session-token';
 import type { Session } from '@/shared/session/types';
+import { API_BASE_URL } from '@/shared/services/api-url';
 import type { TokenResponse } from '../types';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 async function readLoginResponse(response: Response): Promise<Session> {
   if (!response.ok) {
@@ -33,7 +32,7 @@ export const authService = {
 
     try {
       const session = await runExclusiveAuthOperation(epoch, async (signal) => {
-        const response = await fetch(`${API_BASE}/auth/login`, {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           credentials: 'include',

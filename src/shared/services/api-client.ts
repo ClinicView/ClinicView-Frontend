@@ -6,8 +6,7 @@ import {
   runExclusiveAuthOperation,
 } from '@/shared/session/auth-coordinator';
 import { sessionFromAccessToken } from '@/shared/session/session-token';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+import { API_BASE_URL } from './api-url';
 
 export class ApiError extends Error {
   constructor(
@@ -54,7 +53,7 @@ export function refreshApiSession(options: { notify?: boolean } = {}): Promise<s
   refreshInFlight = runExclusiveAuthOperation(epoch, async (signal) => {
     if (isSessionRestoreBlocked()) return null;
 
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
@@ -99,7 +98,7 @@ async function doFetch(path: string, init: RequestInit, isRetry = false): Promis
   }
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: 'no-store',
     credentials: 'include',
     ...init,
@@ -196,7 +195,7 @@ async function uploadWithRetry<T>(
 ): Promise<T> {
   const headers = new Headers();
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers,
     body: formData,

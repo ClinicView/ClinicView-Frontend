@@ -2,8 +2,7 @@ import {
   beginLogoutTransition,
   runExclusiveAuthOperation,
 } from './auth-coordinator';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+import { API_BASE_URL } from '../services/api-url';
 
 /**
  * Bloquea la restauración local antes de tocar la red. Si la petición falla,
@@ -14,7 +13,7 @@ export async function logoutRequest(): Promise<boolean> {
   const epoch = beginLogoutTransition();
   try {
     return await runExclusiveAuthOperation(epoch, async (signal) => {
-      const response = await fetch(`${API_BASE}/auth/logout`, {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         cache: 'no-store',
