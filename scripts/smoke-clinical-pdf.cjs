@@ -21,6 +21,8 @@ const { normalizePdfText, validateClinicalPdf } = require('../e2e/pdf-verificati
 async function main() {
   const now = '2026-09-07T15:00:00Z';
   const longInstructions = Array.from({ length: 48 }, (_, index) => `ORIENTACIÓN_SINTÉTICA_${String(index + 1).padStart(2, '0')}: texto sintético sin uso asistencial.`);
+  const multilineMethod = ['Método de demostración', ...Array.from({ length: 7 }, (_, index) => `MÉTODO_MULTILÍNEA_${index + 1}: texto de prueba conservado sin transformación.`)].join('\n');
+  const longCondition = `${'Condición documentada de prueba. '.repeat(18)}FIN_CONDICIÓN_LARGA_LITERAL`;
   const laboratoryRows = Array.from({ length: 72 }, (_, index) => ({
     analyte: `ANALITO_SINTÉTICO_${String(index + 1).padStart(2, '0')}`,
     value: `VALOR_FILA_${String(index + 1).padStart(2, '0')}`,
@@ -51,6 +53,7 @@ async function main() {
       chiefComplaint: 'Motivo sintético de prueba. '.repeat(30),
       presentIllness: longInstructions.join('\n'),
       careInstructions: 'Orientaciones documentadas de demostración.',
+      vitalSigns: { systolicBloodPressure: 123, diastolicBloodPressure: 77, heartRate: 68, respiratoryRate: 18, temperatureCelsius: 36.7, oxygenSaturation: 97.5 },
     },
     EVOLUTION: {
       evolution: 'Evolución sintética para prueba de formato.',
@@ -58,8 +61,8 @@ async function main() {
     },
     LAB_RESULT: {
       studyName: 'Estudio sintético\nSEGUNDA LÍNEA DEL CAMPO BREVE',
-      methodology: 'Método de demostración',
-      sampleCondition: 'Condición documentada de prueba',
+      methodology: multilineMethod,
+      sampleCondition: longCondition,
       criticalResultCommunication: 'Comunicación registrada para probar el campo.',
       results: laboratoryRows,
     },
@@ -138,6 +141,7 @@ async function main() {
       lastName: 'SINTÉTICO',
       documentType: 'OTHER',
       documentNumber: 'DEMO-NO-REAL',
+      medicalRecordNumber: 'NHC-SMOKE-007',
       dateOfBirth: '1990-01-01',
       sex: 'OTHER',
     },
@@ -176,9 +180,14 @@ async function main() {
     if (record.recordType === 'CONSULTATION') {
       const longField = fieldBlocks.flatMap(block => block.fields).find(field => field.value === longInstructions.join('\n'));
       assert.equal(longField?.wide, true, 'A long narrative remains intact in a full-width field.');
+      const vitals = item.sections.find(section => section.key === 'consultation-vitals');
+      assert.equal(vitals.blocks.flatMap(block => block.kind === 'fields' ? block.fields : []).length, 6, 'The compact vitals block must retain every explicitly supplied number.');
     }
     if (record.recordType === 'LAB_RESULT') {
       assert.ok(fieldBlocks.flatMap(block => block.fields).some(field => field.value === templates.LAB_RESULT.studyName), 'Multiline scalar values must survive the transformation verbatim.');
+      for (const expected of [multilineMethod, longCondition]) {
+        assert.ok(fieldBlocks.flatMap(block => block.fields).some(field => field.value === expected), 'Long/multiline scalar values cannot be summarized or converted to truncated rows.');
+      }
     }
   }
   options.fontSources = Object.fromEntries(Object.entries(PDF_FONT_FILES).map(([key, path]) => [key, resolve(root, `public${path}`)]));
@@ -209,7 +218,7 @@ async function main() {
       ...records.map(record => record.summary),
       ...longInstructions,
       ...laboratoryRows.flatMap(row => [row.analyte, row.value]),
-      'SEGUNDA LÍNEA DEL CAMPO BREVE', 'Método de demostración', 'Condición documentada de prueba',
+      'SEGUNDA LÍNEA DEL CAMPO BREVE', ...multilineMethod.split('\n'), longCondition,
       'Evolución sintética para prueba de formato.', 'Producto sintético, no administrable',
       'Procedimiento sintético', 'Destino sintético', 'Disciplina de demostración',
       'Contenido sintético para probar el formato.', 'ANULACIÓN_SINTÉTICA_VISIBLE_SIN_BORRAR_CONTENIDO',
@@ -217,7 +226,7 @@ async function main() {
       'Anulado', 'Corregido', 'Anexo de trazabilidad', ...records.map(record => record.id),
       'a'.repeat(64), 'NOTA_CONFIRMADA_TÉCNICA_CONSERVADA', 'Original sintético vinculado.pdf', 'document-source-synthetic', 'VÍNCULO_ORIGINAL_CONSERVADO', 'Transcriptor sintético', 'Agrupación documentada para probar el PDF',
       'Isotipo institucional usado únicamente como imagen sintética de prueba.',
-      options.orderDescription,
+      options.orderDescription, 'NHC-SMOKE-007',
     ],
     orderedMarkers: records.map(record => record.summary),
     expectedSectionStarts: [
@@ -236,6 +245,25 @@ async function main() {
   writeFileSync(resolve(output, 'clinical-workflow-synthetic.pdf'), bytes);
   writeFileSync(resolve(output, 'verification.json'), JSON.stringify(report, null, 2));
   assert.deepEqual(report.issues, []);
+  for (const page of report.pages) {
+    const headerText = normalizePdfText(page.fragments.filter(fragment => fragment.y < 96).map(fragment => fragment.text).join(' '));
+    assert.ok(headerText.includes('HC: NHC-SMOKE-007'), `Page ${page.number}: the repeated patient legend must retain NHC.`);
+  }
+  for (const [label, value] of [['Nombre del estudio', 'Estudio sintético'], ['Disciplina', 'Disciplina de demostración']]) {
+    const row = report.pages.flatMap(page => {
+      const left = page.fragments.find(fragment => normalizePdfText(fragment.text).replace(/:$/, '') === label);
+      const right = page.fragments.find(fragment => normalizePdfText(fragment.text) === value);
+      return left && right ? [{ left, right }] : [];
+    })[0];
+    assert.ok(row, `Missing institutional label/value row: ${label}`);
+    assert.ok(row.right.x > row.left.x + row.left.width, `${label}: keep label and value in distinct columns.`);
+    assert.ok(Math.abs(row.right.y - row.left.y) < Math.max(row.left.height, row.right.height), `${label}: retain a single row instead of label-over-value cards.`);
+  }
+  const vitalsPage = report.pages.find(page => ['123', '77', '68'].every(value => page.fragments.some(fragment => fragment.text === value)));
+  assert.ok(vitalsPage, 'The first three supplied vital signs must remain together in the compact block.');
+  const vitals = ['123', '77', '68'].map(value => vitalsPage.fragments.find(fragment => fragment.text === value));
+  assert.ok(vitals[0].x < vitals[1].x && vitals[1].x < vitals[2].x, 'Compact vitals must use three ordered columns.');
+  assert.ok(Math.max(...vitals.map(fragment => fragment.y)) - Math.min(...vitals.map(fragment => fragment.y)) < 20, 'Compact vital values must stay within one grid row.');
   const lastClinicalMarker = report.text.indexOf(normalizePdfText(records.at(-1).summary));
   for (const technicalMarker of [...records.map(record => record.id), episode.id, 'document-source-synthetic', 'NOTA_CONFIRMADA_TÉCNICA_CONSERVADA', 'a'.repeat(64), options.orderDescription]) {
     assert.ok(report.text.indexOf(normalizePdfText(technicalMarker)) > lastClinicalMarker, `Technical appendix must follow all clinical entries: ${technicalMarker}`);

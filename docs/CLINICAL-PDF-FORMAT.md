@@ -113,3 +113,54 @@ cronología, numeración ni títulos. Seis regresiones nuevas cubren esa continu
 la pérdida real de la última palabra, símbolos clínicos, OCR no validado partido
 entre páginas y texto corporal que se parece a un pie. Los fixtures antiguos
 conservan sus expectativas y ahora actualizan coherentemente texto y fragmentos.
+
+## Refinamiento institucional — 22 de septiembre de 2026
+
+La segunda iteración toma la referencia visual aprobada: barras azul marino con
+texto blanco para las secciones clínicas, bandas claras para subsecciones y
+anexo, bordes discretos y filas alternadas. La cabecera repite identificación y
+número de historia; cada entrada presenta su tipo, fecha, origen y estado explícito.
+El estado no depende del color. Se conserva la marca ClinicView.
+
+- La presentación general es una fila de etiqueta/valor alineada (32/68 %), sin
+  altura fija. Los campos de más de 450 caracteres, más de cinco líneas,
+  etiquetas extensas y campos `wide` pasan a un bloque divisible de ancho completo.
+- Solo los signos vitales del bloque tipado `consultation-vitals` usan tres
+  columnas. No se decide la estructura clínica por cantidad de campos ni por
+  palabras detectadas en OCR. El texto ambiguo sigue siendo literal.
+- El título del documento proviene de `DOCUMENT_KIND_LABELS` cuando existe
+  clasificación registrada; el fallback es «Documento clínico digitalizado».
+  No se infiere el tipo desde el nombre de archivo. El nombre completo permanece
+  tanto en la referencia de fuente como en el apartado ARCHIVO del anexo.
+- Las tablas mantienen encabezados repetidos, alternancia suave de filas y
+  todos sus valores. Las narrativas mantienen marcos ligeros y flujo multipágina.
+
+Se corrigió un caso adicional de paginación: el margen inferior de un `Text`
+enmarcado podía desplazar el párrafo completo aunque su texto cupiera, dejando
+huérfano el título precedente. Se eliminó ese margen y se conservó la separación
+en el siguiente encabezado. No se aumentaron indiscriminadamente las reservas
+de espacio ni se relajaron las expectativas del verificador.
+
+Evidencia de esta iteración, distinta de los resultados de la primera versión:
+
+- 210 pruebas unitarias; 9 de selección/orden; fidelidad documental y las mismas
+  58 posiciones de borde aprobadas, incluidos los tres casos que fallaban antes
+  del ajuste de margen.
+- Nuevas comprobaciones de clasificación/fallback, nombre fuente completo,
+  alineación etiqueta/valor, cabecera con número de historia, campos multilínea
+  y cuadrícula exclusiva para signos vitales tipados.
+- Smoke de 23 páginas: siete tipos, ocho entradas, 72 filas de laboratorio,
+  campos largos, imágenes, versiones previas y anexos preservados.
+- Flujo aislado completo en Chromium: 22/22 pruebas aprobadas, sin reintentos.
+  Backend/autenticación/almacenamiento reales y límite OCR sintético; descarga
+  con fechas, imagen y textos completos. Las 21 guardas mantienen sus controles.
+- Typecheck y build de producción aprobados. Lint: cero errores, 46 advertencias
+  preexistentes. Frontend local actualizado y backend existente sin cambios.
+- Ejemplos reconstruidos desde los mismos snapshots de demostración ya validados:
+  individual de 6 páginas y expediente de 18. Verificación privada de 1099
+  controles y 67 grupos corregidos, sin faltantes. Inspección visual de las
+  24 páginas finales, sin títulos huérfanos, recortes ni solapamientos.
+
+Solo cambia la presentación compartida del frontend. No se modifican backend,
+modelo OCR, datos clínicos, permisos ni revisión/validación. Los ejemplos no
+constituyen una nueva atención o validación clínica.

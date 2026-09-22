@@ -29,8 +29,29 @@ function assertAppendixAfterBody(report, bodyMarkers, technicalMarkers) {
   }
 }
 
+function assertLabelValueRow(report, label, value) {
+  const normalizedLabel = normalizePdfText(label).replace(/:$/, '');
+  for (const page of report.pages) {
+    const labelFragment = page.fragments.find(fragment => normalizePdfText(fragment.text).replace(/:$/, '') === normalizedLabel);
+    const valueFragment = page.fragments.find(fragment => normalizePdfText(fragment.text) === normalizePdfText(value));
+    if (!labelFragment || !valueFragment) continue;
+    assert.ok(valueFragment.x > labelFragment.x + labelFragment.width, `${label}: its value must occupy a distinct right-hand column.`);
+    assert.ok(Math.abs(valueFragment.y - labelFragment.y) < Math.max(labelFragment.height, valueFragment.height), `${label}: label and value must share a row, not stack as separate cards.`);
+    return;
+  }
+  assert.fail(`Missing same-page label/value row: ${label} / ${value}`);
+}
+
 async function main() {
   const timestamp = '2026-09-18T17:00:00Z';
+  const identificationFields = [
+    ['Nombre', 'PERSONA SINTÉTICA SIN IDENTIDAD REAL'],
+    ['Edad', '34 años'],
+    ['Código sintético', 'CÓDIGO_LITERAL_SIN_INFERENCIA'],
+    ['Etiqueta extensa para comprobar continuidad y alineación de campo', 'VALOR_ETIQUETA_EXTENSA_LITERAL'],
+    ['Observación literal', `${'Contenido sintético largo conservado sin resumir ni modificar. '.repeat(10)}FIN_CAMPO_LARGO_LITERAL`],
+  ];
+  const fieldSource = identificationFields.map(([label, value]) => `${label}: ${value}`).join('\n');
   const text = [
     'PREÁMBULO INSTITUCIONAL CONSERVADO',
     '1. ANTECEDENTES PERSONALES',
@@ -47,8 +68,7 @@ async function main() {
     'Observaciones del plan de demostración.',
     'Diagnóstico: Gastritis de demostración',
     'Datos de filiación:',
-    'Nombre: PERSONA SINTÉTICA SIN IDENTIDAD REAL',
-    'Edad: 34 años',
+    fieldSource,
     '## REGISTRO DESCONOCIDO CONSERVADO',
     'Rótulo no clasificable: primera línea literal',
     'continuación narrativa sin inferir una nueva etiqueta.',
@@ -57,7 +77,7 @@ async function main() {
   const document = {
     id: 'document-demo', originalName: 'Original de demostración.pdf', mimeType: 'application/pdf', sizeBytes: 4096,
     status: 'VALIDATED', clinicalText: text, textSource: 'CORRECTED',
-    clinicalMetadata: { clinicalDate: '2024-04-15', originalProfessional: 'Profesional sintético de origen', sourceInstitution: 'Institución sintética de origen', sourceNotes: 'PROCEDENCIA_CLÍNICA_VISIBLE\nFuente sintética con alcance no inferido.' },
+    clinicalMetadata: { documentKind: 'CLINICAL_HISTORY', clinicalDate: '2024-04-15', originalProfessional: 'Profesional sintético de origen', sourceInstitution: 'Institución sintética de origen', sourceNotes: 'PROCEDENCIA_CLÍNICA_VISIBLE\nFuente sintética con alcance no inferido.' },
     metadataRevisions: [{ version: 1, createdAt: timestamp, recordedByName: 'AUTOR_REVISIÓN_TÉCNICA', reason: 'MOTIVO_REVISIÓN_TÉCNICA', metadata: { sourceNotes: 'PROCEDENCIA_PREVIA_CONSERVADA' } }],
     validationChecklist: { schemaVersion: 1, items: [{ title: 'CHECKLIST_TÉCNICO_CONSERVADO', statement: 'ATESTACIÓN_TÉCNICA_CONSERVADA' }] },
     createdAt: timestamp, correctedAt: timestamp, reviewedAt: timestamp,
@@ -65,6 +85,17 @@ async function main() {
     correctedByActor: { id: 'demo-reviewer', fullName: 'Revisión de demostración', username: 'revision.demo', isActive: false, displayName: 'Revisión de demostración', identitySource: 'CURRENT_DIRECTORY' },
   };
   const item = clinicalHistoryDocumentToExportItem(document);
+  for (const transform of [clinicalHistoryDocumentToExportItem, documentToExportItem]) {
+    for (const [documentKind, title] of [['CLINICAL_HISTORY', 'Historia clínica / expediente'], ['LAB_RESULT', 'Resultado de laboratorio'], [undefined, 'Documento clínico digitalizado']]) {
+      const titled = transform({ ...document, clinicalMetadata: { ...document.clinicalMetadata, documentKind } });
+      assert.equal(titled.title, title, 'Use the human-readable clinical type, never the storage filename as the leading title.');
+      assert.notEqual(titled.title, document.originalName);
+      assert.ok(titled.sourceSummary.includes(document.originalName), 'The original filename remains visible as source context.');
+      const archive = titled.sections.find(section => section.title === 'ARCHIVO');
+      assert.equal(archive.placement, 'appendix');
+      assert.ok(archive.content.includes(document.originalName), 'The complete original filename must survive in the appendix.');
+    }
+  }
   for (const heading of ['1. ANTECEDENTES PERSONALES', '2. ANTECEDENTES FAMILIARES', '3. EXAMEN FÍSICO GENERAL', '4. EXAMEN FÍSICO REGIONAL', '5. DIAGNÓSTICOS PRESUNTIVOS', '6. PLAN DE TRABAJO']) {
     assert.ok(item.sections.some(section => section.title === heading), `Source title missing: ${heading}`);
   }
@@ -82,7 +113,7 @@ async function main() {
   const fields = item.sections.find(section => section.title === 'Datos de filiación:');
   assert.ok(fields, 'Keep the literal OCR heading.');
   assert.equal(fields.layout, 'fields', 'Only explicit, unambiguous OCR label/value lines become fields.');
-  assert.equal(fields.content, 'Nombre: PERSONA SINTÉTICA SIN IDENTIDAD REAL\nEdad: 34 años', 'A layout hint must not rewrite the literal OCR value.');
+  assert.equal(fields.content, fieldSource, 'A layout hint must not rewrite the literal OCR value.');
   const unknown = item.sections.find(section => section.title === '## REGISTRO DESCONOCIDO CONSERVADO');
   assert.equal(unknown.content, 'Rótulo no clasificable: primera línea literal\ncontinuación narrativa sin inferir una nueva etiqueta.\nFIN DE NARRATIVA DESCONOCIDA.');
   assert.equal(unknown.layout, 'narrative');
@@ -100,7 +131,7 @@ async function main() {
     }
   }
   const options = {
-    patient: { firstName: 'Paciente', lastName: 'DE PRUEBA', documentType: 'OTHER', documentNumber: 'DEMO', dateOfBirth: '1990-01-01', sex: 'OTHER' },
+    patient: { firstName: 'Paciente', lastName: 'DE PRUEBA', documentType: 'OTHER', documentNumber: 'DEMO', medicalRecordNumber: 'NHC-SINTÉTICO-001', dateOfBirth: '1990-01-01', sex: 'OTHER' },
     items: [item, ...withheldItems], subtitle: 'Prueba de fidelidad documental', fileName: 'document-fidelity', generatedAt: timestamp,
     scopeSummary: 'ALCANCE_BREVE_DE_PRUEBA', orderDescription: 'CRITERIO_TÉCNICO_DE_ORDEN_CONSERVADO',
     fontSources: Object.fromEntries(Object.entries(PDF_FONT_FILES).map(([key, path]) => [key, resolve(root, `public${path}`)])),
@@ -110,7 +141,7 @@ async function main() {
   await assert.rejects(createPatientPdf({ ...options, subtitle: 'Unsupported 漢' }), /U\+6F22/);
   const bytes = Buffer.from(await (await createPatientPdf(options)).arrayBuffer());
   const report = await validateClinicalPdf(bytes, {
-    requiredTexts: [...text.split('\n').filter(line => !/^(Diagnóstico:|Nombre:|Edad:)/.test(line)), 'Gastritis de demostración', 'PERSONA SINTÉTICA SIN IDENTIDAD REAL', '34 años', 'Revisión de demostración', '@revision.demo', 'Cuenta inactiva', 'RECHAZO_SINTÉTICO_CONSERVADO', 'ALCANCE_BREVE_DE_PRUEBA', 'Anexo de trazabilidad', 'AUTOR_REVISIÓN_TÉCNICA', 'MOTIVO_REVISIÓN_TÉCNICA', 'PROCEDENCIA_PREVIA_CONSERVADA', 'CHECKLIST_TÉCNICO_CONSERVADO', 'ATESTACIÓN_TÉCNICA_CONSERVADA', 'Profesional sintético de origen', document.clinicalMetadata.sourceNotes],
+    requiredTexts: [...text.split('\n').filter(line => !line.startsWith('Diagnóstico:') && !identificationFields.some(([label]) => line.startsWith(`${label}:`))), ...identificationFields.flat(), 'Gastritis de demostración', 'Revisión de demostración', '@revision.demo', 'Cuenta inactiva', 'RECHAZO_SINTÉTICO_CONSERVADO', 'ALCANCE_BREVE_DE_PRUEBA', 'Anexo de trazabilidad', 'AUTOR_REVISIÓN_TÉCNICA', 'MOTIVO_REVISIÓN_TÉCNICA', 'PROCEDENCIA_PREVIA_CONSERVADA', 'CHECKLIST_TÉCNICO_CONSERVADO', 'ATESTACIÓN_TÉCNICA_CONSERVADA', 'Profesional sintético de origen', document.clinicalMetadata.sourceNotes, 'NHC-SINTÉTICO-001', item.title, document.originalName],
     requiredUnicodeTexts: ['SatO₂', '±', 'µg', '≥', '≤', 'α', 'β', '→', '✓', 'm²'],
     forbiddenTexts: ['Corrección profesional', 'sin hora registrada', ...['PENDING', 'PROCESSING', 'PROCESSED', 'FAILED', 'REJECTED'].map(status => `NO_EXPORTAR_${status}`)],
     orderedMarkers: ['PREÁMBULO INSTITUCIONAL CONSERVADO', 'Sin antecedentes consignados', 'Contenido de familia preservado', 'SatO2', 'Texto regional distinto', 'Hipótesis de demostración', 'Observaciones del plan'],
@@ -121,6 +152,13 @@ async function main() {
   writeFileSync(resolve(output, 'document-fidelity.pdf'), bytes);
   writeFileSync(resolve(output, 'verification.json'), JSON.stringify(report, null, 2));
   assert.deepEqual(report.issues, []);
+  assertLabelValueRow(report, 'Nombre', identificationFields[0][1]);
+  assertLabelValueRow(report, 'Edad', identificationFields[1][1]);
+  assertLabelValueRow(report, 'Código sintético', identificationFields[2][1]);
+  for (const page of report.pages) {
+    const headerText = normalizePdfText(page.fragments.filter(fragment => fragment.y < 96).map(fragment => fragment.text).join(' '));
+    assert.ok(headerText.includes('HC: NHC-SINTÉTICO-001'), `Page ${page.number}: the repeated patient legend must identify the clinical record number.`);
+  }
   assertAppendixAfterBody(report, ['FIN DE NARRATIVA DESCONOCIDA.', 'RECHAZO_SINTÉTICO_CONSERVADO'], ['ID del documento: document-demo', 'CHECKLIST_TÉCNICO_CONSERVADO', 'MOTIVO_REVISIÓN_TÉCNICA', 'CRITERIO_TÉCNICO_DE_ORDEN_CONSERVADO']);
   const paginationReports = [];
   // Cover first-page and continuation-page boundaries, retaining the original

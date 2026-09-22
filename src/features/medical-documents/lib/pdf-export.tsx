@@ -39,7 +39,7 @@ import {
 } from '@/shared/lib/date-time';
 import { parseClinicalSections, tryParseFields } from './clinical-sections';
 import type { MedicalDocument } from '../types/document';
-import { documentSortDate, documentMetadataSections, type DocumentClinicalMetadata } from './document-metadata';
+import { DOCUMENT_KIND_LABELS, documentSortDate, documentMetadataSections, type DocumentClinicalMetadata } from './document-metadata';
 import type { ClinicalSummary } from '@/features/patients/types/clinical-summary';
 import { clinicalSummarySections } from '@/features/patients/lib/clinical-summary-presentation';
 import { PDF_FONT_FILES, PdfTypographyError, preparePdfFonts, unsupportedPdfCharacters, type PdfFontSources } from './pdf-fonts';
@@ -120,6 +120,10 @@ const PDF_COLORS = {
   primary: '#1E40AF',
   accent: '#00C7FF',
   surface: '#E6F2FF',
+  section: '#203E73',
+  subtle: '#F4F7FB',
+  border: '#D4DEEA',
+  muted: '#475569',
 } as const;
 
 const PDF_BODY_TEXT = { fontSize: 9.5, lineHeight: 1.55, orphans: 2, widows: 2 } as const;
@@ -225,6 +229,12 @@ function documentSourceSummary(
   ].filter(Boolean).join(' · ');
 }
 
+function documentPresentationTitle(metadata?: DocumentClinicalMetadata): string {
+  return metadata?.documentKind
+    ? DOCUMENT_KIND_LABELS[metadata.documentKind] ?? 'Documento clínico digitalizado'
+    : 'Documento clínico digitalizado';
+}
+
 export function documentToExportItem(document: MedicalDocument): ExportItem {
   const correctedText = document.correctedText?.trim();
   const text =
@@ -237,7 +247,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
     ...documentPresentationMetadata(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
-      content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+      content: `Nombre del archivo: ${document.originalName}\n${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
       placement: 'appendix',
     },
   ];
@@ -288,7 +298,7 @@ export function documentToExportItem(document: MedicalDocument): ExportItem {
   }
 
   return {
-    title: document.originalName,
+    title: documentPresentationTitle(document.clinicalMetadata),
     date: documentSortDate(document),
     dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
     datePrecision: document.clinicalMetadata?.clinicalDate ? 'DAY' : 'INSTANT',
@@ -310,7 +320,7 @@ export function clinicalHistoryDocumentToExportItem(
     ...documentPresentationMetadata(document.clinicalMetadata),
     {
       title: 'ARCHIVO',
-      content: `${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
+      content: `Nombre del archivo: ${document.originalName}\n${document.mimeType} · ${(document.sizeBytes / 1024).toFixed(1)} KB`,
       placement: 'appendix',
     },
   ];
@@ -373,7 +383,7 @@ export function clinicalHistoryDocumentToExportItem(
   sections.push({ title: 'TRAZABILIDAD', content: trace.join('\n'), placement: 'appendix' });
 
   return {
-    title: document.originalName,
+    title: documentPresentationTitle(document.clinicalMetadata),
     date: documentSortDate(document),
     dateLabel: document.clinicalMetadata?.clinicalDate ? 'Fecha clínica registrada' : 'Carga (fecha clínica desconocida)',
     datePrecision: document.clinicalMetadata?.clinicalDate ? 'DAY' : 'INSTANT',
@@ -677,9 +687,9 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     },
     headerRight: { alignItems: 'flex-end', maxWidth: 300 },
     headerPatient: { fontSize: 9, fontWeight: 700, textAlign: 'right', lineHeight: 1.2 },
-    headerMeta: { fontSize: 8, color: PDF_COLORS.primary, marginTop: 2 },
-    coverTitle: { fontSize: 19, fontWeight: 700, color: PDF_COLORS.ink, marginBottom: 5 },
-    coverSubtitle: { fontSize: 8.5, lineHeight: 1.45, color: '#475569', marginBottom: 12 },
+    headerMeta: { fontSize: 8, color: PDF_COLORS.muted, marginTop: 2, textAlign: 'right' },
+    coverTitle: { fontSize: 19, fontWeight: 700, color: PDF_COLORS.section, textAlign: 'center', marginBottom: 5 },
+    coverSubtitle: { fontSize: 8.5, lineHeight: 1.45, textAlign: 'center', color: PDF_COLORS.muted, marginBottom: 12 },
     patientDetails: {
       fontSize: 8.5,
       lineHeight: 1.45,
@@ -688,33 +698,44 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
       marginBottom: 18,
     },
     itemHeader: {
-      backgroundColor: PDF_COLORS.surface,
-      borderLeftWidth: 3,
-      borderLeftColor: PDF_COLORS.primary,
+      backgroundColor: PDF_COLORS.subtle,
+      borderWidth: 0.8,
+      borderColor: PDF_COLORS.border,
+      borderRadius: 4,
       padding: 10,
       marginBottom: 8,
     },
-    itemTitle: { fontSize: 11, fontWeight: 700, color: PDF_COLORS.ink },
-    itemMeta: { fontSize: 8.5, color: PDF_COLORS.primary, marginTop: 3 },
+    itemTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+    itemTitle: { fontSize: 11, fontWeight: 700, color: PDF_COLORS.section, flexGrow: 1, flexBasis: 0 },
+    itemStatus: { fontSize: 7.5, fontWeight: 700, color: PDF_COLORS.section, backgroundColor: '#FFFFFF', borderWidth: 0.7, borderColor: PDF_COLORS.section, borderRadius: 7, paddingVertical: 3, paddingHorizontal: 7, maxWidth: 150 },
+    itemMeta: { fontSize: 8.5, color: PDF_COLORS.muted, marginTop: 5 },
     sectionTitle: {
       fontSize: 9,
       fontWeight: 700,
-      color: PDF_COLORS.primary,
+      color: '#FFFFFF',
       letterSpacing: 0,
       marginTop: 10,
       marginBottom: 0,
-      backgroundColor: '#F4F7FB',
-      borderLeftWidth: 2,
-      borderLeftColor: PDF_COLORS.primary,
+      backgroundColor: PDF_COLORS.section,
+      borderTopLeftRadius: 3,
+      borderTopRightRadius: 3,
       paddingVertical: 6,
       paddingHorizontal: 8,
     },
+    appendixSectionTitle: { backgroundColor: PDF_COLORS.subtle, color: PDF_COLORS.section, borderLeftWidth: 2, borderLeftColor: PDF_COLORS.section },
     sectionContent: { fontSize: PDF_BODY_TEXT.fontSize, lineHeight: PDF_BODY_TEXT.lineHeight, color: PDF_COLORS.ink },
     structuredBlock: { marginBottom: 7 },
-    narrativeFrame: { borderWidth: 0.6, borderColor: '#CCD8E6', padding: 8, marginBottom: 7 },
-    narrativeLabel: { fontSize: 8, fontWeight: 700, color: '#334155', marginTop: 7, marginBottom: 3 },
+    // Keep spacing on the next heading, not a bottom margin on flowing Text.
+    // React-PDF can move an otherwise fitting paragraph whole for its margin,
+    // defeating the preceding title's keep-with-next reservation.
+    narrativeFrame: { borderWidth: 0.6, borderColor: PDF_COLORS.border, padding: 8 },
+    narrativeLabel: { fontSize: 8.5, fontWeight: 700, color: PDF_COLORS.section, backgroundColor: PDF_COLORS.subtle, paddingVertical: 5, paddingHorizontal: 8, marginTop: 7, marginBottom: 0 },
+    detailRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderColor: PDF_COLORS.border, paddingVertical: 5, paddingHorizontal: 9 },
+    alternateRow: { backgroundColor: PDF_COLORS.subtle },
+    detailLabel: { width: '32%', paddingRight: 10, fontSize: 8.5, fontWeight: 700, color: PDF_COLORS.muted, lineHeight: 1.4 },
+    detailValue: { width: '68%', fontSize: 9.5, color: PDF_COLORS.ink, lineHeight: 1.4 },
     fieldRow: { flexDirection: 'row', marginBottom: 0 },
-    fieldCell: { flexGrow: 1, flexBasis: 0, borderWidth: 0.5, borderColor: '#CCD8E6', paddingVertical: 6, paddingHorizontal: 8 },
+    fieldCell: { flexGrow: 1, flexBasis: 0, borderWidth: 0.5, borderColor: PDF_COLORS.border, paddingVertical: 6, paddingHorizontal: 8 },
     fieldLabel: { fontSize: 7.5, fontWeight: 700, color: '#475569', lineHeight: 1.3, marginBottom: 3 },
     fieldValue: { fontSize: 9, color: PDF_COLORS.ink, lineHeight: 1.4 },
     factsGroup: { marginBottom: 7 },
@@ -743,9 +764,9 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     dataTableCell: {
       flexGrow: 1,
       flexBasis: 0,
-      borderRightWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: '#CBD5E1',
+      borderRightWidth: 0.5,
+      borderBottomWidth: 0.5,
+      borderColor: PDF_COLORS.border,
       paddingVertical: 4,
       paddingHorizontal: 3,
       fontSize: 8,
@@ -885,7 +906,22 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
   type PdfField = { label: string; value: string; wide?: boolean };
   // Short facts are row-sized, never fixed-height. Long/multiline values become
   // full-width flowing text instead of an unbreakable cell taller than a page.
-  const renderFields = (fields: readonly PdfField[], key: string, columns = 2) => {
+  const renderFields = (fields: readonly PdfField[], key: string, columns?: number) => {
+    // Label/value rows are the default. Only explicitly typed vital signs use
+    // the compact grid; field count or OCR words cannot establish clinical type.
+    if (!columns) return <Fragment key={key}>
+      {fields.map((field, index) => {
+        const flowing = field.wide || field.value.length > 450 || field.value.split(/\r\n|\r|\n/).length > 5 || field.label.length > 160;
+        if (flowing) return <Fragment key={index}>
+          <Text style={styles.narrativeLabel} wrap={false} minPresenceAhead={SECTION_TEXT_KEEP_WITH_NEXT + 26}>{field.label}</Text>
+          <Text style={[styles.sectionContent, styles.narrativeFrame]} orphans={2} widows={2}>{field.value}</Text>
+        </Fragment>;
+        return <View key={index} style={[styles.detailRow, ...(index % 2 ? [styles.alternateRow] : [])]} wrap={false}>
+          <Text style={styles.detailLabel}>{field.label}</Text>
+          <Text style={styles.detailValue}>{field.value}</Text>
+        </View>;
+      })}
+    </Fragment>;
     const rows: PdfField[][] = [];
     let row: PdfField[] = [];
     const flush = () => { if (row.length) rows.push(row); row = []; };
@@ -955,7 +991,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
           <View style={[styles.dataTableRow, styles.dataTableHeader]} wrap={false}>
             {block.columns.map((column, index) => <Text key={index} style={[styles.dataTableCell, styles.dataTableHeading]}>{column}</Text>)}
           </View>
-          {rows.map((row, rowIndex) => <View key={rowIndex} style={styles.dataTableRow} wrap={false}>
+          {rows.map((row, rowIndex) => <View key={rowIndex} style={[styles.dataTableRow, ...(rowIndex % 2 ? [styles.alternateRow] : [])]} wrap={false}>
             {row.map((cell, index) => <Text key={index} style={styles.dataTableCell}>{cell}</Text>)}
           </View>)}
           </View>
@@ -964,10 +1000,10 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     </Fragment>;
   };
 
-  const renderBlock = (block: ExportSectionBlock, key: string) => {
+  const renderBlock = (block: ExportSectionBlock, key: string, compactFields = false) => {
     if (block.kind === 'fields') return <Fragment key={key}>
       {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={70}>{block.label}</Text>}
-      {renderFields(block.fields, key, block.fields.length >= 6 ? 3 : 2)}
+      {renderFields(block.fields, key, compactFields ? 3 : undefined)}
     </Fragment>;
     if (block.kind === 'text') return <Fragment key={key}>
       {block.label && <Text style={styles.narrativeLabel} minPresenceAhead={SECTION_TEXT_KEEP_WITH_NEXT + 26}>{block.label}</Text>}
@@ -986,15 +1022,15 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
     // Keep its section title inside the first chunk, not stranded on the prior page.
     const startsWithTable = section.content === undefined && section.blocks?.[0]?.kind === 'table';
     return <Fragment key={key}>
-      {!startsWithTable && <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={section.blocks?.length ? 85 : SECTION_TEXT_KEEP_WITH_NEXT + 26}>{section.title}</Text>}
-      {fields ? renderFields(fields.map(field => ({ label: field.label + ':', value: field.value })), key, fields.length >= 6 ? 3 : 2)
+      {!startsWithTable && <Text style={[styles.sectionTitle, ...(appendix ? [styles.appendixSectionTitle] : [])]} wrap={false} minPresenceAhead={section.blocks?.length ? 85 : SECTION_TEXT_KEEP_WITH_NEXT + 26}>{section.title}</Text>}
+      {fields ? renderFields(fields.map(field => ({ label: field.label + ':', value: field.value })), key)
         : section.content !== undefined && <Text
           style={[styles.sectionContent, styles.narrativeFrame, ...(appendix ? [styles.appendixText] : [])]}
           orphans={PDF_BODY_TEXT.orphans} widows={PDF_BODY_TEXT.widows}
         >{section.content}</Text>}
       {section.blocks?.map((block, index) => startsWithTable && index === 0 && block.kind === 'table'
         ? renderTable(block, `${key}-${index}`, section.title)
-        : renderBlock(block, `${key}-${index}`))}
+        : renderBlock(block, `${key}-${index}`, section.key === 'consultation-vitals'))}
     </Fragment>;
   };
 
@@ -1004,13 +1040,14 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
   const entryNumber = (index: number) => String(index + 1).padStart(2, '0');
   const hasAppendix = Boolean(orderDescription || resolvedItems.some(item => item.sections.some(section => section.placement === 'appendix')));
   const patientFields: PdfField[] = [
+    { label: 'Paciente', value: `${patient.lastName}, ${patient.firstName}` },
     { label: 'Documento de identidad', value: `${patient.documentType} ${patient.documentNumber}` },
     { label: 'N.º de historia clínica', value: patient.medicalRecordNumber || 'No asignada' },
     { label: 'Fecha de nacimiento', value: formatDateOnly(patient.dateOfBirth, { day: '2-digit', month: 'long', year: 'numeric' }) },
     { label: 'Sexo registrado en ficha', value: SEX_LABEL[patient.sex] ?? patient.sex },
     { label: 'Contacto', value: [patient.phone, patient.email].filter(Boolean).join(' · ') || 'No registrado' },
     { label: 'Seguro', value: [patient.insuranceName, patient.insuranceNumber].filter(Boolean).join(' · ') || 'No registrado' },
-    { label: 'Dirección', value: patient.address || 'No registrada', wide: true },
+    { label: 'Dirección', value: patient.address || 'No registrada' },
     { label: 'Contacto de emergencia', value: [patient.emergencyContactName, patient.emergencyContactPhone, patient.emergencyContactRelationship].filter(Boolean).join(' · ') || 'No registrado' },
     { label: 'Representante', value: patient.representativeName || 'No registrado' },
   ];
@@ -1040,7 +1077,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
           <PdfImage src={brandLogoUrl} style={styles.brandLogo} />
           <View style={styles.headerRight}>
             <Text style={styles.headerPatient}>{patient.lastName}, {patient.firstName}</Text>
-            <Text style={styles.headerMeta}>{patient.documentType} {patient.documentNumber}</Text>
+            <Text style={styles.headerMeta}>{patient.documentType} {patient.documentNumber}{patient.medicalRecordNumber ? ` · HC: ${patient.medicalRecordNumber}` : ''}</Text>
             <Text style={styles.headerMeta}>Emitido: {exportedAt}</Text>
           </View>
         </View>
@@ -1051,7 +1088,7 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
         </Text>
         {options.scopeDetails && <Text style={[styles.contextNote, { marginBottom: 10 }]}>{options.scopeDetails}</Text>}
         <Text style={styles.sectionTitle} wrap={false} minPresenceAhead={80}>Identificación del paciente</Text>
-        {renderFields(patientFields, 'patient', 3)}
+        {renderFields(patientFields, 'patient')}
 
         <Text style={styles.indexTitle} minPresenceAhead={35}>Contenido del expediente · enlaces internos</Text>
         {resolvedItems.map((item, index) => <PdfLink key={index} src={`#entry-${index}`} style={styles.indexLink}>
@@ -1064,7 +1101,10 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
             {/* Page-level cards and headings keep minPresenceAhead effective. */}
             <View id={`entry-${index}`} style={[styles.itemHeader, { marginTop: 16 }]} wrap={false} minPresenceAhead={120}>
               <Text style={styles.entryReference}>ENTRADA {entryNumber(index)}</Text>
-              <Text style={styles.itemTitle}>{item.title}</Text>
+              <View style={styles.itemTop}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemStatus}>{item.status}</Text>
+              </View>
               <Text style={styles.itemMeta}>{item.dateLabel}: {itemDate(item)} · {item.origin} · Estado: {item.status}</Text>
             </View>
             {renderHeaderSections(item, `entry-facts-${index}`)}
@@ -1096,7 +1136,10 @@ export async function createPatientPdf(options: PatientPdfOptions, resources?: {
             return <Fragment key={index}>
               <View style={[styles.itemHeader, { marginTop: 14 }]} wrap={false} minPresenceAhead={110}>
                 <PdfLink src={`#entry-${index}`} style={styles.entryReference}>ENTRADA {entryNumber(index)} · VOLVER AL CONTENIDO</PdfLink>
-                <Text style={styles.itemTitle}>{item.title}</Text>
+                <View style={styles.itemTop}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  <Text style={styles.itemStatus}>{item.status}</Text>
+                </View>
                 <Text style={styles.itemMeta}>{item.dateLabel}: {itemDate(item)} · {item.origin} · Estado: {item.status}</Text>
               </View>
               {appendixSections.map((section, sectionIndex) => renderSection(section, `appendix-${index}-${sectionIndex}`, true))}

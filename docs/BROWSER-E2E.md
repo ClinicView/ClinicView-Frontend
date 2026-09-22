@@ -200,3 +200,21 @@ de una oración que atravesaba páginas. Se conserva aquella evidencia y la
 corrección se protege con seis regresiones nuevas; no se eliminó la oración de
 las expectativas ni se redujeron los controles de integridad. Véase el detalle
 de [continuidad entre páginas](CLINICAL-PDF-FORMAT.md#continuidad-del-texto-entre-páginas).
+
+## Refinamiento institucional — 22 de septiembre de 2026
+
+Nueva ejecución tras incorporar barras de sección azul marino, filas
+etiqueta/valor, títulos basados en la clasificación documental y estados visibles:
+**22/22 pruebas aprobadas, sin reintentos**. El PDF descargado tiene 10 páginas,
+con contenido completo, fechas, imagen y anexo; el OCR no validado permanece
+excluido. El nombre original sigue visible en la referencia y el anexo aunque
+ya no sea el título principal de la entrada.
+
+La regresión de paginación también conserva sus 58 casos y cubre el ajuste que
+evita que el margen inferior de un párrafo desplace todo su contenido dejando
+un encabezado huérfano. No se relajaron las guardas para aceptar la nueva apariencia.
+Las diez páginas descargadas se renderizaron e inspeccionaron visualmente:
+sin recortes ni solapamientos; imagen y leyenda permanecen juntas. Se conserva
+la continuación íntegra de un párrafo entre páginas, incluida su última palabra.
+Se mantienen el esquema exclusivo de pruebas, la copia de frontend aislada y
+el límite OCR sintético; no hubo cambios al backend ni a datos clínicos existentes.

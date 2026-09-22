@@ -162,7 +162,7 @@ test('presentation does not mutate scope, remove versions, duplicate originals o
   assert.deepEqual(episode.items.map(item => item.date), [
     '2024-03-01', '2024-03-04T15:00:00Z', '2024-03-06T15:00:00Z', '2024-03-05T12:00:00-05:00',
   ]);
-  assert.equal(episode.items.filter(item => item.title.includes('Documento de demostración.pdf')).length, 1);
+  assert.equal(episode.items.filter(item => item.sourceSummary?.includes('Documento de demostración.pdf')).length, 1);
   assert.match(episode.orderDescription, /cada original una sola vez/);
   assert.deepEqual(history, original);
 });
